@@ -1,6 +1,7 @@
 from speechbrain.pretrained import EncoderClassifier
-import torchaudio
+import torch
 import numpy as np
+import soundfile as sf
 import os
 
 # Get the script's directory and build paths from there
@@ -15,13 +16,14 @@ classifier = EncoderClassifier.from_hparams(
 sample_dir = os.path.join(project_root, "data", "voice_samples")
 embeddings = []
 
-for file in os.listdir(sample_dir):
+for file in sorted(os.listdir(sample_dir)):
 
     if file.endswith(".wav"):
 
         path = os.path.join(sample_dir, file)
 
-        signal, fs = torchaudio.load(path)
+        audio, fs = sf.read(path)
+        signal = torch.tensor(audio, dtype=torch.float32).unsqueeze(0)
 
         embedding = classifier.encode_batch(signal)
 
