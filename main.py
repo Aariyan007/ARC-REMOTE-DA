@@ -1,12 +1,34 @@
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from auth.voice.verify_voice import verify_voice
 
-app = FastAPI()
+def start_jarvis():
 
-# serve static files from the ui folder
-app.mount("/ui", StaticFiles(directory="ui"), name="ui")
+    print("Jarvis starting...")
 
-@app.get("/")
-def home():
-    return FileResponse("ui/index.html")
+    verified = verify_voice()
+
+    if not verified:
+
+        print("Unauthorized speaker. Ignoring.")
+
+        return
+
+    print("Owner verified. Jarvis activated.")
+
+    assistant_loop()
+
+
+def assistant_loop():
+
+    while True:
+
+        command = input("Command: ")
+
+        if command == "exit":
+            break
+
+        print("Processing:", command)
+
+
+if __name__ == "__main__":
+
+    start_jarvis()

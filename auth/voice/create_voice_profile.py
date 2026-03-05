@@ -1,42 +1,33 @@
-from speechbrain.pretrained import EncoderClassifier
-import torch
-import numpy as np
-import soundfile as sf
 import os
-
-# Get the script's directory and build paths from there
-script_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(os.path.dirname(script_dir))
+import numpy as np
+import torchaudio
+from speechbrain.pretrained import EncoderClassifier
 
 classifier = EncoderClassifier.from_hparams(
     source="speechbrain/spkrec-ecapa-voxceleb",
-    savedir=os.path.join(project_root, "models", "ecapa")
+    savedir="models/ecapa"
 )
 
-sample_dir = os.path.join(project_root, "data", "voice_samples")
+sample_dir = "data/voice_samples"
+
 embeddings = []
 
-for file in sorted(os.listdir(sample_dir)):
+for file in os.listdir(sample_dir):
 
     if file.endswith(".wav"):
 
         path = os.path.join(sample_dir, file)
 
-        audio, fs = sf.read(path)
-        signal = torch.tensor(audio, dtype=torch.float32).unsqueeze(0)
+        signal, fs = torchaudio.load(path)
 
-        embedding = classifier.encode_batch(signal)
+        emb = classifier.encode_batch(signal).squeeze().detach().numpy()
 
-        embeddings.append(embedding.squeeze().detach().numpy())
+        emb = emb / np.linalg.norm(emb)
 
-print("Samples processed:", len(embeddings))
+        embeddings.append(emb)
 
-final_embedding = np.mean(embeddings, axis=0)
+embeddings = np.array(embeddings)
 
-print("Embedding size:", final_embedding.shape)
+np.save("data/voice_profile/owner_embeddings.npy", embeddings)
 
-profile_dir = os.path.join(project_root, "data", "voice_profile")
-os.makedirs(profile_dir, exist_ok=True)
-np.save(os.path.join(profile_dir, "owner_embedding.npy"), final_embedding)
-
-print("Voice profile saved.")
+print("Stored embeddings:", embeddings.shape)
