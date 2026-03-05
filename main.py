@@ -1,21 +1,4 @@
-from auth.voice.verify_voice import verify_voice
-
-def start_jarvis():
-
-    print("Jarvis starting...")
-
-    verified = verify_voice()
-
-    if not verified:
-
-        print("Unauthorized speaker. Ignoring.")
-
-        return
-
-    print("Owner verified. Jarvis activated.")
-
-    assistant_loop()
-
+from core.listener import start_listener
 
 def assistant_loop():
 
@@ -29,6 +12,19 @@ def assistant_loop():
         print("Processing:", command)
 
 
+def main():
+
+    while True:
+
+        activated = start_listener()
+
+        if activated:
+
+            print("Jarvis activated")
+
+            assistant_loop()
+
+
 if __name__ == "__main__":
 
-    start_jarvis()
+    main()
