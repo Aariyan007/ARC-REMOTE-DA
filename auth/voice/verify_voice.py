@@ -1,31 +1,31 @@
 import numpy as np
 import torchaudio
 import sounddevice as sd
+import torch
 from scipy.io.wavfile import write
 from speechbrain.pretrained import EncoderClassifier
 from auth.voice.vad import remove_silence
-import torch
-import os
 
 SAMPLE_RATE = 16000
 DURATION = 5
-NUM_CLIPS = 2
-
 TEMP_FILE = "temp_verify.wav"
+THRESHOLD = 0.65
 
 classifier = EncoderClassifier.from_hparams(
     source="speechbrain/spkrec-ecapa-voxceleb",
     savedir="models/ecapa"
 )
 
-owner_embedding = np.load("data/voice_profile/owner_embedding.npy")
-owner_embedding = owner_embedding / np.linalg.norm(owner_embedding)
+owner_embeddings = np.load("data/voice_profile/owner_embeddings.npy")
 
-embeddings = []
 
-for i in range(NUM_CLIPS):
+def cosine_similarity(a, b):
+    return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
-    print(f"Recording verification sample {i+1}...")
+
+def verify_voice():
+
+    print("Verifying speaker...")
 
     audio = sd.rec(int(DURATION * SAMPLE_RATE), samplerate=SAMPLE_RATE, channels=1)
     sd.wait()
@@ -34,35 +34,24 @@ for i in range(NUM_CLIPS):
 
     signal, fs = torchaudio.load(TEMP_FILE)
 
-    # convert to numpy
     audio_np = signal.squeeze().numpy()
 
-    # remove silence using VAD
     audio_np = remove_silence(audio_np)
 
-    # convert back to tensor
     signal = torch.tensor(audio_np).unsqueeze(0)
 
-    # generate embedding
-    emb = classifier.encode_batch(signal).squeeze().detach().numpy()
+    embedding = classifier.encode_batch(signal).squeeze().detach().numpy()
 
-    emb = emb / np.linalg.norm(emb)
+    embedding = embedding / np.linalg.norm(embedding)
 
-    embeddings.append(emb)
+    best_score = 0
 
-# average verification embeddings
-verification_embedding = np.mean(embeddings, axis=0)
-verification_embedding = verification_embedding / np.linalg.norm(verification_embedding)
+    for owner_emb in owner_embeddings:
 
-similarity = np.dot(verification_embedding, owner_embedding)
+        score = cosine_similarity(embedding, owner_emb)
 
-print("Similarity:", similarity)
+        best_score = max(best_score, score)
 
-THRESHOLD = 0.50
+    print("Best similarity:", best_score)
 
-if similarity > THRESHOLD:
-    print("Access granted")
-else:
-    print("Access denied")
-
-os.remove(TEMP_FILE)
+    return best_score > THRESHOLD
