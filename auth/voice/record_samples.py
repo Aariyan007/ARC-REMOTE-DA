@@ -4,7 +4,7 @@ import os
 
 SAMPLE_RATE = 16000
 DURATION = 6
-NUM_SAMPLES = 5
+NUM_SAMPLES = 8
 
 # Get the script's directory and build path from there
 script_dir = os.path.dirname(os.path.abspath(__file__))
