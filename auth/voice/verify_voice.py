@@ -3,6 +3,8 @@ import torchaudio
 import sounddevice as sd
 from scipy.io.wavfile import write
 from speechbrain.pretrained import EncoderClassifier
+from auth.voice.vad import remove_silence
+import torch
 import os
 
 SAMPLE_RATE = 16000
@@ -16,7 +18,6 @@ classifier = EncoderClassifier.from_hparams(
     savedir="models/ecapa"
 )
 
-# owner_embedding = np.load("data/voice_profile/owner_embedding.npy")
 owner_embedding = np.load("data/voice_profile/owner_embedding.npy")
 owner_embedding = owner_embedding / np.linalg.norm(owner_embedding)
 
@@ -33,23 +34,27 @@ for i in range(NUM_CLIPS):
 
     signal, fs = torchaudio.load(TEMP_FILE)
 
+    # convert to numpy
+    audio_np = signal.squeeze().numpy()
+
+    # remove silence using VAD
+    audio_np = remove_silence(audio_np)
+
+    # convert back to tensor
+    signal = torch.tensor(audio_np).unsqueeze(0)
+
+    # generate embedding
     emb = classifier.encode_batch(signal).squeeze().detach().numpy()
 
     emb = emb / np.linalg.norm(emb)
 
     embeddings.append(emb)
 
+# average verification embeddings
 verification_embedding = np.mean(embeddings, axis=0)
-
 verification_embedding = verification_embedding / np.linalg.norm(verification_embedding)
 
-owner_embedding = owner_embedding / np.linalg.norm(owner_embedding)
-
-# similarity = np.dot(verification_embedding, owner_embedding)
-similarity = np.dot(
-    verification_embedding / np.linalg.norm(verification_embedding),
-    owner_embedding / np.linalg.norm(owner_embedding)
-)
+similarity = np.dot(verification_embedding, owner_embedding)
 
 print("Similarity:", similarity)
 

@@ -7,3 +7,4 @@ sounddevice
 requests
 huggingface_hub==0.19.4
 sentencepiecel
+webrtcvad
