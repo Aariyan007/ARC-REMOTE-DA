@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<title>JARVIS</title>
+<link rel="stylesheet" href="/ui/style.css">
+</head>
+
+<body>
+
+<div class="grid"></div>
+
+<div class="hud">
+
+<!-- LEFT PANEL -->
+
+<div class="panel left">
+
+<div class="glass">
+
+<h3>SYSTEM</h3>
+
+CPU
+<div class="bar"><div id="cpu"></div></div>
+
+RAM
+<div class="bar"><div id="ram"></div></div>
+
+NETWORK
+<div class="bar"><div id="net"></div></div>
+
+</div>
+
+
+<div class="glass">
+
+<h3>BIOMETRICS</h3>
+
+<div class="scanner">
+
+<div class="scan-grid"></div>
+<div class="scan-line"></div>
+
+</div>
+
+</div>
+
+</div>
+
+
+<!-- CENTER -->
+
+<div class="center">
+
+<h1>JARVIS</h1>
+
+<canvas id="reactorCanvas"></canvas>
+
+<div class="status">AI ONLINE</div>
+
+<div class="wave">
+<span></span><span></span><span></span>
+<span></span><span></span>
+</div>
+
+</div>
+
+
+<!-- RIGHT PANEL -->
+
+<div class="panel right">
+
+<div class="glass">
+
+<h3>COMMAND LOG</h3>
+
+<div id="log"></div>
+
+</div>
+
+<div class="glass">
+
+<h3>SECURITY</h3>
+
+USER: AUTHORIZED  
+LEVEL: SAFE  
+
+</div>
+
+</div>
+
+</div>
+
+<script src="/ui/app.js"></script>
+<script src="/ui/reactor.js"></script>
+
+</body>
+
+</html>
