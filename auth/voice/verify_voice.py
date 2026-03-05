@@ -9,7 +9,7 @@ from auth.voice.vad import remove_silence
 SAMPLE_RATE = 16000
 DURATION = 5
 TEMP_FILE = "temp_verify.wav"
-THRESHOLD = 0.65
+THRESHOLD = 0.50
 
 classifier = EncoderClassifier.from_hparams(
     source="speechbrain/spkrec-ecapa-voxceleb",
