@@ -8,31 +8,40 @@ import os
 # ─── Settings ───────────────────────────────────────────────
 SAMPLE_RATE = 16000        # Whisper works best at 16kHz
 CHUNK_SIZE = 1024          # How much audio we read at a time
-SILENCE_THRESHOLD = 500    # Volume level below this = silence
 SILENCE_DURATION = 1.5     # Seconds of silence before we stop recording
 MAX_RECORD_SECONDS = 15    # Safety cap — stop after 15 sec no matter what
 # ────────────────────────────────────────────────────────────
 
 # Load Whisper model once when file is imported
-# This takes 2-3 seconds on first run — normal
 print("Loading Whisper model...")
 model = whisper.load_model("base")
 print("Whisper ready ✅")
 
 
-def is_silent(audio_chunk: np.ndarray) -> bool:
-    """Check if an audio chunk is silent (you stopped talking)."""
-    volume = np.abs(audio_chunk).mean()
-    return volume < SILENCE_THRESHOLD
+def calibrate_silence(stream) -> float:
+    """Measure background noise for 1 second, return threshold above it."""
+    print("🔇 Calibrating background noise...")
+    chunks = []
+    for _ in range(int(SAMPLE_RATE / CHUNK_SIZE)):
+        raw = stream.read(CHUNK_SIZE, exception_on_overflow=False)
+        chunk = np.frombuffer(raw, dtype=np.int16)
+        chunks.append(np.abs(chunk).mean())
+
+    background = np.mean(chunks)
+    threshold = background * 2.5
+    print(f"✅ Threshold set to {int(threshold)} (background was {int(background)})")
+    return threshold
+
+
+def is_silent(audio_chunk: np.ndarray, threshold: float) -> bool:
+    """Check if an audio chunk is silent."""
+    return np.abs(audio_chunk).mean() < threshold
 
 
 def listen() -> str:
     """
-    Opens mic, records until silence detected, returns transcribed text.
-    
-    Returns:
-        str: What you said, lowercased. Example: "open vscode"
-        Returns "" if nothing was captured.
+    Opens mic, calibrates for background noise, records until silence,
+    transcribes with Whisper, returns lowercased text.
     """
     audio_interface = pyaudio.PyAudio()
 
@@ -44,13 +53,15 @@ def listen() -> str:
         frames_per_buffer=CHUNK_SIZE
     )
 
+    # ✅ Calibration happens HERE — after stream is open
+    silence_threshold = calibrate_silence(stream)
+
     print("\n🎙️  Listening...")
 
-    frames = []                      # All audio chunks collected
-    silent_chunks = 0                # How many consecutive silent chunks
-    has_speech = False               # Have we heard anything yet?
+    frames = []
+    silent_chunks = 0
+    has_speech = False
 
-    # How many silent chunks = SILENCE_DURATION seconds
     chunks_per_second = SAMPLE_RATE / CHUNK_SIZE
     max_silent_chunks = int(chunks_per_second * SILENCE_DURATION)
     max_total_chunks = int(chunks_per_second * MAX_RECORD_SECONDS)
@@ -60,14 +71,12 @@ def listen() -> str:
         chunk = np.frombuffer(raw, dtype=np.int16)
         frames.append(raw)
 
-        if is_silent(chunk):
+        if is_silent(chunk, silence_threshold):
             silent_chunks += 1
-            # Only stop if we already heard speech, then silence came
             if has_speech and silent_chunks >= max_silent_chunks:
                 print("✅ Done listening")
                 break
         else:
-            # Sound detected — reset silence counter
             has_speech = True
             silent_chunks = 0
 
@@ -80,7 +89,7 @@ def listen() -> str:
         print("⚠️  No speech detected")
         return ""
 
-    # Save audio to a temp file so Whisper can read it
+    # Save to temp file for Whisper
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
         tmp_path = tmp.name
         with wave.open(tmp_path, "wb") as wf:
@@ -89,7 +98,7 @@ def listen() -> str:
             wf.setframerate(SAMPLE_RATE)
             wf.writeframes(b"".join(frames))
 
-    # Transcribe with Whisper
+    # Transcribe
     print("🧠 Transcribing...")
     result = model.transcribe(tmp_path, language="en", fp16=False)
     text = result["text"].strip().lower()
@@ -102,7 +111,6 @@ def listen() -> str:
 
 
 # ─── Quick test ─────────────────────────────────────────────
-# Run this file directly to test: python3 speech_to_text.py
 if __name__ == "__main__":
     while True:
         command = listen()
