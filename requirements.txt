@@ -1,10 +1,13 @@
-torch==2.2.2
-torchaudio==2.2.2
+torch==2.9.0
+torchaudio==2.9.0
+torchvision==0.18.0
 speechbrain==0.5.16
-numpy<2
+numpy
 scipy
 sounddevice
 requests
 huggingface_hub==0.19.4
-sentencepiecel
+sentencepiece
 webrtcvad
+setuptools
+pvporcupine

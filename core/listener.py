@@ -1,61 +1,38 @@
-import numpy as np
+import os
+import pvporcupine
 import sounddevice as sd
-from openwakeword.model import Model
-
+import numpy as np
+from dotenv import load_dotenv
 from auth.voice.verify_voice import verify_voice
 
-SAMPLE_RATE = 16000
-CHUNK_SIZE = 1280
-
-model = None
-try:
-    model = Model(
-        wakeword_models=["hey_mycroft"],
-        inference_framework="onnx"
-    )
-except Exception as e:
-    print(f"Warning: Could not load wake word model: {e}")
-    print("Running in demo mode - wake word detection disabled")
-
+load_dotenv()
+ACCESS_KEY = os.getenv("PICOVOICE_ACCESS_KEY")
 
 def start_listener():
+    porcupine = pvporcupine.create(
+        access_key=ACCESS_KEY,
+        keywords=["jarvis"]   # built-in, no model files needed
+    )
 
-    print("Jarvis listening...")
+    print("[listener] Jarvis is listening...")
 
     stream = sd.InputStream(
-        samplerate=SAMPLE_RATE,
+        samplerate=porcupine.sample_rate,  # 16000
         channels=1,
-        blocksize=CHUNK_SIZE,
+        blocksize=porcupine.frame_length,  # 512
         dtype="int16"
     )
 
     with stream:
-
         while True:
+            audio, _ = stream.read(porcupine.frame_length)
+            result = porcupine.process(audio.flatten())
 
-            audio, _ = stream.read(CHUNK_SIZE)
-
-            if model is None:
-                print("Wake word model not available - demo mode active")
-                print("Proceeding with voice verification...")
+            if result >= 0:
+                print("[listener] Wake word detected!")
                 if verify_voice():
-                    print("Owner verified")
+                    print("[listener] Owner verified ✓")
+                    porcupine.delete()
                     return True
                 else:
-                    print("Unknown speaker ignored")
-                break
-
-            prediction = model.predict(audio.flatten())
-
-            score = prediction["hey_mycroft"]
-
-            if score > 0.5:
-
-                print("Wake word detected")
-
-                if verify_voice():
-
-                    print("Owner verified")
-                    return True
-                else:
-                    print("Unknown speaker ignored")
+                    print("[listener] Unknown speaker — resuming...")

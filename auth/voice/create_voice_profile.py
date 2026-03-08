@@ -1,6 +1,7 @@
 import os
 import numpy as np
-import torchaudio
+import torch
+from scipy.io.wavfile import read
 from speechbrain.pretrained import EncoderClassifier
 
 classifier = EncoderClassifier.from_hparams(
@@ -18,7 +19,9 @@ for file in os.listdir(sample_dir):
 
         path = os.path.join(sample_dir, file)
 
-        signal, fs = torchaudio.load(path)
+        fs, signal = read(path)
+        
+        signal = torch.tensor(signal, dtype=torch.float32).unsqueeze(0) / 32768.0
 
         emb = classifier.encode_batch(signal).squeeze().detach().numpy()
 

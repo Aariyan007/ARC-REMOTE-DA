@@ -1,8 +1,7 @@
 import numpy as np
-import torchaudio
 import sounddevice as sd
 import torch
-from scipy.io.wavfile import write
+from scipy.io.wavfile import write, read
 from speechbrain.pretrained import EncoderClassifier
 from auth.voice.vad import remove_silence
 
@@ -32,7 +31,9 @@ def verify_voice():
 
     write(TEMP_FILE, SAMPLE_RATE, audio)
 
-    signal, fs = torchaudio.load(TEMP_FILE)
+    fs, signal = read(TEMP_FILE)
+    
+    signal = torch.tensor(signal, dtype=torch.float32).unsqueeze(0) / 32768.0
 
     audio_np = signal.squeeze().numpy()
 
