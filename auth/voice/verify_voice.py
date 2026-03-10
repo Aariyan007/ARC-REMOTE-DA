@@ -3,7 +3,7 @@ import sounddevice as sd
 import torch
 from scipy.io.wavfile import write, read
 from speechbrain.pretrained import EncoderClassifier
-from auth.voice.vad import remove_silence
+from .vad import remove_silence
 
 SAMPLE_RATE = 16000
 DURATION = 5

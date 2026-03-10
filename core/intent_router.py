@@ -1,8 +1,6 @@
 from rapidfuzz import process, fuzz
 
 # ─── Command Registry ────────────────────────────────────────
-# This is the single place where all commands live.
-# To add a new command later — just add it here. Nothing else changes.
 COMMAND_REGISTRY = {
     # App commands
     "open vscode":        "open_vscode",
@@ -20,28 +18,30 @@ COMMAND_REGISTRY = {
     # Time commands
     "what time is it":    "tell_time",
     "what's the time":    "tell_time",
+    "what is the time":   "tell_time",
     "current time":       "tell_time",
     "time please":        "tell_time",
+
+    # Date commands
+    "what is the date":   "tell_date",
+    "what's the date":    "tell_date",
+    "today's date":       "tell_date",
 
     # System commands
     "lock screen":        "lock_screen",
     "lock my screen":     "lock_screen",
+    "lock the screen":    "lock_screen",
     "shutdown":           "shutdown_pc",
     "shut down":          "shutdown_pc",
     "restart":            "restart_pc",
 }
 
-# How confident the match needs to be (0-100)
-# 70 = fairly loose, handles typos and Whisper mishears well
 MATCH_THRESHOLD = 70
 # ─────────────────────────────────────────────────────────────
 
 
 def extract_search_query(command: str) -> str:
-    """
-    Pulls the actual search term out of the command.
-    Example: "search python loops" → "python loops"
-    """
+    """Pulls the actual search term out of the command."""
     for trigger in ["search", "google", "look up", "find"]:
         if trigger in command:
             return command.split(trigger, 1)[-1].strip()
@@ -51,10 +51,11 @@ def extract_search_query(command: str) -> str:
 def route(command: str, actions: dict) -> None:
     """
     Takes a text command, finds the best matching action, executes it.
-
-    Args:
-        command: What the user said. Example: "open vscode"
-        actions: Dict of action_name → function. Passed in from main.py
+    Order:
+        1. Search trigger check
+        2. Explicit app keyword check
+        3. Fuzzy match
+        4. Unknown → Gemini fallback later
     """
     if not command:
         print("⚠️  Empty command received")
@@ -63,20 +64,38 @@ def route(command: str, actions: dict) -> None:
     command = command.strip().lower()
     print(f"\n🔍 Routing: '{command}'")
 
-    # ── Step 1: Check for search command first (special case)
-    # Because "search python loops" won't match "search" exactly
+    # ── Step 1: Search commands ──────────────────────────────
     for trigger in ["search", "google", "look up", "find"]:
-        if command.startswith(trigger):
+        if trigger in command:
             query = extract_search_query(command)
             if query:
                 print(f"🌐 Search intent detected → query: '{query}'")
                 if "search_google" in actions:
                     actions["search_google"](query)
                 else:
-                    print("❌ search_google function not connected yet")
+                    print("❌ search_google not connected yet")
                 return
 
-    # ── Step 2: Fuzzy match against all known commands
+    # ── Step 2: Explicit app keyword check ──────────────────
+    if "safari" in command or "browser" in command:
+        print("✅ App intent detected → open_safari")
+        if "open_safari" in actions:
+            actions["open_safari"]()
+        return
+
+    if "vscode" in command or "vs code" in command or "code editor" in command:
+        print("✅ App intent detected → open_vscode")
+        if "open_vscode" in actions:
+            actions["open_vscode"]()
+        return
+
+    if "terminal" in command:
+        print("✅ App intent detected → open_terminal")
+        if "open_terminal" in actions:
+            actions["open_terminal"]()
+        return
+
+    # ── Step 3: Fuzzy match ──────────────────────────────────
     result = process.extractOne(
         command,
         COMMAND_REGISTRY.keys(),
@@ -92,13 +111,12 @@ def route(command: str, actions: dict) -> None:
 
     print(f"✅ Matched: '{matched_phrase}' (confidence: {score}%) → {action_name}")
 
-    # ── Step 3: Check confidence is high enough
     if score < MATCH_THRESHOLD:
         print(f"⚠️  Confidence too low ({score}% < {MATCH_THRESHOLD}%) — treating as unknown")
         _unknown_command(command)
         return
 
-    # ── Step 4: Execute the action
+    # ── Step 4: Execute ──────────────────────────────────────
     if action_name in actions:
         actions[action_name]()
     else:
@@ -112,14 +130,13 @@ def _unknown_command(command: str) -> None:
 
 
 # ─── Quick test ──────────────────────────────────────────────
-# Run: python3 core/intent_router.py
 if __name__ == "__main__":
 
-    # Fake actions for testing — real ones come from control/ folder later
     def fake_open_vscode():    print("🖥️  [ACTION] Opening VS Code")
     def fake_open_safari():    print("🌐  [ACTION] Opening Safari")
     def fake_open_terminal():  print("💻  [ACTION] Opening Terminal")
     def fake_tell_time():      print("🕐  [ACTION] Telling time")
+    def fake_tell_date():      print("📅  [ACTION] Telling date")
     def fake_lock_screen():    print("🔒  [ACTION] Locking screen")
     def fake_search(query):    print(f"🔍  [ACTION] Searching for: '{query}'")
 
@@ -128,20 +145,23 @@ if __name__ == "__main__":
         "open_safari":    fake_open_safari,
         "open_terminal":  fake_open_terminal,
         "tell_time":      fake_tell_time,
+        "tell_date":      fake_tell_date,
         "lock_screen":    fake_lock_screen,
         "search_google":  fake_search,
     }
 
-    # Test commands — including messy ones Whisper might produce
     test_commands = [
         "open vscode",
-        "open vs code",
         "open safari",
+        "open crome",
+        "open the browser please",
         "search python tutorial",
+        "jarvis search for machine learning",
         "what time is it",
+        "what is the time",
         "hey lock my screen",
         "i want to open the browser",
-        "blah blah random words",  # should be unknown
+        "blah blah random words",
     ]
 
     print("=" * 50)
