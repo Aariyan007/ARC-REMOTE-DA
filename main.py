@@ -1,6 +1,6 @@
 import sys
-
-# ── Compatibility fix (keep your existing one) ───────────────
+# Add this import at the top of main.py
+from core.voice_response import speak
 try:
     import pkg_resources
 except ImportError:
@@ -44,6 +44,7 @@ def assistant_loop():
     Core Jarvis loop — runs after wake word is detected.
     Listens for one command, executes it, then loops back.
     """
+    speak("Yes, I'm listening")
     print("\n✅ Jarvis activated — listening for your command...")
 
     while True:

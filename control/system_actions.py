@@ -1,8 +1,9 @@
 import subprocess
 import time
-
+from core.voice_response import speak_and_wait
 
 def lock_screen():
+    speak_and_wait("Locking the screen")
     """Locks the Mac screen immediately."""
     print("🔒 Locking screen...")
     subprocess.Popen([
@@ -12,6 +13,7 @@ def lock_screen():
 
 
 def shutdown_pc():
+    speak_and_wait("Shutting down in 5 seconds")
     """
     Shuts down the Mac after a 5 second warning.
     Gives time to cancel if Whisper misheard.
@@ -28,6 +30,7 @@ def shutdown_pc():
 
 
 def restart_pc():
+    speak_and_wait("Restarting in 5 seconds")
     """
     Restarts the Mac after a 5 second warning.
     Gives time to cancel if Whisper misheard.

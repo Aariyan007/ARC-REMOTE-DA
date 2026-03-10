@@ -1,8 +1,9 @@
 import webbrowser
 import urllib.parse
-
+from core.voice_response import speak
 
 def search_google(query: str):
+    speak(f"Searching Google for {query}")
     """
     Opens Safari with a Google search for the given query.
     

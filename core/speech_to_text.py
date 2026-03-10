@@ -4,12 +4,13 @@ import numpy as np
 import wave
 import tempfile
 import os
+import core.voice_response as voice_response
 
 # ─── Settings ───────────────────────────────────────────────
-SAMPLE_RATE = 16000        # Whisper works best at 16kHz
-CHUNK_SIZE = 1024          # How much audio we read at a time
-SILENCE_DURATION = 1.5     # Seconds of silence before we stop recording
-MAX_RECORD_SECONDS = 15    # Safety cap — stop after 15 sec no matter what
+SAMPLE_RATE = 16000
+CHUNK_SIZE = 1024
+SILENCE_DURATION = 1.5
+MAX_RECORD_SECONDS = 15
 WHISPER_PROMPT = (
     "Jarvis open vscode safari terminal search google "
     "lock screen shutdown restart time date"
@@ -20,13 +21,12 @@ CORRECTIONS = {
     "davas":   "jarvis",
     "java":    "jarvis",
     "jabas":   "jarvis",
-    "the dava":"jarvis",
+    "dava":    "jarvis",   # fixed — removed space
     "crome":   "chrome",
     "saf":     "safari",
 }
 # ────────────────────────────────────────────────────────────
 
-# Load Whisper model once when file is imported
 print("Loading Whisper model...")
 model = whisper.load_model("base")
 print("Whisper ready ✅")
@@ -56,6 +56,7 @@ def listen() -> str:
     """
     Opens mic, calibrates for background noise, records until silence,
     transcribes with Whisper, returns lowercased text.
+    Ignores all audio while Jarvis is speaking to prevent feedback loop.
     """
     audio_interface = pyaudio.PyAudio()
 
@@ -67,7 +68,6 @@ def listen() -> str:
         frames_per_buffer=CHUNK_SIZE
     )
 
-    # ✅ Calibration happens HERE — after stream is open
     silence_threshold = calibrate_silence(stream)
 
     print("\n🎙️  Listening...")
@@ -82,6 +82,12 @@ def listen() -> str:
 
     for _ in range(max_total_chunks):
         raw = stream.read(CHUNK_SIZE, exception_on_overflow=False)
+
+        # ── Ignore audio while Jarvis is speaking ────────────
+        if voice_response.is_speaking:
+            continue   # throw away chunk, don't add to frames
+        # ─────────────────────────────────────────────────────
+
         chunk = np.frombuffer(raw, dtype=np.int16)
         frames.append(raw)
 
@@ -114,19 +120,17 @@ def listen() -> str:
 
     # Transcribe
     print("🧠 Transcribing...")
-    # result = model.transcribe(tmp_path, language="en", fp16=False)
     result = model.transcribe(
-    tmp_path,
-    language="en",
-    fp16=False,
-    initial_prompt=WHISPER_PROMPT
+        tmp_path,
+        language="en",
+        fp16=False,
+        initial_prompt=WHISPER_PROMPT
     )
     text = result["text"].strip().lower()
-    
+
     for wrong, right in CORRECTIONS.items():
         text = text.replace(wrong, right)
 
-    # Delete temp file immediately
     os.remove(tmp_path)
 
     print(f"📝 You said: '{text}'")
