@@ -10,6 +10,20 @@ SAMPLE_RATE = 16000        # Whisper works best at 16kHz
 CHUNK_SIZE = 1024          # How much audio we read at a time
 SILENCE_DURATION = 1.5     # Seconds of silence before we stop recording
 MAX_RECORD_SECONDS = 15    # Safety cap — stop after 15 sec no matter what
+WHISPER_PROMPT = (
+    "Jarvis open vscode safari terminal search google "
+    "lock screen shutdown restart time date"
+)
+CORRECTIONS = {
+    "jihadis": "jarvis",
+    "javas":   "jarvis",
+    "davas":   "jarvis",
+    "java":    "jarvis",
+    "jabas":   "jarvis",
+    "the dava":"jarvis",
+    "crome":   "chrome",
+    "saf":     "safari",
+}
 # ────────────────────────────────────────────────────────────
 
 # Load Whisper model once when file is imported
@@ -100,8 +114,17 @@ def listen() -> str:
 
     # Transcribe
     print("🧠 Transcribing...")
-    result = model.transcribe(tmp_path, language="en", fp16=False)
+    # result = model.transcribe(tmp_path, language="en", fp16=False)
+    result = model.transcribe(
+    tmp_path,
+    language="en",
+    fp16=False,
+    initial_prompt=WHISPER_PROMPT
+    )
     text = result["text"].strip().lower()
+    
+    for wrong, right in CORRECTIONS.items():
+        text = text.replace(wrong, right)
 
     # Delete temp file immediately
     os.remove(tmp_path)
