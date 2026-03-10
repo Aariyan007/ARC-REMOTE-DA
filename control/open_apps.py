@@ -1,23 +1,17 @@
 import subprocess
-
+from core.voice_response import speak
 
 def open_vscode():
-    """Opens Visual Studio Code."""
-    print("🖥️  Opening VS Code...")
+    speak("Opening VS Code")
     subprocess.Popen(["open", "-a", "Visual Studio Code"])
 
-
 def open_safari():
-    """Opens Safari browser."""
-    print("🌐  Opening Safari...")
+    speak("Opening Safari")
     subprocess.Popen(["open", "-a", "Safari"])
 
-
 def open_terminal():
-    """Opens Terminal."""
-    print("💻  Opening Terminal...")
+    speak("Opening Terminal")
     subprocess.Popen(["open", "-a", "Terminal"])
-
 
 # ─── Quick test ──────────────────────────────────────────────
 # Run: python3 control/open_apps.py

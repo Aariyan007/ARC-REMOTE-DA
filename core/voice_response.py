@@ -1,49 +1,40 @@
 import subprocess
-
+import time
 
 # ─── Voice Settings ──────────────────────────────────────────
-# Mac built-in voices — change VOICE to try different ones:
-# "Alex" "Samantha" "Daniel" "Karen" "Moira" "Siri"
 VOICE = "Daniel"
-RATE = 200    # Words per minute — default is 175, higher = faster
+RATE = 200
 # ─────────────────────────────────────────────────────────────
+
+# Global flag — True while Jarvis is speaking
+# speech_to_text.py watches this to mute the mic
+is_speaking = False
 
 
 def speak(text: str):
     """
-    Speaks text out loud using Mac's built-in voice.
-    Non-blocking — Jarvis keeps running while speaking.
-
-    Example:
-        speak("Opening Safari")
-        → Jarvis says "Opening Safari" out loud
+    Speaks text out loud. Blocks until finished.
+    Sets is_speaking = True so mic ignores audio during speech.
     """
+    global is_speaking
+    is_speaking = True
     print(f"🔊 Jarvis: {text}")
-    subprocess.Popen(["say", "-v", VOICE, "-r", str(RATE), text])
+    subprocess.run(["say", "-v", VOICE, "-r", str(RATE), text])
+    time.sleep(0.3)    # small buffer to clear echo/reverb
+    is_speaking = False
 
 
 def speak_and_wait(text: str):
-    """
-    Speaks text and waits until finished before continuing.
-    Use this for important messages like shutdown warnings.
-
-    Example:
-        speak_and_wait("Shutting down in 5 seconds")
-        → Jarvis finishes speaking before countdown starts
-    """
-    print(f"🔊 Jarvis: {text}")
-    subprocess.run(["say", "-v", VOICE, "-r", str(RATE), text])
+    """Alias for speak() — both block until finished now."""
+    speak(text)
 
 
 # ─── Quick test ──────────────────────────────────────────────
 if __name__ == "__main__":
-    print("Testing voice responses...\n")
-
-    speak_and_wait("Hello. I am Jarvis. Your personal assistant is now online.")
-    speak_and_wait("Opening Safari.")
-    speak_and_wait("Searching Google for python tutorial.")
-    speak_and_wait("It's 1:05 AM.")
-    speak_and_wait("Locking the screen.")
-    speak_and_wait("Shutting down in 5 seconds.")
-
-    print("\n✅ Voice test complete!")
+    speak("Hello. I am Jarvis. Your personal assistant is now online.")
+    speak("Opening Safari.")
+    speak("Searching Google for python tutorial.")
+    speak("It's 1:05 AM.")
+    speak("Locking the screen.")
+    speak("Shutting down in 5 seconds.")
+    print("✅ Voice test complete!")
