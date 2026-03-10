@@ -7,8 +7,8 @@ COMMAND_REGISTRY = {
     # App commands
     "open vscode":        "open_vscode",
     "open vs code":       "open_vscode",
-    "open chrome":        "open_chrome",
-    "open browser":       "open_chrome",
+    "open safari":        "open_safari",
+    "open browser":       "open_safari",
     "open terminal":      "open_terminal",
 
     # Search commands
@@ -117,7 +117,7 @@ if __name__ == "__main__":
 
     # Fake actions for testing — real ones come from control/ folder later
     def fake_open_vscode():    print("🖥️  [ACTION] Opening VS Code")
-    def fake_open_chrome():    print("🌐  [ACTION] Opening Chrome")
+    def fake_open_safari():    print("🌐  [ACTION] Opening Safari")
     def fake_open_terminal():  print("💻  [ACTION] Opening Terminal")
     def fake_tell_time():      print("🕐  [ACTION] Telling time")
     def fake_lock_screen():    print("🔒  [ACTION] Locking screen")
@@ -125,7 +125,7 @@ if __name__ == "__main__":
 
     test_actions = {
         "open_vscode":    fake_open_vscode,
-        "open_chrome":    fake_open_chrome,
+        "open_safari":    fake_open_safari,
         "open_terminal":  fake_open_terminal,
         "tell_time":      fake_tell_time,
         "lock_screen":    fake_lock_screen,
@@ -136,7 +136,7 @@ if __name__ == "__main__":
     test_commands = [
         "open vscode",
         "open vs code",
-        "open crome",              # typo — should still match chrome
+        "open safari",
         "search python tutorial",
         "what time is it",
         "hey lock my screen",
