@@ -1,4 +1,5 @@
 from rapidfuzz import process, fuzz
+from core.llm_brain import ask_gemini
 
 # ─── Command Registry ────────────────────────────────────────
 COMMAND_REGISTRY = {
@@ -103,7 +104,7 @@ def route(command: str, actions: dict) -> None:
     )
 
     if result is None:
-        _unknown_command(command)
+        _unknown_command(command,actions)
         return
 
     matched_phrase, score, _ = result
@@ -113,7 +114,7 @@ def route(command: str, actions: dict) -> None:
 
     if score < MATCH_THRESHOLD:
         print(f"⚠️  Confidence too low ({score}% < {MATCH_THRESHOLD}%) — treating as unknown")
-        _unknown_command(command)
+        _unknown_command(command,actions)
         return
 
     # ── Step 4: Execute ──────────────────────────────────────
@@ -123,10 +124,32 @@ def route(command: str, actions: dict) -> None:
         print(f"❌ Action '{action_name}' not connected yet")
 
 
-def _unknown_command(command: str) -> None:
-    """Called when no command matches. Gemini fallback will go here later."""
-    print(f"❓ Unknown command: '{command}'")
-    print("   → [Gemini fallback will handle this in Phase 2]")
+# def _unknown_command(command: str) -> None:
+#     """Called when no command matches. Gemini fallback will go here later."""
+#     print(f"❓ Unknown command: '{command}'")
+#     print("   → [Gemini fallback will handle this in Phase 2]")
+def _unknown_command(command: str, actions: dict) -> None:
+    print(f"🧠 Sending to Gemini: '{command}'")
+    result = ask_gemini(command)
+
+    if result["type"] == "chat":
+        from core.voice_response import speak
+        speak(result["response"])
+
+    elif result["type"] == "action":
+        action = result.get("action")
+        target = result.get("target")
+        query  = result.get("query")
+
+        if action == "open_app":
+            func_name = f"open_{target}"
+            if func_name in actions:
+                actions[func_name]()
+        elif action == "search_google" and query:
+            if "search_google" in actions:
+                actions["search_google"](query)
+        elif action in actions:
+            actions[action]()
 
 
 # ─── Quick test ──────────────────────────────────────────────
