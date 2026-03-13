@@ -1,6 +1,7 @@
 import sys
 # Add this import at the top of main.py
 from core.voice_response import speak
+from core.logger import print_todays_summary
 try:
     import pkg_resources
 except ImportError:
@@ -57,6 +58,7 @@ def assistant_loop():
 
         # Step 2: Exit words — go back to wake word mode
         if any(word in command for word in ["goodbye", "go to sleep", "stop listening"]):
+            print_todays_summary()
             print("😴 Jarvis going to sleep. Say the wake word to activate again.")
             break
 

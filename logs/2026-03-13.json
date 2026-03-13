@@ -1,0 +1,26 @@
+[
+  {
+    "timestamp": "2026-03-13 21:45:13",
+    "you_said": "what is the time right now",
+    "action_taken": "tell_time",
+    "was_understood": true,
+    "sent_to_gemini": false,
+    "gemini_response": null
+  },
+  {
+    "timestamp": "2026-03-13 21:45:22",
+    "you_said": "now you mind opening safariari for me i want to search something",
+    "action_taken": "search_google",
+    "was_understood": true,
+    "sent_to_gemini": false,
+    "gemini_response": null
+  },
+  {
+    "timestamp": "2026-03-13 21:45:38",
+    "you_said": "no no no i want to show it something",
+    "action_taken": "tell_time",
+    "was_understood": true,
+    "sent_to_gemini": false,
+    "gemini_response": null
+  }
+]

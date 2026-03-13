@@ -1,5 +1,6 @@
 from rapidfuzz import process, fuzz
 from core.llm_brain import ask_gemini
+from core.logger import log_interaction
 
 # ─── Command Registry ────────────────────────────────────────
 COMMAND_REGISTRY = {
@@ -35,9 +36,15 @@ COMMAND_REGISTRY = {
     "shutdown":           "shutdown_pc",
     "shut down":          "shutdown_pc",
     "restart":            "restart_pc",
+    "sleep mac":          "sleep_mac",
+    "sleep mode":         "sleep_mac",
+    "put to sleep":       "sleep_mac",
 }
 
 MATCH_THRESHOLD = 70
+
+# Queries too vague to search — send to Gemini instead
+IGNORE_QUERIES = ["something", "anything", "it", "that", "this", "stuff"]
 # ─────────────────────────────────────────────────────────────
 
 
@@ -56,10 +63,15 @@ def route(command: str, actions: dict) -> None:
         1. Search trigger check
         2. Explicit app keyword check
         3. Fuzzy match
-        4. Unknown → Gemini fallback later
+        4. Unknown → Gemini fallback
     """
     if not command:
         print("⚠️  Empty command received")
+        return
+
+    # Ignore very short commands — probably mic noise
+    if len(command.split()) < 2:
+        print("⚠️  Command too short, ignoring")
         return
 
     command = command.strip().lower()
@@ -69,31 +81,61 @@ def route(command: str, actions: dict) -> None:
     for trigger in ["search", "google", "look up", "find"]:
         if trigger in command:
             query = extract_search_query(command)
-            if query:
-                print(f"🌐 Search intent detected → query: '{query}'")
-                if "search_google" in actions:
-                    actions["search_google"](query)
-                else:
-                    print("❌ search_google not connected yet")
+
+            # Query too vague → send to Gemini instead
+            if not query or query in IGNORE_QUERIES:
+                print(f"⚠️  Query too vague: '{query}' → sending to Gemini")
+                _unknown_command(command, actions)
                 return
+
+            print(f"🌐 Search intent detected → query: '{query}'")
+            if "search_google" in actions:
+                actions["search_google"](query)
+                log_interaction(
+                    you_said=command,
+                    action_taken="search_google",
+                    was_understood=True,
+                    sent_to_gemini=False
+                )
+            else:
+                print("❌ search_google not connected yet")
+            return
 
     # ── Step 2: Explicit app keyword check ──────────────────
     if "safari" in command or "browser" in command:
         print("✅ App intent detected → open_safari")
         if "open_safari" in actions:
             actions["open_safari"]()
+            log_interaction(
+                you_said=command,
+                action_taken="open_safari",
+                was_understood=True,
+                sent_to_gemini=False
+            )
         return
 
     if "vscode" in command or "vs code" in command or "code editor" in command:
         print("✅ App intent detected → open_vscode")
         if "open_vscode" in actions:
             actions["open_vscode"]()
+            log_interaction(
+                you_said=command,
+                action_taken="open_vscode",
+                was_understood=True,
+                sent_to_gemini=False
+            )
         return
 
     if "terminal" in command:
         print("✅ App intent detected → open_terminal")
         if "open_terminal" in actions:
             actions["open_terminal"]()
+            log_interaction(
+                you_said=command,
+                action_taken="open_terminal",
+                was_understood=True,
+                sent_to_gemini=False
+            )
         return
 
     # ── Step 3: Fuzzy match ──────────────────────────────────
@@ -104,7 +146,7 @@ def route(command: str, actions: dict) -> None:
     )
 
     if result is None:
-        _unknown_command(command,actions)
+        _unknown_command(command, actions)
         return
 
     matched_phrase, score, _ = result
@@ -114,27 +156,37 @@ def route(command: str, actions: dict) -> None:
 
     if score < MATCH_THRESHOLD:
         print(f"⚠️  Confidence too low ({score}% < {MATCH_THRESHOLD}%) — treating as unknown")
-        _unknown_command(command,actions)
+        _unknown_command(command, actions)
         return
 
     # ── Step 4: Execute ──────────────────────────────────────
     if action_name in actions:
         actions[action_name]()
+        log_interaction(
+            you_said=command,
+            action_taken=action_name,
+            was_understood=True,
+            sent_to_gemini=False
+        )
     else:
         print(f"❌ Action '{action_name}' not connected yet")
 
 
-# def _unknown_command(command: str) -> None:
-#     """Called when no command matches. Gemini fallback will go here later."""
-#     print(f"❓ Unknown command: '{command}'")
-#     print("   → [Gemini fallback will handle this in Phase 2]")
 def _unknown_command(command: str, actions: dict) -> None:
+    """Sends unknown command to Gemini. Handles both chat and action responses."""
     print(f"🧠 Sending to Gemini: '{command}'")
     result = ask_gemini(command)
 
     if result["type"] == "chat":
         from core.voice_response import speak
         speak(result["response"])
+        log_interaction(
+            you_said=command,
+            action_taken="chat_response",
+            was_understood=False,
+            sent_to_gemini=True,
+            gemini_response=str(result)
+        )
 
     elif result["type"] == "action":
         action = result.get("action")
@@ -150,6 +202,14 @@ def _unknown_command(command: str, actions: dict) -> None:
                 actions["search_google"](query)
         elif action in actions:
             actions[action]()
+
+        log_interaction(
+            you_said=command,
+            action_taken=action or "unknown",
+            was_understood=False,
+            sent_to_gemini=True,
+            gemini_response=str(result)
+        )
 
 
 # ─── Quick test ──────────────────────────────────────────────
@@ -177,13 +237,10 @@ if __name__ == "__main__":
         "open vscode",
         "open safari",
         "open crome",
-        "open the browser please",
         "search python tutorial",
-        "jarvis search for machine learning",
+        "i want to search something",   # ← should go to Gemini now
         "what time is it",
-        "what is the time",
         "hey lock my screen",
-        "i want to open the browser",
         "blah blah random words",
     ]
 
