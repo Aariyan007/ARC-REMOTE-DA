@@ -3,8 +3,6 @@ from core.logger import log_interaction
 from core.voice_response import speak
 
 # ─── Action Map ──────────────────────────────────────────────
-# Maps Gemini's action names → actual Python functions
-# To add a new command: add it here + add it to ACTIONS in main.py
 ACTION_MAP = {
     "open_vscode",
     "open_safari",
@@ -23,9 +21,7 @@ ACTION_MAP = {
 def route(command: str, actions: dict) -> None:
     """
     Sends every command to Gemini for understanding.
-    Gemini returns either:
-        - Structured intent → execute action
-        - Casual response   → speak it
+    Passes original command to each action for dynamic responses.
     """
     if not command or not command.strip():
         print("⚠️  Empty command received")
@@ -62,7 +58,7 @@ def route(command: str, actions: dict) -> None:
         if action == "open_app" and target:
             func_name = f"open_{target}"
             if func_name in actions:
-                actions[func_name]()
+                actions[func_name](command)          # ← pass command
                 log_interaction(
                     you_said=command,
                     action_taken=func_name,
@@ -76,7 +72,7 @@ def route(command: str, actions: dict) -> None:
         # search_google → needs query
         if action == "search_google":
             if query and "search_google" in actions:
-                actions["search_google"](query)
+                actions["search_google"](query, command)   # ← pass both
                 log_interaction(
                     you_said=command,
                     action_taken="search_google",
@@ -89,7 +85,7 @@ def route(command: str, actions: dict) -> None:
 
         # All other actions — tell_time, lock_screen, etc
         if action in actions:
-            actions[action]()
+            actions[action](command)                 # ← pass command
             log_interaction(
                 you_said=command,
                 action_taken=action,
@@ -110,13 +106,13 @@ def route(command: str, actions: dict) -> None:
 # ─── Quick test ──────────────────────────────────────────────
 if __name__ == "__main__":
 
-    def fake_open_vscode():    print("🖥️  Opening VS Code")
-    def fake_open_safari():    print("🌐  Opening Safari")
-    def fake_open_terminal():  print("💻  Opening Terminal")
-    def fake_tell_time():      print("🕐  Telling time")
-    def fake_tell_date():      print("📅  Telling date")
-    def fake_lock_screen():    print("🔒  Locking screen")
-    def fake_search(query):    print(f"🔍  Searching: '{query}'")
+    def fake_open_vscode(u):    print(f"🖥️  Opening VS Code | user said: '{u}'")
+    def fake_open_safari(u):    print(f"🌐  Opening Safari | user said: '{u}'")
+    def fake_open_terminal(u):  print(f"💻  Opening Terminal | user said: '{u}'")
+    def fake_tell_time(u):      print(f"🕐  Telling time | user said: '{u}'")
+    def fake_tell_date(u):      print(f"📅  Telling date | user said: '{u}'")
+    def fake_lock_screen(u):    print(f"🔒  Locking screen | user said: '{u}'")
+    def fake_search(q, u):      print(f"🔍  Searching: '{q}' | user said: '{u}'")
 
     test_actions = {
         "open_vscode":    fake_open_vscode,
@@ -135,8 +131,6 @@ if __name__ == "__main__":
         "search for python tutorials",
         "how are you doing today",
         "lock my screen please",
-        "tell me something interesting",
-        "i want to search something about machine learning",
     ]
 
     print("=" * 50)

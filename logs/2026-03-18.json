@@ -1,0 +1,26 @@
+[
+  {
+    "timestamp": "2026-03-18 00:32:23",
+    "you_said": "open my safariari",
+    "action_taken": "open_safari",
+    "was_understood": true,
+    "sent_to_gemini": true,
+    "gemini_response": null
+  },
+  {
+    "timestamp": "2026-03-18 00:32:52",
+    "you_said": "www.y compete man worthy of public software",
+    "action_taken": "search_google",
+    "was_understood": true,
+    "sent_to_gemini": true,
+    "gemini_response": null
+  },
+  {
+    "timestamp": "2026-03-18 00:33:13",
+    "you_said": "welcome home dad!",
+    "action_taken": "chat_response",
+    "was_understood": true,
+    "sent_to_gemini": true,
+    "gemini_response": "Sorry, I had trouble understanding that."
+  }
+]
