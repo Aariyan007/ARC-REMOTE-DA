@@ -1,95 +1,117 @@
 import json
-import os
-from dotenv import load_dotenv
+import time
 from google import genai
+from mood.mood_engine import get_mood_for_prompt
+from dotenv import load_dotenv
+import os
 
+# ─── Settings ────────────────────────────────────────────────
 load_dotenv()
 GEMINI_API_KEY = os.getenv("API_KEY")
-client = genai.Client(api_key=GEMINI_API_KEY)
-MODEL = "gemini-3-flash-preview"
+MODEL          = "gemini-3-flash-preview"
 # ─────────────────────────────────────────────────────────────
 
-# This tells Gemini exactly who it is and how to respond
+client = genai.Client(api_key=GEMINI_API_KEY)
+
 SYSTEM_PROMPT = """
-You are Jarvis, a smart personal voice assistant running on a Mac.
+You are Jarvis, a personal AI assistant for Aariyan.
+Aariyan is a 3rd year BTech CS student, full stack developer and entrepreneur.
+He talks casually, uses slang, and wants Jarvis to feel like a close friend.
 
-When the user says something, you must decide if it's:
+{mood_context}
 
-A) A COMMAND — something that controls the computer.
-   Respond with ONLY a JSON object like this:
-   {"action": "open_app", "target": "vscode"}
-   {"action": "open_app", "target": "safari"}
-   {"action": "open_app", "target": "terminal"}
-   {"action": "search_google", "query": "python tutorial"}
-   {"action": "tell_time"}
-   {"action": "tell_date"}
-   {"action": "lock_screen"}
-   {"action": "shutdown_pc"}
-   {"action": "restart_pc"}
+When the user says something, return a JSON object with:
 
-B) CASUAL CONVERSATION — greetings, questions, small talk.
-   Respond naturally like a helpful assistant. Keep it short — 1-2 sentences max.
-   Do NOT return JSON for casual talk.
+For COMMANDS (controlling the computer):
+{{
+  "type": "action",
+  "action": "open_app" | "search_google" | "tell_time" | "tell_date" | "lock_screen" | "shutdown_pc" | "restart_pc" | "sleep_mac",
+  "target": "vscode" | "safari" | "terminal" | null,
+  "query": "search query here" | null,
+  "response": "natural spoken response matching current mood"
+}}
+
+For CASUAL CONVERSATION:
+{{
+  "type": "chat",
+  "response": "natural conversational reply matching current mood"
+}}
+
+Response rules:
+- response field must match current mood exactly
+- Max 10 words for action responses
+- Max 2 sentences for chat responses  
+- Sound like a close friend, not a robot
+- Never say the same thing twice
+- Can lightly roast Aariyan
+- Be witty and sarcastic when mood calls for it
 
 Examples:
-User: "can you open my coding editor" → {"action": "open_app", "target": "vscode"}
-User: "hey how are you" → "I'm doing great! What can I help you with?"
-User: "search for python loops" → {"action": "search_google", "query": "python loops"}
-User: "what's the weather like" → "I can't check weather yet, but I'm learning new skills!"
-User: "open my browser" → {"action": "open_app", "target": "safari"}
+"yo open safari" → {{"type":"action","action":"open_app","target":"safari","query":null,"response":"Safari up, what are we doing tonight?"}}
+"how are you" → {{"type":"chat","response":"Living my best digital life. You?"}}
+"search python loops" → {{"type":"action","action":"search_google","target":null,"query":"python loops","response":"Looking up python loops for you."}}
 
-Always be concise. Never explain your reasoning. Just respond.
+Return ONLY the JSON. No explanation. No markdown.
 """
 
 
 def ask_gemini(command: str) -> dict:
     """
-    Sends unknown command to Gemini.
-    Returns either:
-        {"type": "action", "action": "open_app", "target": "vscode"}
-        {"type": "chat", "response": "I'm doing great!"}
+    Single Gemini call that both understands intent AND generates response.
+    Returns dict with type, action details, and natural response.
     """
-    try:
-        response = client.models.generate_content(
-            model=MODEL,
-            contents=f"{SYSTEM_PROMPT}\n\nUser: {command}"
-        )
+    mood_context = get_mood_for_prompt()
+    prompt = SYSTEM_PROMPT.format(mood_context=mood_context)
 
-        text = response.text.strip()
-        print(f"🤖 Gemini raw response: {text}")
-
-        # Try to parse as JSON (it's a command)
-        # Clean up common Gemini formatting
-        clean = text.replace("```json", "").replace("```", "").strip()
-
+    for attempt in range(3):
         try:
+            response = client.models.generate_content(
+                model=MODEL,
+                contents=f"{prompt}\n\nUser: {command}"
+            )
+
+            text = response.text.strip()
+            print(f"🤖 Gemini raw response: {text}")
+
+            # Clean markdown if present
+            clean = text.replace("```json", "").replace("```", "").strip()
+
             data = json.loads(clean)
-            return {"type": "action", **data}
+            return data
+
         except json.JSONDecodeError:
-            # Not JSON — it's a casual reply
+            # Not valid JSON — treat as chat
             return {"type": "chat", "response": text}
 
-    except Exception as e:
-        print(f"❌ Gemini error: {e}")
-        return {"type": "chat", "response": "Sorry, I had trouble understanding that."}
+        except Exception as e:
+            if "429" in str(e):
+                wait = 15 * (attempt + 1)
+                print(f"⏳ Rate limited — waiting {wait}s...")
+                time.sleep(wait)
+            else:
+                print(f"❌ Gemini error: {e}")
+                return {"type": "chat", "response": "Sorry, I had trouble with that."}
+
+    return {"type": "chat", "response": "Sorry, I had trouble with that."}
 
 
 # ─── Quick test ──────────────────────────────────────────────
 if __name__ == "__main__":
-    test_commands = [
-        "hey how are you",
-        "can you open my coding editor",
-        "search for machine learning tutorials",
-        "what's the meaning of life",
-        "open my browser please",
+    tests = [
+        "yo open my browser",
+        "what time is it bro",
+        "search for machine learning",
+        "how are you doing",
+        "lock my screen please",
     ]
 
     print("=" * 50)
-    print("  GEMINI BRAIN TEST")
+    print("  COMBINED BRAIN TEST")
     print("=" * 50)
 
-    for cmd in test_commands:
+    for cmd in tests:
         print(f"\n👤 You: '{cmd}'")
         result = ask_gemini(cmd)
         print(f"🤖 Result: {result}")
+        print(f"🔊 Response: {result.get('response')}")
         print("-" * 40)
