@@ -2,6 +2,19 @@ import sys
 import threading
 import time
 import atexit
+# Add this import at the top of main.py
+from core.voice_response import speak
+from core.logger import print_todays_summary
+try:
+    import pkg_resources
+except ImportError:
+    class _MockDistribution:
+        def __init__(self, version='2.0.10'):
+            self.version = version
+    class _MockPkgResources:
+        def get_distribution(self, name):
+            return _MockDistribution()
+    sys.modules['pkg_resources'] = _MockPkgResources()
 
 # ── pkg_resources fix for SpeechBrain ────────────────────────
 try:
@@ -17,7 +30,6 @@ import cv2
 import mediapipe as mp
 
 # ── Jarvis Core ───────────────────────────────────────────────
-from core.voice_response import speak
 from core.listener import start_listener
 from core.speech_to_text import listen
 from core.intent_router import route
@@ -178,6 +190,7 @@ def assistant_loop():
             continue
 
         if any(word in command for word in ["goodbye", "go to sleep", "stop listening"]):
+            print_todays_summary()
             print("😴 Jarvis going to sleep. Say the wake word to activate again.")
             break
 

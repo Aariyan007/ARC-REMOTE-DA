@@ -11,3 +11,4 @@ sentencepiece
 webrtcvad
 setuptools
 pvporcupine
+python-dotenv
