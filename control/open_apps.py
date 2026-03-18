@@ -1,36 +1,21 @@
 import subprocess
+from core.responder import generate_response
 from core.voice_response import speak
 
-def open_vscode():
-    speak("Opening VS Code")
+
+def open_vscode(user_said: str = "open vscode"):
+    response = generate_response("open_vscode", user_said)
+    speak(response)
     subprocess.Popen(["open", "-a", "Visual Studio Code"])
 
-def open_safari():
-    speak("Opening Safari")
+
+def open_safari(user_said: str = "open safari"):
+    response = generate_response("open_safari", user_said)
+    speak(response)
     subprocess.Popen(["open", "-a", "Safari"])
 
-def open_terminal():
-    speak("Opening Terminal")
+
+def open_terminal(user_said: str = "open terminal"):
+    response = generate_response("open_terminal", user_said)
+    speak(response)
     subprocess.Popen(["open", "-a", "Terminal"])
-
-# ─── Quick test ──────────────────────────────────────────────
-# Run: python3 control/open_apps.py
-if __name__ == "__main__":
-    import time
-
-    print("Testing open_apps.py...")
-    print("-" * 30)
-
-    print("1. Opening VS Code in 2 seconds...")
-    time.sleep(2)
-    open_vscode()
-
-    print("2. Opening Safari in 2 seconds...")
-    time.sleep(2)
-    open_safari()
-
-    print("3. Opening Terminal in 2 seconds...")
-    time.sleep(2)
-    open_terminal()
-
-    print("\n✅ All apps launched!")

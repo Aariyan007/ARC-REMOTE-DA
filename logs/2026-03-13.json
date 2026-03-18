@@ -1,0 +1,82 @@
+[
+  {
+    "timestamp": "2026-03-13 21:45:13",
+    "you_said": "what is the time right now",
+    "action_taken": "tell_time",
+    "was_understood": true,
+    "sent_to_gemini": false,
+    "gemini_response": null
+  },
+  {
+    "timestamp": "2026-03-13 21:45:22",
+    "you_said": "now you mind opening safariari for me i want to search something",
+    "action_taken": "search_google",
+    "was_understood": true,
+    "sent_to_gemini": false,
+    "gemini_response": null
+  },
+  {
+    "timestamp": "2026-03-13 21:45:38",
+    "you_said": "no no no i want to show it something",
+    "action_taken": "tell_time",
+    "was_understood": true,
+    "sent_to_gemini": false,
+    "gemini_response": null
+  },
+  {
+    "timestamp": "2026-03-13 21:57:01",
+    "you_said": "hey could you pull up my coding editor",
+    "action_taken": "open_vscode",
+    "was_understood": true,
+    "sent_to_gemini": true,
+    "gemini_response": null
+  },
+  {
+    "timestamp": "2026-03-13 21:57:03",
+    "you_said": "yo open my browser",
+    "action_taken": "open_safari",
+    "was_understood": true,
+    "sent_to_gemini": true,
+    "gemini_response": null
+  },
+  {
+    "timestamp": "2026-03-13 21:57:05",
+    "you_said": "what time is it bro",
+    "action_taken": "tell_time",
+    "was_understood": true,
+    "sent_to_gemini": true,
+    "gemini_response": null
+  },
+  {
+    "timestamp": "2026-03-13 21:57:07",
+    "you_said": "search for python tutorials",
+    "action_taken": "search_google",
+    "was_understood": true,
+    "sent_to_gemini": true,
+    "gemini_response": null
+  },
+  {
+    "timestamp": "2026-03-13 21:57:13",
+    "you_said": "how are you doing today",
+    "action_taken": "chat_response",
+    "was_understood": true,
+    "sent_to_gemini": true,
+    "gemini_response": "I'm doing great, thank you! How can I help you today?"
+  },
+  {
+    "timestamp": "2026-03-13 21:57:16",
+    "you_said": "lock my screen please",
+    "action_taken": "lock_screen",
+    "was_understood": true,
+    "sent_to_gemini": true,
+    "gemini_response": null
+  },
+  {
+    "timestamp": "2026-03-13 21:57:19",
+    "you_said": "tell me something interesting",
+    "action_taken": "chat_response",
+    "was_understood": true,
+    "sent_to_gemini": true,
+    "gemini_response": "Sorry, I had trouble understanding that."
+  }
+]

@@ -1,21 +1,19 @@
 from datetime import datetime
+from core.responder import generate_response
 from core.voice_response import speak
 
-def tell_time():
-    now = datetime.now()
+
+def tell_time(user_said: str = "what time is it"):
+    now       = datetime.now()
     formatted = now.strftime("%I:%M %p").lstrip("0")
-    speak(f"It's {formatted}")
+    response  = generate_response("tell_time", user_said, extra_info=formatted)
+    speak(f"{response} {formatted}")
     print(f"🕐 It's {formatted}")
 
-def tell_date():
-    now = datetime.now()
+
+def tell_date(user_said: str = "what's the date"):
+    now       = datetime.now()
     formatted = now.strftime("%A, %B %d").replace(" 0", " ")
-    speak(f"Today is {formatted}")
+    response  = generate_response("tell_date", user_said, extra_info=formatted)
+    speak(f"{response} {formatted}")
     print(f"📅 Today is {formatted}")
-
-
-# ─── Quick test ──────────────────────────────────────────────
-# Run: python3 control/time_utils.py
-if __name__ == "__main__":
-    tell_time()
-    tell_date()
