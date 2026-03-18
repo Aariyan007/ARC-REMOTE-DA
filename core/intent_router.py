@@ -2,26 +2,12 @@ from core.llm_brain import ask_gemini
 from core.logger import log_interaction
 from core.voice_response import speak
 
-# ─── Action Map ──────────────────────────────────────────────
-ACTION_MAP = {
-    "open_vscode",
-    "open_safari",
-    "open_terminal",
-    "search_google",
-    "tell_time",
-    "tell_date",
-    "lock_screen",
-    "shutdown_pc",
-    "restart_pc",
-    "sleep_mac",
-}
 # ─────────────────────────────────────────────────────────────
-
 
 def route(command: str, actions: dict) -> None:
     """
-    Sends every command to Gemini for understanding.
-    Passes original command to each action for dynamic responses.
+    Single Gemini call — understands intent + generates response.
+    Speaks response then executes action.
     """
     if not command or not command.strip():
         print("⚠️  Empty command received")
@@ -30,19 +16,19 @@ def route(command: str, actions: dict) -> None:
     command = command.strip().lower()
     print(f"\n🔍 Routing: '{command}'")
 
-    # ── Send to Gemini ───────────────────────────────────────
+    # ── Single Gemini call ───────────────────────────────────
     result = ask_gemini(command)
-    print(f"🤖 Gemini understood: {result}")
+    response_text = result.get("response", "On it.")
 
     # ── Casual conversation ──────────────────────────────────
     if result["type"] == "chat":
-        speak(result["response"])
+        speak(response_text)
         log_interaction(
             you_said=command,
             action_taken="chat_response",
             was_understood=True,
             sent_to_gemini=True,
-            gemini_response=result["response"]
+            gemini_response=response_text
         )
         return
 
@@ -54,11 +40,14 @@ def route(command: str, actions: dict) -> None:
 
         print(f"⚡ Action: {action} | Target: {target} | Query: {query}")
 
-        # open_app → maps to open_vscode / open_safari / open_terminal
+        # Speak FIRST then execute
+        speak(response_text)
+
+        # open_app
         if action == "open_app" and target:
             func_name = f"open_{target}"
             if func_name in actions:
-                actions[func_name](command)          # ← pass command
+                actions[func_name]()
                 log_interaction(
                     you_said=command,
                     action_taken=func_name,
@@ -66,13 +55,13 @@ def route(command: str, actions: dict) -> None:
                     sent_to_gemini=True
                 )
             else:
-                speak(f"Sorry, I don't know how to open {target} yet.")
+                speak(f"I don't know how to open {target} yet.")
             return
 
-        # search_google → needs query
+        # search_google
         if action == "search_google":
             if query and "search_google" in actions:
-                actions["search_google"](query, command)   # ← pass both
+                actions["search_google"](query)
                 log_interaction(
                     you_said=command,
                     action_taken="search_google",
@@ -83,9 +72,9 @@ def route(command: str, actions: dict) -> None:
                 speak("What would you like me to search for?")
             return
 
-        # All other actions — tell_time, lock_screen, etc
+        # everything else
         if action in actions:
-            actions[action](command)                 # ← pass command
+            actions[action]()
             log_interaction(
                 you_said=command,
                 action_taken=action,
@@ -93,7 +82,7 @@ def route(command: str, actions: dict) -> None:
                 sent_to_gemini=True
             )
         else:
-            speak("I understood what you want but I can't do that yet.")
+            speak("I understood but can't do that yet.")
             log_interaction(
                 you_said=command,
                 action_taken=action or "unknown",
@@ -106,13 +95,13 @@ def route(command: str, actions: dict) -> None:
 # ─── Quick test ──────────────────────────────────────────────
 if __name__ == "__main__":
 
-    def fake_open_vscode(u):    print(f"🖥️  Opening VS Code | user said: '{u}'")
-    def fake_open_safari(u):    print(f"🌐  Opening Safari | user said: '{u}'")
-    def fake_open_terminal(u):  print(f"💻  Opening Terminal | user said: '{u}'")
-    def fake_tell_time(u):      print(f"🕐  Telling time | user said: '{u}'")
-    def fake_tell_date(u):      print(f"📅  Telling date | user said: '{u}'")
-    def fake_lock_screen(u):    print(f"🔒  Locking screen | user said: '{u}'")
-    def fake_search(q, u):      print(f"🔍  Searching: '{q}' | user said: '{u}'")
+    def fake_open_vscode():   print("🖥️  Opening VS Code")
+    def fake_open_safari():   print("🌐  Opening Safari")
+    def fake_open_terminal(): print("💻  Opening Terminal")
+    def fake_tell_time():     print("🕐  Telling time")
+    def fake_tell_date():     print("📅  Telling date")
+    def fake_lock_screen():   print("🔒  Locking screen")
+    def fake_search(query):   print(f"🔍  Searching: '{query}'")
 
     test_actions = {
         "open_vscode":    fake_open_vscode,
@@ -125,16 +114,15 @@ if __name__ == "__main__":
     }
 
     test_commands = [
-        "hey could you pull up my coding editor",
         "yo open my browser",
         "what time is it bro",
         "search for python tutorials",
-        "how are you doing today",
+        "how are you doing",
         "lock my screen please",
     ]
 
     print("=" * 50)
-    print("  GEMINI-FIRST ROUTER TEST")
+    print("  ROUTER TEST")
     print("=" * 50)
 
     for cmd in test_commands:
