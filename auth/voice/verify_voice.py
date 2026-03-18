@@ -2,6 +2,8 @@ import numpy as np
 import sounddevice as sd
 import torch
 from scipy.io.wavfile import write, read
+import os
+os.environ["HF_HOME"] = r"C:\hf_cache"
 from speechbrain.pretrained import EncoderClassifier
 from .vad import remove_silence
 
@@ -12,9 +14,9 @@ THRESHOLD = 0.50
 
 classifier = EncoderClassifier.from_hparams(
     source="speechbrain/spkrec-ecapa-voxceleb",
-    savedir="models/ecapa"
+    savedir="pretrained_models/spkrec-ecapa-voxceleb",
+    run_opts={"device": "cpu"}
 )
-
 owner_embeddings = np.load("data/voice_profile/owner_embeddings.npy")
 
 
