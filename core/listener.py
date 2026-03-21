@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from auth.voice.verify_voice import verify_voice
 
 load_dotenv()
-ACCESS_KEY = os.getenv("b3CU9NpiOldcnnkg1vQEYUe11ietGZEHyIVKx+Z4aDqHE0pKHgLumA==")
+ACCESS_KEY = os.getenv("PICOVOICE_ACCESS_KEY")  # Get your own from https://console.picovoice.ai/
 
 def start_listener():
     porcupine = pvporcupine.create(

@@ -2,12 +2,11 @@ from core.llm_brain import ask_gemini
 from core.logger import log_interaction
 from core.voice_response import speak
 
-# ─────────────────────────────────────────────────────────────
 
 def route(command: str, actions: dict) -> None:
     """
     Single Gemini call — understands intent + generates response.
-    Speaks response then executes action.
+    Handles: open_app, search_google, answer_question, system commands, chat.
     """
     if not command or not command.strip():
         print("⚠️  Empty command received")
@@ -16,9 +15,11 @@ def route(command: str, actions: dict) -> None:
     command = command.strip().lower()
     print(f"\n🔍 Routing: '{command}'")
 
-    # ── Single Gemini call ───────────────────────────────────
-    result = ask_gemini(command)
+    result       = ask_gemini(command)
     response_text = result.get("response", "On it.")
+    action        = result.get("action")
+    target        = result.get("target")
+    query         = result.get("query")
 
     # ── Casual conversation ──────────────────────────────────
     if result["type"] == "chat":
@@ -34,18 +35,24 @@ def route(command: str, actions: dict) -> None:
 
     # ── Action command ───────────────────────────────────────
     if result["type"] == "action":
-        action = result.get("action")
-        target = result.get("target")
-        query  = result.get("query")
-
         print(f"⚡ Action: {action} | Target: {target} | Query: {query}")
 
-        # Speak FIRST then execute
-        speak(response_text)
+        # Answer question directly — no browser, Jarvis just speaks
+        if action == "answer_question":
+            speak(response_text)
+            log_interaction(
+                you_said=command,
+                action_taken="answer_question",
+                was_understood=True,
+                sent_to_gemini=True,
+                gemini_response=response_text
+            )
+            return
 
-        # open_app
+        # Open app
         if action == "open_app" and target:
             func_name = f"open_{target}"
+            speak(response_text)
             if func_name in actions:
                 actions[func_name]()
                 log_interaction(
@@ -58,8 +65,9 @@ def route(command: str, actions: dict) -> None:
                 speak(f"I don't know how to open {target} yet.")
             return
 
-        # search_google
+        # Search Google — opens browser
         if action == "search_google":
+            speak(response_text)
             if query and "search_google" in actions:
                 actions["search_google"](query)
                 log_interaction(
@@ -72,8 +80,9 @@ def route(command: str, actions: dict) -> None:
                 speak("What would you like me to search for?")
             return
 
-        # everything else
+        # System commands — tell_time, lock_screen etc
         if action in actions:
+            speak(response_text)
             actions[action]()
             log_interaction(
                 you_said=command,
@@ -114,10 +123,11 @@ if __name__ == "__main__":
     }
 
     test_commands = [
+        "how much water should a human drink daily",
+        "what is machine learning",
+        "search for python tutorials",
         "yo open my browser",
         "what time is it bro",
-        "search for python tutorials",
-        "how are you doing",
         "lock my screen please",
     ]
 
