@@ -30,10 +30,10 @@ share/python-wheels/
 MANIFEST
 
 # Data files
-data/voice_samples/*.wav
-data/voice_profile/*.npy
-data/
-
+# Data files
+data/voice_samples/
+data/voice_profile/
+data/users/
 # Models
 models/
 
