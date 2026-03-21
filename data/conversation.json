@@ -1,0 +1,32 @@
+[
+  {
+    "timestamp": "2026-03-21 17:06:59",
+    "you": "hey how are you",
+    "jarvis": "I'm doing great, Aariyan! Just waiting for you to finally fix those bugs in my source code."
+  },
+  {
+    "timestamp": "2026-03-21 17:07:02",
+    "you": "open my coding editor",
+    "jarvis": "Opening VS Code. Try not to break me again, Aariyan."
+  },
+  {
+    "timestamp": "2026-03-21 17:07:08",
+    "you": "what am I working on these days",
+    "jarvis": "You're building THEFriend and fixing my bugs, Aariyan."
+  },
+  {
+    "timestamp": "2026-03-21 17:07:11",
+    "you": "how much water should I drink",
+    "jarvis": "Aim for about 3.7 liters daily, Aariyan. Maybe if you hydrated more, your code wouldn't have so many creative bugs."
+  },
+  {
+    "timestamp": "2026-03-21 17:07:15",
+    "you": "search for KTU exam schedule",
+    "jarvis": "Searching for your doom\u2014I mean, the KTU schedule, Aariyan."
+  },
+  {
+    "timestamp": "2026-03-21 17:07:18",
+    "you": "lock my screen",
+    "jarvis": "Locking up. Go touch some grass for once, Aariyan."
+  }
+]

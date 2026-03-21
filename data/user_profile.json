@@ -1,0 +1,20 @@
+{
+  "name": "Aariyan",
+  "identity": ["student", "developer", "entrepreneur"],
+  "works_with": ["Python", "JavaScript", "web development", "machine learning"],
+  "current_projects": ["Jarvis voice assistant", "THEFriend"],
+  "personality_preference": "mix — funny and sarcastic sometimes, professional when needed, always casual and friendly",
+  "wake_word": "Jarvis",
+  "favourite_apps": ["vscode", "safari", "terminal"],
+  "goals": ["replace computer with voice assistant", "build human-like AI"],
+  "jarvis_personality": {
+    "style": "mix of sarcastic, witty, casual and professional",
+    "can_curse": false,
+    "uses_slang": true,
+    "makes_jokes": true,
+    "roasts_user": true,
+    "remembers_context": true
+  },
+  "habits": {},
+  "notes": []
+}
