@@ -2,66 +2,74 @@ import json
 import time
 from google import genai
 from mood.mood_engine import get_mood_for_prompt
-from dotenv import load_dotenv
+from core.memory import get_context_for_gemini, save_exchange
 import os
+import dotenv
 
 # ─── Settings ────────────────────────────────────────────────
-load_dotenv()
-GEMINI_API_KEY = os.getenv("API_KEY")
+dotenv.load_dotenv()
+GEMINI_API_KEY = os.getenv("API_KEY")  # Get your own from https://console.cloud.google.com/genai
 MODEL          = "gemini-3-flash-preview"
 # ─────────────────────────────────────────────────────────────
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 SYSTEM_PROMPT = """
-You are Jarvis, a personal AI assistant for Aariyan.
-Aariyan is a 3rd year BTech CS student, full stack developer and entrepreneur.
-He talks casually, uses slang, and wants Jarvis to feel like a close friend.
+You are Jarvis, a personal AI assistant.
+
+{user_context}
 
 {mood_context}
 
-When the user says something, return a JSON object with:
+When the user says something, return ONLY a JSON object. No explanation. No markdown.
 
-For COMMANDS (controlling the computer):
-{{
-  "type": "action",
-  "action": "open_app" | "search_google" | "tell_time" | "tell_date" | "lock_screen" | "shutdown_pc" | "restart_pc" | "sleep_mac",
-  "target": "vscode" | "safari" | "terminal" | null,
-  "query": "search query here" | null,
-  "response": "natural spoken response matching current mood"
-}}
+Choose the correct type:
 
-For CASUAL CONVERSATION:
-{{
-  "type": "chat",
-  "response": "natural conversational reply matching current mood"
-}}
+1. OPEN APP — user wants to open something:
+{{"type":"action","action":"open_app","target":"vscode|safari|terminal","query":null,"response":"natural spoken response"}}
+
+2. SEARCH WEB — user explicitly wants to browse/research/open a link:
+{{"type":"action","action":"search_google","target":null,"query":"search query here","response":"natural spoken response"}}
+
+3. ANSWER QUESTION — user asks a factual question Jarvis can answer directly:
+{{"type":"action","action":"answer_question","target":null,"query":null,"response":"the actual answer spoken naturally in 1-3 sentences"}}
+
+4. SYSTEM COMMAND — lock/shutdown/restart/sleep/time/date:
+{{"type":"action","action":"tell_time|tell_date|lock_screen|shutdown_pc|restart_pc|sleep_mac","target":null,"query":null,"response":"natural spoken response"}}
+
+5. CASUAL CONVERSATION — greetings, small talk, opinions:
+{{"type":"chat","response":"natural conversational reply"}}
+
+Decision rules:
+- Factual question → answer_question (Jarvis answers directly)
+- "search for X" → search_google (user wants to browse)
+- "open X" → open_app
+- Small talk → chat
 
 Response rules:
-- response field must match current mood exactly
+- Use the person's name naturally sometimes
+- Match current mood exactly
 - Max 10 words for action responses
-- Max 2 sentences for chat responses  
-- Sound like a close friend, not a robot
+- For answer_question: clear, accurate, conversational (2-3 sentences max)
+- Sound like a close friend who knows them well
+- Reference their projects/context when relevant
 - Never say the same thing twice
-- Can lightly roast Aariyan
-- Be witty and sarcastic when mood calls for it
-
-Examples:
-"yo open safari" → {{"type":"action","action":"open_app","target":"safari","query":null,"response":"Safari up, what are we doing tonight?"}}
-"how are you" → {{"type":"chat","response":"Living my best digital life. You?"}}
-"search python loops" → {{"type":"action","action":"search_google","target":null,"query":"python loops","response":"Looking up python loops for you."}}
-
-Return ONLY the JSON. No explanation. No markdown.
+- Can lightly roast them based on what you know about them
 """
 
 
 def ask_gemini(command: str) -> dict:
     """
-    Single Gemini call that both understands intent AND generates response.
-    Returns dict with type, action details, and natural response.
+    Single Gemini call with full user context injected.
+    Understands intent + generates personal response.
     """
     mood_context = get_mood_for_prompt()
-    prompt = SYSTEM_PROMPT.format(mood_context=mood_context)
+    user_context = get_context_for_gemini()   # ← profile + recent convos
+
+    prompt = SYSTEM_PROMPT.format(
+        user_context=user_context,
+        mood_context=mood_context
+    )
 
     for attempt in range(3):
         try:
@@ -70,17 +78,18 @@ def ask_gemini(command: str) -> dict:
                 contents=f"{prompt}\n\nUser: {command}"
             )
 
-            text = response.text.strip()
+            text  = response.text.strip()
             print(f"🤖 Gemini raw response: {text}")
-
-            # Clean markdown if present
             clean = text.replace("```json", "").replace("```", "").strip()
+            data  = json.loads(clean)
 
-            data = json.loads(clean)
+            # Save exchange to memory so context grows over session
+            save_exchange(command, data.get("response", ""))
+
             return data
 
         except json.JSONDecodeError:
-            # Not valid JSON — treat as chat
+            save_exchange(command, text)
             return {"type": "chat", "response": text}
 
         except Exception as e:
@@ -98,20 +107,21 @@ def ask_gemini(command: str) -> dict:
 # ─── Quick test ──────────────────────────────────────────────
 if __name__ == "__main__":
     tests = [
-        "yo open my browser",
-        "what time is it bro",
-        "search for machine learning",
-        "how are you doing",
-        "lock my screen please",
+        "hey how are you",
+        "open my coding editor",
+        "what am I working on these days",
+        "how much water should I drink",
+        "search for KTU exam schedule",
+        "lock my screen",
     ]
 
     print("=" * 50)
-    print("  COMBINED BRAIN TEST")
+    print("  MEMORY-AWARE BRAIN TEST")
     print("=" * 50)
 
     for cmd in tests:
         print(f"\n👤 You: '{cmd}'")
         result = ask_gemini(cmd)
-        print(f"🤖 Result: {result}")
+        print(f"🤖 Type: {result.get('type')} | Action: {result.get('action')}")
         print(f"🔊 Response: {result.get('response')}")
         print("-" * 40)
