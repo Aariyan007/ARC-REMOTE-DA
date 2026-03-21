@@ -65,3 +65,16 @@ htmlcov/
 # Logs
 *.log
 log/
+
+# HuggingFace cache accidentally committed
+C:\hf_cache/
+"C:\\hf_cache/"
+
+# Logs folder
+logs/
+
+# User data
+data/users/
+
+# Temp audio files
+temp_*.wav
