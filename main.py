@@ -2,6 +2,9 @@ import sys
 from core.voice_response import speak
 from core.logger import print_todays_summary
 from core.memory import clear_conversation
+from control.briefing import morning_briefing
+from control.open_apps import open_settings
+from control.weather import tell_weather
 
 try:
     import pkg_resources
@@ -37,6 +40,9 @@ ACTIONS = {
     "shutdown_pc":    shutdown_pc,
     "restart_pc":     restart_pc,
     "sleep_mac":      sleep_mac,
+    "morning_briefing": morning_briefing,
+    "open_settings": open_settings,
+    "tell_weather": tell_weather,
 }
 
 
