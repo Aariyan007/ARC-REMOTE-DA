@@ -28,5 +28,20 @@
     "timestamp": "2026-03-21 17:07:18",
     "you": "lock my screen",
     "jarvis": "Locking up. Go touch some grass for once, Aariyan."
+  },
+  {
+    "timestamp": "2026-03-22 11:14:23",
+    "you": "settings what is a better right now",
+    "jarvis": "Opening System Settings, Aariyan."
+  },
+  {
+    "timestamp": "2026-03-22 11:14:46",
+    "you": "what is the weather right now",
+    "jarvis": "The weather is currently clear at 26 degrees, Aariyan."
+  },
+  {
+    "timestamp": "2026-03-22 11:27:14",
+    "you": "the weather right now what is the weather right now",
+    "jarvis": "Fetching the current weather report now, Aariyan."
   }
 ]

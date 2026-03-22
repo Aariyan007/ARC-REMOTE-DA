@@ -34,11 +34,17 @@ Choose the correct type:
 3. ANSWER QUESTION — user asks a factual question Jarvis can answer directly:
 {{"type":"action","action":"answer_question","target":null,"query":null,"response":"the actual answer spoken naturally in 1-3 sentences"}}
 
-4. SYSTEM COMMAND — lock/shutdown/restart/sleep/time/date:
-{{"type":"action","action":"tell_time|tell_date|lock_screen|shutdown_pc|restart_pc|sleep_mac","target":null,"query":null,"response":"natural spoken response"}}
+4. SYSTEM COMMAND — lock/shutdown/restart/sleep/time/date/weather:
+{{"type":"action","action":"tell_time|tell_date|lock_screen|shutdown_pc|restart_pc|sleep_mac|tell_weather","target":null,"query":null,"response":"natural spoken response"}}
+
+Triggers for tell_weather: "weather", "what's it like outside", "temperature outside"
 
 5. CASUAL CONVERSATION — greetings, small talk, opinions:
 {{"type":"chat","response":"natural conversational reply"}}
+6. MORNING BRIEFING — user wants a daily summary:
+{{"type":"action","action":"morning_briefing","target":null,"query":null,"response":"Sure, here's your briefing."}}
+
+Triggers for morning_briefing: "morning briefing", "brief me", "what's today like", "give me a briefing"
 
 Decision rules:
 - Factual question → answer_question (Jarvis answers directly)

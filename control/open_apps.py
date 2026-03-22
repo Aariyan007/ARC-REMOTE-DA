@@ -8,3 +8,6 @@ def open_safari():
 
 def open_terminal():
     subprocess.Popen(["open", "-a", "Terminal"])
+    
+def open_settings():
+    subprocess.Popen(["open", "-a", "System Preferences"])
