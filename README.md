@@ -15,12 +15,12 @@
 <br/>
 
 ```
-  ██╗ █████╗ ██████╗ ██╗   ██╗██╗███████╗
-  ██║██╔══██╗██╔══██╗██║   ██║██║██╔════╝
-  ██║███████║██████╔╝██║   ██║██║███████╗
-  ██║██╔══██║██╔══██╗╚██╗ ██╔╝██║╚════██║
-  ██║██║  ██║██║  ██║ ╚████╔╝ ██║███████║
-  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝╚══════╝
+  ███████╗██████╗ ██╗███████╗███╗   ██╗██████╗ 
+  ██╔════╝██╔══██╗██║██╔════╝████╗  ██║██╔══██╗
+  █████╗  ██████╔╝██║█████╗  ██╔██╗ ██║██║  ██║
+  ██╔══╝  ██╔══██╗██║██╔══╝  ██║╚██╗██║██║  ██║
+  ██║     ██║  ██║██║███████╗██║ ╚████║██████╔╝
+  ╚═╝     ╚═╝  ╚═╝╚═╝╚══════╝╚═╝  ╚═══╝╚═════╝ 
         PERSONAL AI VOICE ASSISTANT
 ```
 
@@ -32,7 +32,7 @@
 
 ## ⚡ Overview
 
-**JARVIS** is a fully local, voice-controlled personal AI assistant built for developers who refuse to settle for Siri. Powered by **Gemini 1.5 Flash** as the brain and **OpenAI Whisper** for speech recognition, it understands natural commands, controls your Mac, searches the web, manages memory, and learns your habits over time.
+**FRIEND** is a fully local, voice-controlled personal AI assistant built for developers who refuse to settle for Siri. Powered by **Gemini 1.5 Flash** as the brain and **OpenAI Whisper** for speech recognition, it understands natural commands, controls your Mac, searches the web, manages memory, and learns your habits over time.
 
 This isn't a toy. It's a system replacement.
 
