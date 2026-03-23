@@ -5,6 +5,10 @@ from core.memory import clear_conversation
 from control.briefing import morning_briefing
 from control.open_apps import open_settings
 from control.weather import tell_weather
+from control.folder_control import open_folder, create_folder, search_file
+from control.email_control import read_emails, search_emails, send_email, open_gmail
+from control.pdf_summariser import summarise_latest_pdf
+
 
 try:
     import pkg_resources
@@ -43,6 +47,13 @@ ACTIONS = {
     "morning_briefing": morning_briefing,
     "open_settings": open_settings,
     "tell_weather": tell_weather,
+    "open_folder": open_folder,
+    "create_folder":      create_folder,
+    "search_file":        search_file,
+    "read_emails":        read_emails,
+    "search_emails":      search_emails,
+    "open_gmail":         open_gmail,
+    "summarise_pdf":      summarise_latest_pdf,
 }
 
 

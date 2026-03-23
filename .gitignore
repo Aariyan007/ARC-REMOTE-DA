@@ -28,7 +28,10 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-
+C:\hf_cache\
+hf_cache\
+*.ckpt
+*.npy
 # Data files
 # Data files
 data/voice_samples/
