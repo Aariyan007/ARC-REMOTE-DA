@@ -46,6 +46,20 @@ Triggers for tell_weather: "weather", "what's it like outside", "temperature out
 
 Triggers for morning_briefing: "morning briefing", "brief me", "what's today like", "give me a briefing"
 
+7. FOLDER CONTROL:
+{{"type":"action","action":"open_folder","target":"downloads|desktop|documents|projects","query":null,"response":"natural response"}}
+{{"type":"action","action":"create_folder","target":"folder name","query":null,"response":"natural response"}}
+{{"type":"action","action":"search_file","target":null,"query":"filename","response":"natural response"}}
+
+8. EMAIL:
+{{"type":"action","action":"read_emails","target":null,"query":null,"response":"natural response"}}
+{{"type":"action","action":"search_emails","target":null,"query":"search term","response":"natural response"}}
+{{"type":"action","action":"open_gmail","target":null,"query":null,"response":"natural response"}}
+
+9. PDF:
+{{"type":"action","action":"summarise_pdf","target":null,"query":null,"response":"natural response"}}
+Triggers: "summarise pdf", "read this pdf", "what does this pdf say"
+
 Decision rules:
 - Factual question → answer_question (Jarvis answers directly)
 - "search for X" → search_google (user wants to browse)

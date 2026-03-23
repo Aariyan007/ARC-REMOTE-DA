@@ -43,5 +43,35 @@
     "timestamp": "2026-03-22 11:27:14",
     "you": "the weather right now what is the weather right now",
     "jarvis": "Fetching the current weather report now, Aariyan."
+  },
+  {
+    "timestamp": "2026-03-24 00:49:07",
+    "you": "open my downloads folder",
+    "jarvis": "Opening Downloads. Stop hoarding files and sleep, Aariyan."
+  },
+  {
+    "timestamp": "2026-03-24 00:49:15",
+    "you": "create a folder called ml project",
+    "jarvis": "Folder's ready. Don't pull an all-nighter on this, Aariyan."
+  },
+  {
+    "timestamp": "2026-03-24 00:49:25",
+    "you": "search for jarvis.py",
+    "jarvis": "Searching for jarvis.py. Go to sleep after this, Aariyan."
+  },
+  {
+    "timestamp": "2026-03-24 00:49:33",
+    "you": "read my emails",
+    "jarvis": "Checking your inbox. Don't let those emails keep you up."
+  },
+  {
+    "timestamp": "2026-03-24 00:49:42",
+    "you": "any emails from professor",
+    "jarvis": "Checking now. A bit late for academic anxiety, isn't it?"
+  },
+  {
+    "timestamp": "2026-03-24 00:49:49",
+    "you": "summarise the latest pdf",
+    "jarvis": "Summarizing now. Go to bed after this, Aariyan."
   }
 ]
