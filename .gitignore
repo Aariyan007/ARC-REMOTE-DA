@@ -81,3 +81,7 @@ data/users/
 
 # Temp audio files
 temp_*.wav
+
+# Google API credentials
+credentials.json
+token.json
