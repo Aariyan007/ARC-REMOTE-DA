@@ -5,7 +5,7 @@ from core.voice_response import speak
 from core.memory import load_profile
 
 # ─── Settings ────────────────────────────────────────────────
-DEFAULT_LOCATION = "Malappuram"
+DEFAULT_LOCATION = "Kochi"
 # ─────────────────────────────────────────────────────────────
 
 
