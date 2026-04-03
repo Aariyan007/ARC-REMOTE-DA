@@ -85,3 +85,5 @@ temp_*.wav
 # Google API credentials
 credentials.json
 token.json
+hf_cache/
+C:\hf_cache/
