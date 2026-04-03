@@ -1,5 +1,9 @@
 import sys
-from core.voice_response import speak, speak_and_wait
+import threading
+import time
+import atexit
+# Add this import at the top of main.py
+from core.voice_response import speak
 from core.logger import print_todays_summary
 from core.memory import clear_conversation
 
@@ -115,7 +119,7 @@ ACTIONS = {
 
 def assistant_loop():
     speak("Yes, I'm listening")
-    print("\n✅ Jarvis activated — listening for your command...")
+    print("\n✅ FRIEND activated — listening for your command...")
 
     while True:
         command = listen()
