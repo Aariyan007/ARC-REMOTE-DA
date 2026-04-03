@@ -1,0 +1,158 @@
+import sys
+from core.voice_response import speak, speak_and_wait
+from core.logger import print_todays_summary
+from core.memory import clear_conversation
+
+try:
+    import pkg_resources
+except ImportError:
+    class _MockDistribution:
+        def __init__(self, version='2.0.10'):
+            self.version = version
+    class _MockPkgResources:
+        def get_distribution(self, name):
+            return _MockDistribution()
+    sys.modules['pkg_resources'] = _MockPkgResources()
+
+# ── Core modules ─────────────────────────────────────────────
+from core.listener import start_listener
+from core.speech_to_text import listen
+from core.intent_router import route
+
+# ── Control modules ──────────────────────────────────────────
+from control.open_apps import open_vscode, open_safari, open_terminal
+from control.web_search import search_google
+from control.time_utils import tell_time, tell_date
+from control.system_actions import lock_screen, shutdown_pc, restart_pc, sleep_mac
+from control.briefing import morning_briefing
+from control.weather import tell_weather
+from control.folder_control import open_folder, create_folder, search_file
+from control.email_control import read_emails, search_emails, send_email, open_gmail
+from control.pdf_summariser import summarise_latest_pdf
+from control.system_controls import (
+    volume_up, volume_down, mute, unmute, get_volume,
+    brightness_up, brightness_down, take_screenshot,
+    minimise_all, minimise_app, show_desktop, close_window,
+    get_battery, start_work_day, end_work_day,
+    close_app, switch_to_app, fullscreen, mission_control,
+    close_tab, new_tab
+)
+
+# ── Action map ───────────────────────────────────────────────
+ACTIONS = {
+    # Apps
+    "open_vscode":       open_vscode,
+    "open_safari":       open_safari,
+    "open_terminal":     open_terminal,
+
+    # Web
+    "search_google":     search_google,
+
+    # Time
+    "tell_time":         tell_time,
+    "tell_date":         tell_date,
+
+    # System
+    "lock_screen":       lock_screen,
+    "shutdown_pc":       shutdown_pc,
+    "restart_pc":        restart_pc,
+    "sleep_mac":         sleep_mac,
+
+    # Info
+    "morning_briefing":  morning_briefing,
+    "tell_weather":      tell_weather,
+
+    # Folders
+    "open_folder":       open_folder,
+    "create_folder":     create_folder,
+    "search_file":       search_file,
+
+    # Email
+    "read_emails":       read_emails,
+    "search_emails":     search_emails,
+    "send_email":        send_email,
+    "open_gmail":        open_gmail,
+
+    # PDF
+    "summarise_pdf":     summarise_latest_pdf,
+
+    # Volume
+    "volume_up":         volume_up,
+    "volume_down":       volume_down,
+    "mute":              mute,
+    "unmute":            unmute,
+    "get_volume":        get_volume,
+
+    # Brightness
+    "brightness_up":     brightness_up,
+    "brightness_down":   brightness_down,
+
+    # Screenshot
+    "take_screenshot":   take_screenshot,
+
+    # Windows
+    "minimise_all":      minimise_all,
+    "minimise_app":      minimise_app,
+    "show_desktop":      show_desktop,
+    "close_window":      close_window,
+    "close_tab":         close_tab,
+    "new_tab":           new_tab,
+    "fullscreen":        fullscreen,
+    "mission_control":   mission_control,
+
+    # App control
+    "close_app":         close_app,
+    "switch_to_app":     switch_to_app,
+
+    # Battery
+    "get_battery":       get_battery,
+
+    # Routines
+    "start_work_day":    start_work_day,
+    "end_work_day":      end_work_day,
+}
+
+
+def assistant_loop():
+    speak("Yes, I'm listening")
+    print("\n✅ Jarvis activated — listening for your command...")
+
+    while True:
+        command = listen()
+
+        if not command:
+            print("⚠️  Didn't catch that. Try again.")
+            continue
+
+        # Sleep commands
+        if any(word in command for word in ["goodbye", "go to sleep", "stop listening"]):
+            clear_conversation()
+            print_todays_summary()
+            speak_and_wait("Going to sleep. Goodbye.")
+            print("😴 Jarvis going to sleep...")
+            break
+
+        # Route command — returns False if user interrupted
+        was_interrupted = route(command, ACTIONS)
+
+        # If interrupted mid-speech → listen immediately for new command
+        if not was_interrupted:
+            print("✋ Interrupted — listening for new command...")
+            # Loop continues naturally — next iteration calls listen()
+
+
+def main():
+    print("=" * 50)
+    print("  JARVIS STARTING UP")
+    print("=" * 50)
+    print("Say the wake word to activate Jarvis...\n")
+
+    while True:
+        activated = start_listener()
+        if activated:
+            assistant_loop()
+            print("\nWaiting for wake word again...\n")
+
+
+if __name__ == "__main__":
+    main()
