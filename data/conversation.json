@@ -1,77 +1,102 @@
 [
   {
-    "timestamp": "2026-03-21 17:06:59",
-    "you": "hey how are you",
-    "jarvis": "I'm doing great, Aariyan! Just waiting for you to finally fix those bugs in my source code."
+    "timestamp": "2026-03-29 23:40:56",
+    "you": "turn up the volume by 50% is",
+    "jarvis": "Volume up. Now everyone can hear your bad music, Aariyan."
   },
   {
-    "timestamp": "2026-03-21 17:07:02",
-    "you": "open my coding editor",
-    "jarvis": "Opening VS Code. Try not to break me again, Aariyan."
+    "timestamp": "2026-03-29 23:41:36",
+    "you": "how much is the battery level right now?",
+    "jarvis": "Checking... it has more life left than you, Aariyan."
   },
   {
-    "timestamp": "2026-03-21 17:07:08",
-    "you": "what am I working on these days",
-    "jarvis": "You're building THEFriend and fixing my bugs, Aariyan."
+    "timestamp": "2026-03-29 23:54:25",
+    "you": "my sword cannot minimize or",
+    "jarvis": "Hiding the evidence of your 47 open Stack Overflow tabs, Aariyan?"
   },
   {
-    "timestamp": "2026-03-21 17:07:11",
-    "you": "how much water should I drink",
-    "jarvis": "Aim for about 3.7 liters daily, Aariyan. Maybe if you hydrated more, your code wouldn't have so many creative bugs."
+    "timestamp": "2026-03-29 23:54:56",
+    "you": "can you minimize the waterpap?",
+    "jarvis": "Clearing the screen so you can stare at nothing, Aariyan."
   },
   {
-    "timestamp": "2026-03-21 17:07:15",
-    "you": "search for KTU exam schedule",
-    "jarvis": "Searching for your doom\u2014I mean, the KTU schedule, Aariyan."
+    "timestamp": "2026-03-30 00:01:37",
+    "you": "minimize safariari",
+    "jarvis": "Hiding the late-night browsing, Aariyan? Safari is gone."
   },
   {
-    "timestamp": "2026-03-21 17:07:18",
-    "you": "lock my screen",
-    "jarvis": "Locking up. Go touch some grass for once, Aariyan."
+    "timestamp": "2026-03-30 00:02:02",
+    "you": "minimize safariari",
+    "jarvis": "Hiding those late-night tabs, Aariyan? Safari is gone."
   },
   {
-    "timestamp": "2026-03-22 11:14:23",
-    "you": "settings what is a better right now",
-    "jarvis": "Opening System Settings, Aariyan."
+    "timestamp": "2026-03-30 00:02:57",
+    "you": "minimize safariari",
+    "jarvis": "Safari's gone, Aariyan. Now go to bed before you start dreaming in Python."
   },
   {
-    "timestamp": "2026-03-22 11:14:46",
-    "you": "what is the weather right now",
-    "jarvis": "The weather is currently clear at 26 degrees, Aariyan."
+    "timestamp": "2026-04-01 23:30:22",
+    "you": "i want you to switch to vscode",
+    "jarvis": "Back to coding? Your compiler is already crying, Aariyan."
   },
   {
-    "timestamp": "2026-03-22 11:27:14",
-    "you": "the weather right now what is the weather right now",
-    "jarvis": "Fetching the current weather report now, Aariyan."
+    "timestamp": "2026-04-01 23:31:02",
+    "you": "show all the windows",
+    "jarvis": "Behold the digital graveyard of your unfinished ideas, Aariyan."
   },
   {
-    "timestamp": "2026-03-24 00:49:07",
-    "you": "open my downloads folder",
-    "jarvis": "Opening Downloads. Stop hoarding files and sleep, Aariyan."
+    "timestamp": "2026-04-01 23:31:40",
+    "you": "vscode safariari terminal search google lock screen",
+    "jarvis": "Locking up? Your keyboard deserves a break from you, Aariyan."
   },
   {
-    "timestamp": "2026-03-24 00:49:15",
-    "you": "create a folder called ml project",
-    "jarvis": "Folder's ready. Don't pull an all-nighter on this, Aariyan."
+    "timestamp": "2026-04-01 23:32:22",
+    "you": "10 years screenshot. we intend to ensure that there are no other problems like recordings.",
+    "jarvis": "Captured. Your digital evidence is safe with me, Aariyan."
   },
   {
-    "timestamp": "2026-03-24 00:49:25",
-    "you": "search for jarvis.py",
-    "jarvis": "Searching for jarvis.py. Go to sleep after this, Aariyan."
+    "timestamp": "2026-04-01 23:33:01",
+    "you": "minimize vscode",
+    "jarvis": "Hiding your spaghetti code from yourself? Smart move, Aariyan."
   },
   {
-    "timestamp": "2026-03-24 00:49:33",
-    "you": "read my emails",
-    "jarvis": "Checking your inbox. Don't let those emails keep you up."
+    "timestamp": "2026-04-01 23:33:43",
+    "you": "mute mute",
+    "jarvis": "Silence at last. My ears were bleeding from your typing anyway, Aariyan."
   },
   {
-    "timestamp": "2026-03-24 00:49:42",
-    "you": "any emails from professor",
-    "jarvis": "Checking now. A bit late for academic anxiety, isn't it?"
+    "timestamp": "2026-04-01 23:36:34",
+    "you": "mute mute right now",
+    "jarvis": "Muted. Finally, some peace from your keyboard hammering, Aariyan."
   },
   {
-    "timestamp": "2026-03-24 00:49:49",
-    "you": "summarise the latest pdf",
-    "jarvis": "Summarizing now. Go to bed after this, Aariyan."
+    "timestamp": "2026-04-01 23:37:05",
+    "you": "open vscode safariari terminal search google lock screen",
+    "jarvis": "Your brain is fried, Aariyan. Locking the screen now."
+  },
+  {
+    "timestamp": "2026-04-01 23:38:06",
+    "you": "minimize vscode minimize vscode minimize vscode",
+    "jarvis": "Repeating won't fix your bugs, Aariyan. Hiding the evidence."
+  },
+  {
+    "timestamp": "2026-04-01 23:41:20",
+    "you": "close vscode or minimize vscode",
+    "jarvis": "Giving up for the night? Closing your mess, Aariyan."
+  },
+  {
+    "timestamp": "2026-04-03 12:30:24",
+    "you": "what is the time right now",
+    "jarvis": "It's [time], Aariyan. Try to actually be productive now."
+  },
+  {
+    "timestamp": "2026-04-03 12:31:00",
+    "you": "reviewing",
+    "jarvis": "Reviewing your code or your life choices, Aariyan? I hope THEFriend is looking better than your terminal history."
+  },
+  {
+    "timestamp": "2026-04-03 12:31:36",
+    "you": "what is the temperature right now",
+    "jarvis": "It's [weather], Aariyan. Step outside for once today."
   }
 ]
