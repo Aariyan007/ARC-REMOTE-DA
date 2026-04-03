@@ -2,7 +2,7 @@ import sys
 import threading
 import time
 import atexit
-# Add this import at the top of main.py
+# Add this import at the top of main_ui.py
 from core.voice_response import speak
 from core.logger import print_todays_summary
 try:
@@ -180,7 +180,7 @@ ACTIONS = {
 
 def assistant_loop():
     speak("Yes, I'm listening")
-    print("\n✅ Jarvis activated — listening for your command...")
+    print("\n✅ FRIEND activated — listening for your command...")
 
     while True:
         command = listen()
