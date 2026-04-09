@@ -2,7 +2,7 @@ import requests
 from core.voice_response import speak
 
 # ─── Settings ────────────────────────────────────────────────
-DEFAULT_LOCATION = "Malappuram"
+DEFAULT_LOCATION = "Kochi"
 # ─────────────────────────────────────────────────────────────
 
 
