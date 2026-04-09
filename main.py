@@ -20,16 +20,16 @@ from core.speech_to_text import listen
 from core.intent_router import route
 
 # ── Control modules ──────────────────────────────────────────
-from control.open_apps import open_vscode, open_safari, open_terminal
+from control.mac.open_apps import open_vscode, open_safari, open_terminal
 from control.web_search import search_google
 from control.time_utils import tell_time, tell_date
-from control.system_actions import lock_screen, shutdown_pc, restart_pc, sleep_mac
-from control.briefing import morning_briefing
-from control.weather import tell_weather
-from control.folder_control import open_folder, create_folder, search_file
+from control.mac.system_actions import lock_screen, shutdown_pc, restart_pc, sleep_mac
+from control.mac.briefing import morning_briefing
+from control.mac.weather import tell_weather
+from control.mac.folder_control import open_folder, create_folder, search_file
 from control.email_control import read_emails, search_emails, send_email, open_gmail
 from control.pdf_summariser import summarise_latest_pdf
-from control.system_controls import (
+from control.mac.system_controls import (
     volume_up, volume_down, mute, unmute, get_volume,
     brightness_up, brightness_down, take_screenshot,
     minimise_all, minimise_app, show_desktop, close_window,
