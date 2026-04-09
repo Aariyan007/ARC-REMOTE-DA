@@ -6,11 +6,11 @@ from core.memory import get_context_for_gemini, save_exchange
 import os
 import dotenv
 
-# ─── Settings ────────────────────────────────────────────────
+
 dotenv.load_dotenv()
 GEMINI_API_KEY = os.getenv("API_KEY")  # Get your own from https://console.cloud.google.com/genai
 MODEL          = "gemini-3-flash-preview"
-# ─────────────────────────────────────────────────────────────
+
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 
