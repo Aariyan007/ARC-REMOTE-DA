@@ -87,3 +87,9 @@ credentials.json
 token.json
 hf_cache/
 C:\hf_cache/
+
+# Large binary files
+*.so
+*.dylib
+*.abi3.so
+pretrained_models/
