@@ -93,3 +93,4 @@ C:\hf_cache/
 *.dylib
 *.abi3.so
 pretrained_models/
+data/voice_samples/
