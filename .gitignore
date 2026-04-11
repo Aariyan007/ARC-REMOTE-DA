@@ -70,7 +70,7 @@ htmlcov/
 log/
 
 # HuggingFace cache accidentally committed
-C:\hf_cache
+C:\hf_cache/hub
 C:\\hf_cache/"
 
 # Logs folder

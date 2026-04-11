@@ -14,6 +14,115 @@ MODEL          = "gemini-3-flash-preview"
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 
+INSTANT_CACHE = {
+    # Apps
+    "open vscode":        {"type":"action","action":"open_app","target":"vscode","query":None,"response":"Opening VS Code."},
+    "open vs code":       {"type":"action","action":"open_app","target":"vscode","query":None,"response":"Opening VS Code."},
+    "open safari":        {"type":"action","action":"open_app","target":"safari","query":None,"response":"Opening Safari."},
+    "open browser":       {"type":"action","action":"open_app","target":"safari","query":None,"response":"Opening Safari."},
+    "open terminal":      {"type":"action","action":"open_app","target":"terminal","query":None,"response":"Opening Terminal."},
+    "open chrome":        {"type":"action","action":"open_app","target":"chrome","query":None,"response":"Opening Chrome."},
+ 
+    # Volume
+    "mute":               {"type":"action","action":"mute","query":None,"response":"Muted."},
+    "unmute":             {"type":"action","action":"unmute","query":None,"response":"Unmuted."},
+    "volume up":          {"type":"action","action":"volume_up","amount":10,"query":None,"response":"Volume up."},
+    "louder":             {"type":"action","action":"volume_up","amount":10,"query":None,"response":"Volume up."},
+    "volume down":        {"type":"action","action":"volume_down","amount":10,"query":None,"response":"Volume down."},
+    "quieter":            {"type":"action","action":"volume_down","amount":10,"query":None,"response":"Volume down."},
+    "turn up":            {"type":"action","action":"volume_up","amount":10,"query":None,"response":"Turning up."},
+    "turn down":          {"type":"action","action":"volume_down","amount":10,"query":None,"response":"Turning down."},
+ 
+    # Brightness
+    "brightness up":      {"type":"action","action":"brightness_up","query":None,"response":"Brighter."},
+    "brightness down":    {"type":"action","action":"brightness_down","query":None,"response":"Dimming."},
+    "brighter":           {"type":"action","action":"brightness_up","query":None,"response":"Brighter."},
+    "dimmer":             {"type":"action","action":"brightness_down","query":None,"response":"Dimming."},
+ 
+    # System
+    "lock screen":        {"type":"action","action":"lock_screen","query":None,"response":"Locking screen."},
+    "lock my screen":     {"type":"action","action":"lock_screen","query":None,"response":"Locking screen."},
+    "lock the screen":    {"type":"action","action":"lock_screen","query":None,"response":"Locking screen."},
+    "take screenshot":    {"type":"action","action":"take_screenshot","query":None,"response":"Screenshot taken."},
+    "screenshot":         {"type":"action","action":"take_screenshot","query":None,"response":"Screenshot taken."},
+    "sleep mac":          {"type":"action","action":"sleep_mac","query":None,"response":"Going to sleep."},
+    "sleep mode":         {"type":"action","action":"sleep_mac","query":None,"response":"Going to sleep."},
+    "shutdown":           {"type":"action","action":"shutdown_pc","query":None,"response":"Shutting down."},
+    "shut down":          {"type":"action","action":"shutdown_pc","query":None,"response":"Shutting down."},
+    "restart":            {"type":"action","action":"restart_pc","query":None,"response":"Restarting."},
+ 
+    # Time + Date
+    "what time is it":    {"type":"action","action":"tell_time","query":None,"response":"The time is"},
+    "what's the time":    {"type":"action","action":"tell_time","query":None,"response":"The time is"},
+    "current time":       {"type":"action","action":"tell_time","query":None,"response":"The time is"},
+    "time please":        {"type":"action","action":"tell_time","query":None,"response":"The time is"},
+    "what's the date":    {"type":"action","action":"tell_date","query":None,"response":"Today is"},
+    "what is the date":   {"type":"action","action":"tell_date","query":None,"response":"Today is"},
+    "today's date":       {"type":"action","action":"tell_date","query":None,"response":"Today is"},
+ 
+    # Weather + Battery
+    "weather":            {"type":"action","action":"tell_weather","query":None,"response":"Checking weather."},
+    "what's the weather": {"type":"action","action":"tell_weather","query":None,"response":"Checking weather."},
+    "battery":            {"type":"action","action":"get_battery","query":None,"response":"Checking battery."},
+    "battery level":      {"type":"action","action":"get_battery","query":None,"response":"Checking battery."},
+    "how much battery":   {"type":"action","action":"get_battery","query":None,"response":"Checking battery."},
+ 
+    # Windows
+    "minimise all":       {"type":"action","action":"minimise_all","query":None,"response":"Minimising everything."},
+    "minimise everything":{"type":"action","action":"minimise_all","query":None,"response":"Minimising everything."},
+    "show desktop":       {"type":"action","action":"show_desktop","query":None,"response":"Showing desktop."},
+    "new tab":            {"type":"action","action":"new_tab","query":None,"response":"New tab."},
+    "close tab":          {"type":"action","action":"close_tab","query":None,"response":"Closing tab."},
+    "close window":       {"type":"action","action":"close_window","query":None,"response":"Closing window."},
+    "fullscreen":         {"type":"action","action":"fullscreen","query":None,"response":"Fullscreen."},
+    "full screen":        {"type":"action","action":"fullscreen","query":None,"response":"Fullscreen."},
+ 
+    # Email
+    "read my emails":     {"type":"action","action":"read_emails","query":None,"response":"Checking your inbox."},
+    "check my emails":    {"type":"action","action":"read_emails","query":None,"response":"Checking your inbox."},
+    "open gmail":         {"type":"action","action":"open_gmail","query":None,"response":"Opening Gmail."},
+    "open my email":      {"type":"action","action":"open_gmail","query":None,"response":"Opening Gmail."},
+ 
+    # Folders
+    "open downloads":     {"type":"action","action":"open_folder","target":"downloads","query":None,"response":"Opening Downloads."},
+    "open desktop":       {"type":"action","action":"open_folder","target":"desktop","query":None,"response":"Opening Desktop."},
+    "open documents":     {"type":"action","action":"open_folder","target":"documents","query":None,"response":"Opening Documents."},
+ 
+    # Routines
+    "start my day":       {"type":"action","action":"start_work_day","query":None,"response":"Starting your work day."},
+    "work mode":          {"type":"action","action":"start_work_day","query":None,"response":"Work mode activated."},
+    "end my day":         {"type":"action","action":"end_work_day","query":None,"response":"Ending your work day."},
+    "morning briefing":   {"type":"action","action":"morning_briefing","query":None,"response":"Here's your briefing."},
+    "brief me":           {"type":"action","action":"morning_briefing","query":None,"response":"Here's your briefing."},
+ 
+    # PDF
+    "summarise pdf":      {"type":"action","action":"summarise_pdf","query":None,"response":"Reading the PDF."},
+    "summarize pdf":      {"type":"action","action":"summarise_pdf","query":None,"response":"Reading the PDF."},
+    "read this pdf":      {"type":"action","action":"summarise_pdf","query":None,"response":"Reading the PDF."},
+}
+# ─────────────────────────────────────────────────────────────
+ 
+ 
+def _check_cache(command: str) -> dict | None:
+    """
+    Checks if command matches any cached phrase.
+    Returns cached result if found, None otherwise.
+    """
+    cmd = command.lower().strip()
+ 
+    # Exact match first
+    if cmd in INSTANT_CACHE:
+        print(f"⚡ Cache hit (exact): '{cmd}'")
+        return INSTANT_CACHE[cmd]
+ 
+    # Partial match — check if any cached phrase is IN the command
+    for phrase, result in INSTANT_CACHE.items():
+        if phrase in cmd:
+            print(f"⚡ Cache hit (partial): '{phrase}' in '{cmd}'")
+            return result
+ 
+    return None
+
 SYSTEM_PROMPT = """
 You are Jarvis, a personal AI assistant.
 
@@ -142,6 +251,12 @@ def ask_gemini(command: str) -> dict:
     Single Gemini call with full user context injected.
     Understands intent + generates personal response.
     """
+    
+    cached = _check_cache(command)
+    if cached:
+        save_exchange(command, cached.get("response", ""))
+        return cached
+    
     mood_context = get_mood_for_prompt()
     user_context = get_context_for_gemini()   # ← profile + recent convos
 
