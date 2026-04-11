@@ -11,7 +11,7 @@ load_dotenv()
 # ─── Settings ────────────────────────────────────────────────
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 VOICE_ID           = os.getenv("ELEVENLABS_VOICE_ID", "TxGEqnHWrfWFTfGW9XjX")  # Josh voice
-USE_ELEVENLABS     = bool(ELEVENLABS_API_KEY)
+USE_ELEVENLABS     = False
 
 # Mac fallback settings
 MAC_VOICE = "Daniel"

@@ -94,6 +94,22 @@ Triggers:
 - fullscreen: "fullscreen", "make it fullscreen", "maximise"
 - mission_control: "show all windows", "mission control"
 
+11. FILE OPERATIONS:
+{{"type":"action","action":"read_file","target":null,"query":null,"filename":"filename.txt","location":"desktop|downloads|null","response":"natural response"}}
+{{"type":"action","action":"create_file","target":null,"query":null,"filename":"name","location":"desktop","response":"natural response"}}
+{{"type":"action","action":"delete_file","target":null,"query":null,"filename":"filename.txt","location":null,"response":"natural response"}}
+{{"type":"action","action":"rename_file","target":null,"query":null,"filename":"old.txt","new_name":"new.txt","response":"natural response"}}
+{{"type":"action","action":"get_recent_files","target":null,"query":null,"response":"natural response"}}
+{{"type":"action","action":"copy_file","target":null,"query":null,"filename":"file.txt","location":"desktop","response":"natural response"}}
+
+Triggers:
+- read_file: "read notes.txt", "open and read jarvis.py", "what's in ideas.txt"
+- create_file: "create a file called X", "make a new file named X"
+- delete_file: "delete notes.txt", "remove that file", "trash jarvis_test.txt"
+- rename_file: "rename notes.txt to ideas.txt"
+- get_recent_files: "what files did I work on", "recent files", "what did I edit today"
+- copy_file: "copy jarvis.py to desktop"
+
 
 
 Decision rules:
@@ -112,7 +128,14 @@ Response rules:
 - Never say the same thing twice
 - Can lightly roast them based on what you know about them
 """
+# Global session context
+SESSION_CONTEXT = {}
 
+def set_context(key: str, value) -> None:
+    SESSION_CONTEXT[key] = value
+
+def get_context() -> dict:
+    return SESSION_CONTEXT
 
 def ask_gemini(command: str) -> dict:
     """

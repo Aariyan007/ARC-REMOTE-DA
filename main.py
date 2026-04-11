@@ -2,6 +2,10 @@ import sys
 from core.voice_response import speak, speak_and_wait
 from core.logger import print_todays_summary
 from core.memory import clear_conversation
+from core.agent import run_agent
+# from core.agent import run_agent, LAST_AGENT_RESULT
+from core.agent import run_agent
+import core.agent as agent_module
 
 try:
     import pkg_resources
@@ -36,6 +40,11 @@ from control.mac.system_controls import (
     get_battery, start_work_day, end_work_day,
     close_app, switch_to_app, fullscreen, mission_control,
     close_tab, new_tab
+)
+
+from control.mac.file_ops import (
+    read_file, create_file, delete_file,
+    rename_file, get_recent_files, copy_file
 )
 
 # ── Action map ───────────────────────────────────────────────
@@ -110,8 +119,16 @@ ACTIONS = {
     # Routines
     "start_work_day":    start_work_day,
     "end_work_day":      end_work_day,
+    
+    "read_file":       read_file,
+    "create_file":     create_file,
+    "delete_file":     delete_file,
+    "rename_file":     rename_file,
+    "get_recent_files": get_recent_files,
+    "copy_file":       copy_file,
 }
 
+CORRECTION_WORDS = ["no", "not that", "wrong", "other", "different", "actually"]
 
 def assistant_loop():
     speak("Yes, I'm listening")
@@ -133,12 +150,37 @@ def assistant_loop():
             break
 
         # Route command — returns False if user interrupted
-        was_interrupted = route(command, ACTIONS)
+        # was_interrupted = route(command, ACTIONS)
+        AGENT_TRIGGERS = [
+            "find", "search for", "look for", "check if",
+            "and then", "after that", "also open", "then",
+            "summarise", "tell me about", "read and",
+            "open and", "find and", "check my emails and",
+        ]
 
-        # If interrupted mid-speech → listen immediately for new command
-        if not was_interrupted:
-            print("✋ Interrupted — listening for new command...")
-            # Loop continues naturally — next iteration calls listen()
+        CORRECTION_WORDS = ["no", "not that", "wrong", "other",
+                            "different", "actually", "instead"]
+
+        # if any(w in command.lower() for w in CORRECTION_WORDS) and LAST_AGENT_RESULT:
+        if any(w in command.lower() for w in CORRECTION_WORDS) and agent_module.LAST_AGENT_RESULT:
+            # User correcting previous agent action
+            print("🔄 Correction detected — continuing agent with context")
+            context_command = f"{command}. Previous context: {LAST_AGENT_RESULT}"
+            run_agent(context_command, ACTIONS)
+            was_interrupted = True
+
+        elif any(t in command.lower() for t in AGENT_TRIGGERS):
+            print("🤖 Complex command — using agent")
+            run_agent(command, ACTIONS)
+            was_interrupted = True
+
+        else:
+            was_interrupted = route(command, ACTIONS)
+
+            # If interrupted mid-speech → listen immediately for new command
+            if not was_interrupted:
+                print("✋ Interrupted — listening for new command...")
+                # Loop continues naturally — next iteration calls listen()
 
 
 def main():

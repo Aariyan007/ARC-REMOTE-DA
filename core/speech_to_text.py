@@ -12,8 +12,12 @@ CHUNK_SIZE = 1024
 SILENCE_DURATION = 1.5
 MAX_RECORD_SECONDS = 15
 WHISPER_PROMPT = (
-    "Jarvis open vscode safari terminal search google "
-    "lock screen shutdown restart time date"
+    "Jarvis open vscode safari terminal chrome "
+    "search google find file resume email weather time date "
+    "volume brightness screenshot battery mute unmute "
+    "lock screen shutdown restart sleep minimise fullscreen "
+    "what time is it what is the weather open my "
+    "hey how are you good morning"
 )
 CORRECTIONS = {
     "jihadis": "jarvis",
@@ -28,8 +32,8 @@ CORRECTIONS = {
 # ────────────────────────────────────────────────────────────
 
 print("Loading Whisper model...")
-model = whisper.load_model("base")
-print("Whisper ready ✅")
+model = whisper.load_model("small")
+print("Whisper is wokring")
 
 
 def calibrate_silence(stream) -> float:
