@@ -156,6 +156,57 @@ def route(command: str, actions: dict) -> bool:
                 log_interaction(you_said=command, action_taken="switch_to_app",
                               was_understood=True, sent_to_gemini=True)
             return True
+        
+        if action == "read_file":
+            speak(response_text)
+            filename = result.get("filename", "")
+            location = result.get("location")
+            if filename and "read_file" in actions:
+                actions["read_file"](filename, location)
+            log_interaction(you_said=command, action_taken="read_file",
+                        was_understood=True, sent_to_gemini=True)
+            return
+
+        if action == "create_file":
+            speak(response_text)
+            filename = result.get("filename", "")
+            location = result.get("location", "desktop")
+            if filename and "create_file" in actions:
+                actions["create_file"](filename, location)
+            log_interaction(you_said=command, action_taken="create_file",
+                        was_understood=True, sent_to_gemini=True)
+            return
+
+        if action == "delete_file":
+            speak(response_text)
+            filename = result.get("filename", "")
+            location = result.get("location")
+            if filename and "delete_file" in actions:
+                actions["delete_file"](filename, location)
+            log_interaction(you_said=command, action_taken="delete_file",
+                        was_understood=True, sent_to_gemini=True)
+            return
+
+        if action == "rename_file":
+            speak(response_text)
+            filename = result.get("filename", "")
+            new_name = result.get("new_name", "")
+            location = result.get("location")
+            if filename and new_name and "rename_file" in actions:
+                actions["rename_file"](filename, new_name, location)
+            log_interaction(you_said=command, action_taken="rename_file",
+                        was_understood=True, sent_to_gemini=True)
+            return
+
+        if action == "copy_file":
+            speak(response_text)
+            filename = result.get("filename", "")
+            location = result.get("location", "desktop")
+            if filename and "copy_file" in actions:
+                actions["copy_file"](filename, location)
+            log_interaction(you_said=command, action_taken="copy_file",
+                        was_understood=True, sent_to_gemini=True)
+            return
 
         # ── Everything else ───────────────────────────────────
         if action in actions:
