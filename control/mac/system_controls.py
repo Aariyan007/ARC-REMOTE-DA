@@ -130,30 +130,26 @@ def start_work_day() -> None:
     print("🚀 Work day started")
     
 def minimise_app(app_name: str) -> None:
-    """Minimises a specific app."""
+    """Minimises a specific app using keyboard shortcut."""
     app_map = {
         "safari":   "Safari",
         "vscode":   "Visual Studio Code",
         "terminal": "Terminal",
         "chrome":   "Google Chrome",
         "finder":   "Finder",
+        "code":     "Visual Studio Code",
     }
-    app = app_map.get(app_name.lower(), app_name)
-
-    # VS Code doesn't support AppleScript miniaturize
-    # Use keyboard shortcut instead
-    if app_name.lower() == "vscode":
-        os.system("""osascript -e '
-            tell application "System Events"
-                tell process "Code"
-                    set value of attribute "AXMinimized" of window 1 to true
-                end tell
-            end tell
-        '""")
-    else:
-        os.system(f"""osascript -e 'tell application "{app}" to set miniaturized of windows to true'""")
+    app = app_map.get(app_name.lower(), app_name.title())
+    # Activate app first then send Cmd+M
+    script = f'''
+    tell application "{app}" to activate
+    delay 0.3
+    tell application "System Events"
+        keystroke "m" using command down
+    end tell
+    '''
+    os.system(f"osascript -e '{script}'")
     print(f"🔽 Minimised: {app}")
-
 def close_app(app_name: str) -> None:
     """Fully closes/quits an app."""
     app_map = {
