@@ -68,8 +68,8 @@ INSTANT_CACHE = {
     "how much battery":   {"type":"action","action":"get_battery","query":None,"response":"Checking battery."},
  
     # Windows
-    "minimise all":       {"type":"action","action":"minimise_all","query":None,"response":"Minimising everything."},
-    "minimise everything":{"type":"action","action":"minimise_all","query":None,"response":"Minimising everything."},
+    "minimize all":       {"type":"action","action":"minimise_all","query":None,"response":"Minimising everything."},
+    "minimize everything":{"type":"action","action":"minimise_all","query":None,"response":"Minimising everything."},
     "show desktop":       {"type":"action","action":"show_desktop","query":None,"response":"Showing desktop."},
     "new tab":            {"type":"action","action":"new_tab","query":None,"response":"New tab."},
     "close tab":          {"type":"action","action":"close_tab","query":None,"response":"Closing tab."},
@@ -103,25 +103,6 @@ INSTANT_CACHE = {
 # ─────────────────────────────────────────────────────────────
  
  
-def _check_cache(command: str) -> dict | None:
-    """
-    Checks if command matches any cached phrase.
-    Returns cached result if found, None otherwise.
-    """
-    cmd = command.lower().strip()
- 
-    # Exact match first
-    if cmd in INSTANT_CACHE:
-        print(f"⚡ Cache hit (exact): '{cmd}'")
-        return INSTANT_CACHE[cmd]
- 
-    # Partial match — check if any cached phrase is IN the command
-    for phrase, result in INSTANT_CACHE.items():
-        if phrase in cmd:
-            print(f"⚡ Cache hit (partial): '{phrase}' in '{cmd}'")
-            return result
- 
-    return None
 
 SYSTEM_PROMPT = """
 You are Jarvis, a personal AI assistant.
@@ -246,6 +227,36 @@ def set_context(key: str, value) -> None:
 def get_context() -> dict:
     return SESSION_CONTEXT
 
+def _check_cache(command: str) -> dict | None:
+    cmd = command.lower().strip()
+
+    # Exact match
+    if cmd in INSTANT_CACHE:
+        result = INSTANT_CACHE[cmd].copy()
+        _inject_amount(result, cmd)
+        print(f"⚡ Cache hit (exact): '{cmd}'")
+        return result
+
+    # Partial match
+    for phrase, result in INSTANT_CACHE.items():
+        if phrase in cmd:
+            result = result.copy()
+            _inject_amount(result, cmd)
+            print(f"⚡ Cache hit (partial): '{phrase}' in '{cmd}'")
+            return result
+
+    return None
+
+
+def _inject_amount(result: dict, command: str) -> None:
+    """Extracts number from command and injects into result."""
+    if result.get("action") not in ("volume_up", "volume_down",
+                                     "brightness_up", "brightness_down"):
+        return
+    import re
+    match = re.search(r'\b(\d+)\b', command)
+    if match:
+        result["amount"] = int(match.group(1))
 def ask_gemini(command: str) -> dict:
     """
     Single Gemini call with full user context injected.

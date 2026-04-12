@@ -58,14 +58,16 @@ def route(command: str, actions: dict) -> bool:
 
         # ── Open app ─────────────────────────────────────────
         if action == "open_app" and target:
-            func_name = f"open_{target}"
+            func_name = f"open_{target.lower().replace(' ', '_')}"
+            speak(response_text)
             if func_name in actions:
                 actions[func_name]()
-                log_interaction(you_said=command, action_taken=func_name,
-                              was_understood=True, sent_to_gemini=True)
             else:
-                speak(f"I don't know how to open {target} yet.")
-            return True
+                # Try opening any app by name
+                from control.mac.open_apps import open_any_app
+                open_any_app(target)
+            log_interaction(...)
+            return
 
         # ── Search Google ─────────────────────────────────────
         if action == "search_google":
