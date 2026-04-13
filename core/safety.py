@@ -27,6 +27,7 @@ DESTRUCTIVE_ACTIONS = {
 HIGH_CONFIDENCE    = 0.85   # Execute immediately (safe actions)
 MEDIUM_CONFIDENCE  = 0.50   # Execute safe actions, Gemini for destructive
 LOW_CONFIDENCE     = 0.50   # Below this → always Gemini
+CONFIDENCE_FLOOR   = 0.40   # Below this → ALWAYS Gemini, never execute
 
 
 class SafetyDecision:
@@ -46,7 +47,7 @@ class SafetyDecision:
         return f"SafetyDecision({self.decision}, confidence={self.confidence:.2f}, reason='{self.reason}')"
 
 
-def check_safety(action: str, confidence: float, has_context_reference: bool = False) -> SafetyDecision:
+def check_safety(action: str, confidence: float, has_context_reference: bool = False, word_count: int = 0) -> SafetyDecision:
     """
     Decides whether to execute, confirm, or fall back to Gemini.
 
@@ -54,7 +55,26 @@ def check_safety(action: str, confidence: float, has_context_reference: bool = F
         action:                The resolved action name
         confidence:            Intent engine confidence (0.0 - 1.0)
         has_context_reference: True if command contains pronouns like "it", "that"
+        word_count:            Number of words in the command (for garbage detection)
     """
+    # Very short input (1-2 words) with low confidence → garbage, skip
+    if word_count <= 2 and confidence < HIGH_CONFIDENCE:
+        return SafetyDecision(
+            SafetyDecision.GEMINI,
+            "Too short to be meaningful — needs Gemini",
+            action,
+            confidence
+        )
+
+    # Absolute confidence floor — below this, nothing should execute
+    if confidence < CONFIDENCE_FLOOR:
+        return SafetyDecision(
+            SafetyDecision.GEMINI,
+            "Below minimum confidence floor — needs Gemini",
+            action,
+            confidence
+        )
+
     # Context references need high confidence or clarification
     if has_context_reference and confidence < HIGH_CONFIDENCE:
         return SafetyDecision(

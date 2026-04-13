@@ -21,7 +21,8 @@ load_dotenv()
 # ─── Settings ────────────────────────────────────────────────
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 VOICE_ID           = os.getenv("ELEVENLABS_VOICE_ID", "TxGEqnHWrfWFTfGW9XjX")  # Josh voice
-USE_ELEVENLABS     = os.getenv("USE_ELEVENLABS", "false").lower() == "true"
+# USE_ELEVENLABS     = os.getenv("USE_ELEVENLABS", "false").lower() == "true"
+USE_ELEVENLABS     = ELEVENLABS_API_KEY is not None
 
 # Mac fallback settings
 MAC_VOICE = "Daniel"
@@ -191,10 +192,8 @@ def _listen_for_interrupt(threshold_multiplier: float = 6.0) -> bool:
 
 def speak(text: str, force_elevenlabs: bool = False) -> bool:
     """
-    Hybrid TTS — speaks text using the best engine for the response.
-
-    Short responses (≤6 words) → Mac say (instant, <50ms)
-    Long responses → ElevenLabs if available, else Mac say
+    TTS — speaks text using ElevenLabs when available (all responses),
+    falls back to Mac say.
 
     Args:
         text:              The text to speak
@@ -207,9 +206,7 @@ def speak(text: str, force_elevenlabs: bool = False) -> bool:
     is_speaking = True
     print(f"🔊 Jarvis: {text}")
 
-    use_el = force_elevenlabs or (USE_ELEVENLABS and not _is_short_response(text))
-
-    if use_el:
+    if USE_ELEVENLABS:
         result = _speak_elevenlabs(text)
     else:
         result = _speak_mac(text)
@@ -220,13 +217,18 @@ def speak(text: str, force_elevenlabs: bool = False) -> bool:
 
 def speak_instant(text: str) -> bool:
     """
-    Always uses Mac say for instant response.
-    Used for quick acks like "Got it", "On it".
+    Quick ack response — uses ElevenLabs when available,
+    falls back to Mac say for instant response.
     """
     global is_speaking
     is_speaking = True
     print(f"🔊 Jarvis (instant): {text}")
-    result = _speak_mac(text)
+
+    if USE_ELEVENLABS:
+        result = _speak_elevenlabs(text)
+    else:
+        result = _speak_mac(text)
+
     is_speaking = False
     return result
 

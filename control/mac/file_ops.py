@@ -84,6 +84,8 @@ def create_file(name: str, location: str = "desktop") -> None:
     Creates a new file at the given location and opens it.
     Example: create_file("ideas.txt") or create_file("test.py", "projects")
     """
+    if location is None:
+        location = "desktop"
     base = LOCATIONS.get(location.lower(), os.path.expanduser("~/Desktop"))
 
     # Add .txt extension if no extension given
@@ -104,6 +106,34 @@ def create_file(name: str, location: str = "desktop") -> None:
     speak(f"Created {name} on your {location}. Opening it now.")
     print(f"📄 Created: {path}")
     subprocess.Popen(["open", path])
+
+
+def edit_file(name: str, content: str, location: str = None) -> None:
+    """
+    Appends text to a file, creating it if it doesn't exist.
+    """
+    path = _find_file(name, location)
+
+    if not path:
+        # File doesn't exist, create it first
+        base = LOCATIONS.get(location.lower() if location else "desktop", os.path.expanduser("~/Desktop"))
+        if "." not in name:
+            name = name + ".txt"
+        path = os.path.join(base, name)
+        verb = "Created and added"
+    else:
+        verb = "Added"
+
+    try:
+        with open(path, "a") as f:
+            f.write(f"\n{content}\n")
+
+        speak(f"{verb} text to {name}.")
+        print(f"✏️  Edited: {path}")
+        subprocess.Popen(["open", path])
+    except Exception as e:
+        speak("Couldn't write to that file.")
+        print(f"❌ Error: {e}")
 
 
 def delete_file(name: str, location: str = None) -> None:

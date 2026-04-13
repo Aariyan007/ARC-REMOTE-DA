@@ -8,7 +8,7 @@ load_dotenv()
 
 # ─── Settings ────────────────────────────────────────────────
 GEMINI_API_KEY = os.getenv("API_KEY")
-MODEL          = "gemini-3-flash-preview"
+MODEL          = "gemini-2.5-flash"
 MAX_STEPS      = 5   # max actions before giving up
 # ─────────────────────────────────────────────────────────────
 
@@ -24,6 +24,7 @@ FILE OPERATIONS:
 - open_file(path) → opens a specific file
 - read_file(path) → reads and returns file contents (text files only)
 - create_file(name, location) → creates a new file
+- edit_file(name, content, location) → appends text to an existing file
 - delete_file(path) → moves file to trash
 - rename_file(old_path, new_name) → renames a file
 - recent_files() → returns list of recently modified files
@@ -141,14 +142,67 @@ def _execute_action(action: str, params: dict, actions: dict) -> str:
             return f"File not found: {path}"
 
         if action == "read_file":
+            # Agent may pass 'path' (direct) or 'name'/'filename' (needs search)
             path = params.get("path", "")
-            if os.path.exists(path):
+            if path and os.path.exists(path):
                 with open(path, "r", errors="ignore") as f:
                     content = f.read()[:2000]
                 return f"File contents:\n{content}"
-            return f"File not found: {path}"
+            # Fallback: use the file_ops read_file via ACTIONS dict
+            name = params.get("name", params.get("filename", ""))
+            if name and "read_file" in actions:
+                location = params.get("location")
+                actions["read_file"](name, location)
+                return f"Read {name} aloud"
+            return f"File not found: {path or name}"
 
-        if action == "recent_files":
+        if action == "create_file":
+            name = params.get("name", params.get("filename", ""))
+            location = params.get("location", "desktop")
+            if name and "create_file" in actions:
+                actions["create_file"](name, location)
+                return f"Created {name} on {location}"
+            return f"Couldn't create file — no name provided"
+
+        if action == "edit_file":
+            name = params.get("name", params.get("filename", ""))
+            content = params.get("content", "")
+            location = params.get("location")
+            if name and content and "edit_file" in actions:
+                actions["edit_file"](name, content, location)
+                return f"Appended text to {name}"
+            return "Please provide content to add to the file."
+
+        if action == "delete_file":
+            name = params.get("name", params.get("filename", ""))
+            location = params.get("location")
+            if name and "delete_file" in actions:
+                actions["delete_file"](name, location)
+                return f"Moved {name} to trash"
+            return f"Couldn't delete — no file name provided"
+
+        if action == "rename_file":
+            old_name = params.get("name", params.get("filename", params.get("old_name", "")))
+            new_name = params.get("new_name", "")
+            location = params.get("location")
+            if old_name and new_name and "rename_file" in actions:
+                actions["rename_file"](old_name, new_name, location)
+                return f"Renamed {old_name} to {new_name}"
+            return f"Couldn't rename — need both old and new names"
+
+        if action == "copy_file":
+            name = params.get("name", params.get("filename", ""))
+            destination = params.get("location", params.get("destination", "desktop"))
+            if name and "copy_file" in actions:
+                actions["copy_file"](name, destination)
+                return f"Copied {name} to {destination}"
+            return f"Couldn't copy — no file name provided"
+
+        if action in ("recent_files", "get_recent_files"):
+            if "get_recent_files" in actions:
+                actions["get_recent_files"]()
+                return "Showed recent files"
+            # Fallback: inline Spotlight search
             import subprocess
             result = subprocess.run(
                 ["mdfind", "-onlyin", os.path.expanduser("~"),

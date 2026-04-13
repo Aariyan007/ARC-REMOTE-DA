@@ -16,6 +16,7 @@ from core.fast_intent import classify, IntentResult
 from core.param_extractors import (
     extract_app_name, extract_amount, extract_query,
     extract_filename, extract_email_params, extract_folder_target,
+    extract_file_edit_params,
 )
 from core.instant_responses import get_instant_response, get_confirmation_prompt
 from core.safety import check_safety, SafetyDecision, ask_voice_confirmation, DESTRUCTIVE_ACTIONS
@@ -71,6 +72,9 @@ def _extract_params(action: str, text: str) -> dict:
 
     elif action in ("read_file", "create_file", "delete_file", "rename_file", "copy_file"):
         params.update(extract_filename(text))
+
+    elif action == "edit_file":
+        params.update(extract_file_edit_params(text))
 
     return params
 
@@ -176,13 +180,24 @@ def _execute_action(action: str, params: dict, actions: dict) -> str:
             if filename and "read_file" in actions:
                 actions["read_file"](filename, location)
                 return f"Read {filename}"
+            return f"Couldn't read — no filename extracted"
 
         if action == "create_file":
             filename = params.get("filename", "")
-            location = params.get("location", "desktop")
+            location = params.get("location") or "desktop"
             if filename and "create_file" in actions:
                 actions["create_file"](filename, location)
                 return f"Created {filename}"
+            return f"Couldn't create — no filename extracted"
+
+        if action == "edit_file":
+            filename = params.get("filename", "")
+            content = params.get("content", "")
+            location = params.get("location")
+            if filename and content and "edit_file" in actions:
+                actions["edit_file"](filename, content, location)
+                return f"Appended text to {filename}"
+            return f"Couldn't edit — missing filename or text content"
 
         if action == "delete_file":
             filename = params.get("filename", "")
@@ -190,6 +205,7 @@ def _execute_action(action: str, params: dict, actions: dict) -> str:
             if filename and "delete_file" in actions:
                 actions["delete_file"](filename, location)
                 return f"Deleted {filename}"
+            return f"Couldn't delete — no filename extracted"
 
         if action == "rename_file":
             filename = params.get("filename", "")
@@ -198,13 +214,20 @@ def _execute_action(action: str, params: dict, actions: dict) -> str:
             if filename and new_name and "rename_file" in actions:
                 actions["rename_file"](filename, new_name, location)
                 return f"Renamed {filename} to {new_name}"
+            return f"Couldn't rename — need both old and new names"
 
         if action == "copy_file":
             filename = params.get("filename", "")
-            location = params.get("location", "desktop")
+            location = params.get("location") or "desktop"
             if filename and "copy_file" in actions:
                 actions["copy_file"](filename, location)
                 return f"Copied {filename}"
+            return f"Couldn't copy — no filename extracted"
+
+        if action == "get_recent_files":
+            if "get_recent_files" in actions:
+                actions["get_recent_files"]()
+                return "Showed recent files"
 
         # ── Generic action ──────────────────────────────────
         if action in actions:
@@ -276,7 +299,7 @@ def route(command: str, actions: dict) -> bool:
             print(f"🔗 Context resolved → '{cleaned}' → {intent.action} (conf={intent.confidence:.2f})")
 
     # ── Step 5: Safety check ─────────────────────────────────
-    safety = check_safety(intent.action, intent.confidence, has_ctx)
+    safety = check_safety(intent.action, intent.confidence, has_ctx, word_count=len(cleaned.split()))
     print(f"🛡️  Safety: {safety.decision} — {safety.reason}")
 
     mood = get_current_mood().get("name", "casual")

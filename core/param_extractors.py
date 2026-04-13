@@ -127,7 +127,9 @@ LOCATION_KEYWORDS = {
 def extract_filename(text: str) -> dict:
     """
     Extracts filename and optional location from the command.
-    Returns dict with 'filename' and 'location' keys.
+    Returns dict with 'filename', 'location', and optionally 'new_name' keys.
+    Handles natural speech: "create a file called ideas", "read notes.txt",
+    "rename notes.txt to ideas.txt", "delete superman file", etc.
     """
     result = {"filename": None, "location": None}
 
@@ -137,23 +139,78 @@ def extract_filename(text: str) -> dict:
             result["location"] = loc
             break
 
-    # Try patterns: "read notes.txt", "create file called ideas.md", "delete resume.pdf"
+    # Extract new_name for rename: "rename X to Y"
+    rename_match = re.search(r'rename\s+(\S+)\s+to\s+(\S+)', text)
+    if rename_match:
+        result["filename"] = rename_match.group(1)
+        result["new_name"] = rename_match.group(2)
+        return result
+
+    # Try patterns (order matters — most specific first):
     patterns = [
-        r'(?:called|named)\s+([^\s]+\.\w+)',           # "called notes.txt"
-        r'(?:file|read|open|delete|rename|copy)\s+([^\s]+\.\w+)',  # "read notes.txt"
-        r'([a-zA-Z0-9_-]+\.\w{1,5})',                  # any file with extension
+        r'(?:called|named)\s+([^\s]+\.\w+)',                          # "called notes.txt"
+        r'(?:file|read|open|delete|rename|copy)\s+([^\s]+\.\w+)',     # "read notes.txt"
+        r'([a-zA-Z0-9_-]+\.\w{1,5})',                                 # any file with extension
     ]
     for pattern in patterns:
         match = re.search(pattern, text)
         if match:
             result["filename"] = match.group(1)
-            break
+            return result
 
-    # If no extension found, try bare name after action word
-    if not result["filename"]:
-        match = re.search(r'(?:called|named)\s+(\S+)', text)
+    # No extension found — try bare name patterns:
+    bare_patterns = [
+        r'(?:called|named)\s+(\S+)',                                   # "file called ideas"
+        r'(?:contents?\s+(?:of|in|from))\s+(?:the\s+)?(\w+)',         # "contents of superman", "contents in resume"
+        r'(?:create|make|delete|read|open|copy)\s+(?:a\s+)?(?:my\s+)?(?:file\s+)?(?:called\s+|named\s+)?(\w+)(?:\s+file)?',  # "create superman file", "read my notes"
+        r'(?:create|make)\s+(\w+)\s+(?:file|document|note)',           # "create superman file"
+        r'(?:create|make|read|delete|open|copy)\s+(?:a\s+)?(\w+)$',   # "create ideas" / "read notes" (at end)
+    ]
+    for pattern in bare_patterns:
+        match = re.search(pattern, text)
         if match:
-            result["filename"] = match.group(1)
+            candidate = match.group(1).strip()
+            # Skip noise words
+            if candidate not in {"a", "an", "the", "my", "this", "that", "new", "file", "it", "contents"}:
+                result["filename"] = candidate
+                return result
+
+    return result
+
+
+# ─── File Edit Extraction ────────────────────────────────────
+def extract_file_edit_params(text: str) -> dict:
+    """
+    Extracts filename, location, and content for editing a file.
+    """
+    result = extract_filename(text)
+    result["content"] = None
+
+    # Matches: "in X write Y" or "inside X add Y"
+    match_reverse = re.search(r'(?:in|inside|on)\s+(?:that\s+|the\s+|a\s+)?(?:particular\s+)?(?:file\s+)?(?:name[d]?|called)?\s*([\w\.]+)\s+(?:write|add|append|put|type|insert)\s+(.+)', text)
+    if match_reverse:
+        if not result["filename"]:
+            # Might be already extracted by extract_filename, but fallback just in case
+            result["filename"] = match_reverse.group(1).strip()
+        result["content"] = match_reverse.group(2).strip()
+        return result
+
+    # Matches: "write X in Y", "add X", etc.
+    match = re.search(r'(?:write|add|append|put|type|insert)\s+(.+)', text)
+    if match:
+        content = match.group(1).strip()
+        
+        # Clean up references to the file at the end
+        if result["filename"]:
+            fname = re.escape(result["filename"])
+            content = re.sub(rf'\s*(?:in|inside|to|into|on)\s*(?:that|the|a|this)?\s*(?:particular)?\s*(?:file|document)?\s*(?:name|named|called)?\s*{fname}.*$', '', content, flags=re.IGNORECASE).strip()
+
+        # Clean generic references
+        content = re.sub(r'\s*(?:in|inside|to|into|on)\s+(?:that|the|a|this)\s+(?:particular\s+)?(?:file|document|note).*$', '', content, flags=re.IGNORECASE).strip()
+        content = re.sub(r'\s*(?:in|inside|to|into|on)\s+(?:it|that|this)(?:\s+file)?$', '', content, flags=re.IGNORECASE).strip()
+
+        if content:
+            result["content"] = content
 
     return result
 
@@ -234,6 +291,16 @@ if __name__ == "__main__":
     print("\n── Filenames ──")
     for cmd in ["read notes.txt", "delete resume.pdf on desktop", "create file called ideas.md"]:
         print(f"  '{cmd}' → {extract_filename(cmd)}")
+
+    # Edit File
+    print("\n── Edit Files ──")
+    for cmd in [
+        "write some contents in superman.txt",
+        "inside superman.txt write I am a hero",
+        "append this is a test to notes",
+        "add hello world"
+    ]:
+        print(f"  '{cmd}' → {extract_file_edit_params(cmd)}")
 
     # Email
     print("\n── Email ──")

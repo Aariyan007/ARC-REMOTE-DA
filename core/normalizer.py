@@ -85,6 +85,8 @@ CORRECTIONS = {
 
 # ─── Synonym Normalization ──────────────────────────────────
 # Maps user vocabulary to canonical terms used by the intent engine.
+# IMPORTANT: These are matched as WHOLE WORDS (regex \b boundaries)
+# to avoid corrupting words like "inside" → "insvscode" from "ide".
 SYNONYMS = {
     # Apps
     "editor":           "vscode",
@@ -140,6 +142,12 @@ SYNONYMS = {
 }
 
 
+def _word_boundary_replace(text: str, old: str, new: str) -> str:
+    """Replace `old` with `new` only when `old` appears as a whole word/phrase."""
+    pattern = r'\b' + re.escape(old) + r'\b'
+    return re.sub(pattern, new, text)
+
+
 def normalize(raw_text: str) -> NormalizedCommand:
     """
     Full normalization pipeline.
@@ -151,9 +159,13 @@ def normalize(raw_text: str) -> NormalizedCommand:
     text = raw_text.strip().lower()
     original = text
 
-    # Step 1: Apply Whisper corrections
-    for wrong, right in CORRECTIONS.items():
-        text = text.replace(wrong, right)
+    # Step 1: Apply Whisper corrections (word-boundary safe)
+    for wrong, right in sorted(CORRECTIONS.items(), key=lambda x: len(x[0]), reverse=True):
+        text = _word_boundary_replace(text, wrong, right)
+
+    # Step 1.5: Convert "dot" to "." for file extensions
+    # e.g. "resume dot pdf" → "resume.pdf", "notes dot txt" → "notes.txt"
+    text = re.sub(r'(\w+)\s+dot\s+(\w+)', r'\1.\2', text)
 
     # Step 2: Remove filler phrases (multi-word, order matters)
     for phrase in sorted(FILLER_PHRASES, key=len, reverse=True):
@@ -164,9 +176,9 @@ def normalize(raw_text: str) -> NormalizedCommand:
     words = [w for w in words if w not in FILLER_WORDS]
     text = " ".join(words)
 
-    # Step 4: Normalize synonyms (phrase-level, longest-first)
+    # Step 4: Normalize synonyms (word-boundary safe, longest-first)
     for synonym, canonical in sorted(SYNONYMS.items(), key=lambda x: len(x[0]), reverse=True):
-        text = text.replace(synonym, canonical)
+        text = _word_boundary_replace(text, synonym, canonical)
 
     # Step 5: Clean up whitespace and punctuation
     text = re.sub(r'\s+', ' ', text).strip()
