@@ -1,3 +1,15 @@
+"""
+LLM Brain — Gemini fallback for commands the fast engine can't handle.
+
+This is now the FALLBACK path. The fast intent engine handles most commands.
+Gemini is only called when:
+1. Fast engine confidence < 0.50
+2. Command needs complex understanding
+3. Chat/conversation (no action needed)
+
+The INSTANT_CACHE has been removed — replaced by fast_intent.py
+"""
+
 import json
 import time
 from google import genai
@@ -8,101 +20,21 @@ import dotenv
 
 
 dotenv.load_dotenv()
-GEMINI_API_KEY = os.getenv("API_KEY")  # Get your own from https://console.cloud.google.com/genai
+GEMINI_API_KEY = os.getenv("API_KEY")
 MODEL          = "gemini-3-flash-preview"
 
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-INSTANT_CACHE = {
-    # Apps
-    "open vscode":        {"type":"action","action":"open_app","target":"vscode","query":None,"response":"Opening VS Code."},
-    "open vs code":       {"type":"action","action":"open_app","target":"vscode","query":None,"response":"Opening VS Code."},
-    "open safari":        {"type":"action","action":"open_app","target":"safari","query":None,"response":"Opening Safari."},
-    "open browser":       {"type":"action","action":"open_app","target":"safari","query":None,"response":"Opening Safari."},
-    "open terminal":      {"type":"action","action":"open_app","target":"terminal","query":None,"response":"Opening Terminal."},
-    "open chrome":        {"type":"action","action":"open_app","target":"chrome","query":None,"response":"Opening Chrome."},
- 
-    # Volume
-    "mute":               {"type":"action","action":"mute","query":None,"response":"Muted."},
-    "unmute":             {"type":"action","action":"unmute","query":None,"response":"Unmuted."},
-    "volume up":          {"type":"action","action":"volume_up","amount":10,"query":None,"response":"Volume up."},
-    "louder":             {"type":"action","action":"volume_up","amount":10,"query":None,"response":"Volume up."},
-    "volume down":        {"type":"action","action":"volume_down","amount":10,"query":None,"response":"Volume down."},
-    "quieter":            {"type":"action","action":"volume_down","amount":10,"query":None,"response":"Volume down."},
-    "turn up":            {"type":"action","action":"volume_up","amount":10,"query":None,"response":"Turning up."},
-    "turn down":          {"type":"action","action":"volume_down","amount":10,"query":None,"response":"Turning down."},
- 
-    # Brightness
-    "brightness up":      {"type":"action","action":"brightness_up","query":None,"response":"Brighter."},
-    "brightness down":    {"type":"action","action":"brightness_down","query":None,"response":"Dimming."},
-    "brighter":           {"type":"action","action":"brightness_up","query":None,"response":"Brighter."},
-    "dimmer":             {"type":"action","action":"brightness_down","query":None,"response":"Dimming."},
- 
-    # System
-    "lock screen":        {"type":"action","action":"lock_screen","query":None,"response":"Locking screen."},
-    "lock my screen":     {"type":"action","action":"lock_screen","query":None,"response":"Locking screen."},
-    "lock the screen":    {"type":"action","action":"lock_screen","query":None,"response":"Locking screen."},
-    "take screenshot":    {"type":"action","action":"take_screenshot","query":None,"response":"Screenshot taken."},
-    "screenshot":         {"type":"action","action":"take_screenshot","query":None,"response":"Screenshot taken."},
-    "sleep mac":          {"type":"action","action":"sleep_mac","query":None,"response":"Going to sleep."},
-    "sleep mode":         {"type":"action","action":"sleep_mac","query":None,"response":"Going to sleep."},
-    "shutdown":           {"type":"action","action":"shutdown_pc","query":None,"response":"Shutting down."},
-    "shut down":          {"type":"action","action":"shutdown_pc","query":None,"response":"Shutting down."},
-    "restart":            {"type":"action","action":"restart_pc","query":None,"response":"Restarting."},
- 
-    # Time + Date
-    "what time is it":    {"type":"action","action":"tell_time","query":None,"response":"The time is"},
-    "what's the time":    {"type":"action","action":"tell_time","query":None,"response":"The time is"},
-    "current time":       {"type":"action","action":"tell_time","query":None,"response":"The time is"},
-    "time please":        {"type":"action","action":"tell_time","query":None,"response":"The time is"},
-    "what's the date":    {"type":"action","action":"tell_date","query":None,"response":"Today is"},
-    "what is the date":   {"type":"action","action":"tell_date","query":None,"response":"Today is"},
-    "today's date":       {"type":"action","action":"tell_date","query":None,"response":"Today is"},
- 
-    # Weather + Battery
-    "weather":            {"type":"action","action":"tell_weather","query":None,"response":"Checking weather."},
-    "what's the weather": {"type":"action","action":"tell_weather","query":None,"response":"Checking weather."},
-    "battery":            {"type":"action","action":"get_battery","query":None,"response":"Checking battery."},
-    "battery level":      {"type":"action","action":"get_battery","query":None,"response":"Checking battery."},
-    "how much battery":   {"type":"action","action":"get_battery","query":None,"response":"Checking battery."},
- 
-    # Windows
-    "minimize all":       {"type":"action","action":"minimise_all","query":None,"response":"Minimising everything."},
-    "minimize everything":{"type":"action","action":"minimise_all","query":None,"response":"Minimising everything."},
-    "show desktop":       {"type":"action","action":"show_desktop","query":None,"response":"Showing desktop."},
-    "new tab":            {"type":"action","action":"new_tab","query":None,"response":"New tab."},
-    "close tab":          {"type":"action","action":"close_tab","query":None,"response":"Closing tab."},
-    "close window":       {"type":"action","action":"close_window","query":None,"response":"Closing window."},
-    "fullscreen":         {"type":"action","action":"fullscreen","query":None,"response":"Fullscreen."},
-    "full screen":        {"type":"action","action":"fullscreen","query":None,"response":"Fullscreen."},
- 
-    # Email
-    "read my emails":     {"type":"action","action":"read_emails","query":None,"response":"Checking your inbox."},
-    "check my emails":    {"type":"action","action":"read_emails","query":None,"response":"Checking your inbox."},
-    "open gmail":         {"type":"action","action":"open_gmail","query":None,"response":"Opening Gmail."},
-    "open my email":      {"type":"action","action":"open_gmail","query":None,"response":"Opening Gmail."},
- 
-    # Folders
-    "open downloads":     {"type":"action","action":"open_folder","target":"downloads","query":None,"response":"Opening Downloads."},
-    "open desktop":       {"type":"action","action":"open_folder","target":"desktop","query":None,"response":"Opening Desktop."},
-    "open documents":     {"type":"action","action":"open_folder","target":"documents","query":None,"response":"Opening Documents."},
- 
-    # Routines
-    "start my day":       {"type":"action","action":"start_work_day","query":None,"response":"Starting your work day."},
-    "work mode":          {"type":"action","action":"start_work_day","query":None,"response":"Work mode activated."},
-    "end my day":         {"type":"action","action":"end_work_day","query":None,"response":"Ending your work day."},
-    "morning briefing":   {"type":"action","action":"morning_briefing","query":None,"response":"Here's your briefing."},
-    "brief me":           {"type":"action","action":"morning_briefing","query":None,"response":"Here's your briefing."},
- 
-    # PDF
-    "summarise pdf":      {"type":"action","action":"summarise_pdf","query":None,"response":"Reading the PDF."},
-    "summarize pdf":      {"type":"action","action":"summarise_pdf","query":None,"response":"Reading the PDF."},
-    "read this pdf":      {"type":"action","action":"summarise_pdf","query":None,"response":"Reading the PDF."},
-}
-# ─────────────────────────────────────────────────────────────
- 
- 
+# Global session context
+SESSION_CONTEXT = {}
+
+def set_context(key: str, value) -> None:
+    SESSION_CONTEXT[key] = value
+
+def get_context() -> dict:
+    return SESSION_CONTEXT
+
 
 SYSTEM_PROMPT = """
 You are Jarvis, a personal AI assistant.
@@ -218,58 +150,15 @@ Response rules:
 - Never say the same thing twice
 - Can lightly roast them based on what you know about them
 """
-# Global session context
-SESSION_CONTEXT = {}
-
-def set_context(key: str, value) -> None:
-    SESSION_CONTEXT[key] = value
-
-def get_context() -> dict:
-    return SESSION_CONTEXT
-
-def _check_cache(command: str) -> dict | None:
-    cmd = command.lower().strip()
-
-    # Exact match
-    if cmd in INSTANT_CACHE:
-        result = INSTANT_CACHE[cmd].copy()
-        _inject_amount(result, cmd)
-        print(f"⚡ Cache hit (exact): '{cmd}'")
-        return result
-
-    # Partial match
-    for phrase, result in INSTANT_CACHE.items():
-        if phrase in cmd:
-            result = result.copy()
-            _inject_amount(result, cmd)
-            print(f"⚡ Cache hit (partial): '{phrase}' in '{cmd}'")
-            return result
-
-    return None
 
 
-def _inject_amount(result: dict, command: str) -> None:
-    """Extracts number from command and injects into result."""
-    if result.get("action") not in ("volume_up", "volume_down",
-                                     "brightness_up", "brightness_down"):
-        return
-    import re
-    match = re.search(r'\b(\d+)\b', command)
-    if match:
-        result["amount"] = int(match.group(1))
 def ask_gemini(command: str) -> dict:
     """
-    Single Gemini call with full user context injected.
+    Gemini fallback — called when fast intent engine can't resolve.
     Understands intent + generates personal response.
     """
-    
-    cached = _check_cache(command)
-    if cached:
-        save_exchange(command, cached.get("response", ""))
-        return cached
-    
     mood_context = get_mood_for_prompt()
-    user_context = get_context_for_gemini()   # ← profile + recent convos
+    user_context = get_context_for_gemini()
 
     prompt = SYSTEM_PROMPT.format(
         user_context=user_context,
@@ -321,7 +210,7 @@ if __name__ == "__main__":
     ]
 
     print("=" * 50)
-    print("  MEMORY-AWARE BRAIN TEST")
+    print("  GEMINI FALLBACK BRAIN TEST")
     print("=" * 50)
 
     for cmd in tests:

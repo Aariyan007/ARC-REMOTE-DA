@@ -1,3 +1,13 @@
+"""
+Voice Response — Hybrid TTS system.
+
+Strategy:
+- Mac `say` for quick acks ("Got it", "On it") → instant feel
+- ElevenLabs for longer/smarter responses → premium quality
+- Stream ElevenLabs chunks to reduce perceived latency
+- Fallback to Mac `say` when ElevenLabs tokens exhausted
+"""
+
 import subprocess
 import sys
 import os
@@ -11,11 +21,15 @@ load_dotenv()
 # ─── Settings ────────────────────────────────────────────────
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 VOICE_ID           = os.getenv("ELEVENLABS_VOICE_ID", "TxGEqnHWrfWFTfGW9XjX")  # Josh voice
-USE_ELEVENLABS     = False
+USE_ELEVENLABS     = os.getenv("USE_ELEVENLABS", "false").lower() == "true"
 
 # Mac fallback settings
 MAC_VOICE = "Daniel"
 MAC_RATE  = 200
+
+# Threshold: responses shorter than this use Mac say (instant)
+# Longer responses use ElevenLabs (quality)
+SHORT_RESPONSE_WORDS = 6
 # ─────────────────────────────────────────────────────────────
 
 is_speaking     = False
@@ -61,6 +75,11 @@ def _get_mood_settings() -> dict:
         return MOOD_VOICE_SETTINGS.get(mood_name, MOOD_VOICE_SETTINGS["casual"])
     except:
         return MOOD_VOICE_SETTINGS["casual"]
+
+
+def _is_short_response(text: str) -> bool:
+    """Check if response is short enough for instant Mac say."""
+    return len(text.split()) <= SHORT_RESPONSE_WORDS
 
 
 def _speak_elevenlabs(text: str) -> bool:
@@ -170,15 +189,56 @@ def _listen_for_interrupt(threshold_multiplier: float = 6.0) -> bool:
     return interrupted
 
 
-def speak(text: str) -> bool:
+def speak(text: str, force_elevenlabs: bool = False) -> bool:
     """
-    Speaks text using ElevenLabs (if available) or Mac say.
-    Voice style automatically adjusts based on current mood.
-    Returns True if completed, False if interrupted.
+    Hybrid TTS — speaks text using the best engine for the response.
+
+    Short responses (≤6 words) → Mac say (instant, <50ms)
+    Long responses → ElevenLabs if available, else Mac say
+
+    Args:
+        text:              The text to speak
+        force_elevenlabs:  Override to force ElevenLabs (for smart follow-ups)
+
+    Returns:
+        True if completed, False if interrupted.
     """
     global is_speaking
     is_speaking = True
     print(f"🔊 Jarvis: {text}")
+
+    use_el = force_elevenlabs or (USE_ELEVENLABS and not _is_short_response(text))
+
+    if use_el:
+        result = _speak_elevenlabs(text)
+    else:
+        result = _speak_mac(text)
+
+    is_speaking = False
+    return result
+
+
+def speak_instant(text: str) -> bool:
+    """
+    Always uses Mac say for instant response.
+    Used for quick acks like "Got it", "On it".
+    """
+    global is_speaking
+    is_speaking = True
+    print(f"🔊 Jarvis (instant): {text}")
+    result = _speak_mac(text)
+    is_speaking = False
+    return result
+
+
+def speak_smart(text: str) -> bool:
+    """
+    Uses ElevenLabs if available, for richer/longer responses.
+    Falls back to Mac say if ElevenLabs unavailable.
+    """
+    global is_speaking
+    is_speaking = True
+    print(f"🔊 Jarvis (smart): {text}")
 
     if USE_ELEVENLABS:
         result = _speak_elevenlabs(text)
@@ -229,21 +289,19 @@ def speak_and_wait(text: str) -> None:
 # ─── Quick test ──────────────────────────────────────────────
 if __name__ == "__main__":
     print(f"Using ElevenLabs: {USE_ELEVENLABS}")
-    print("Testing mood-based voice...\n")
+    print("Testing hybrid voice...\n")
 
     from mood.mood_engine import set_mood
 
     set_mood("casual")
-    speak("Hey Aariyan, casual mode. What's up?")
-    time.sleep(1)
 
-    set_mood("sarcastic")
-    speak("Oh great, another command. What do you want now?")
-    time.sleep(1)
+    # Short response — should use Mac say (instant)
+    speak("Got it.")
+    time.sleep(0.5)
 
-    set_mood("focused")
-    speak("Focus mode. Ready for your commands.")
-    time.sleep(1)
+    # Longer response — would use ElevenLabs if available
+    speak("Here's your morning briefing. You have 3 unread emails and a meeting at 2 PM.")
+    time.sleep(0.5)
 
-    set_mood("night")
-    speak("It's late. Keep it short.")
+    # Force instant
+    speak_instant("On it.")

@@ -1,9 +1,29 @@
+"""
+Jarvis — Real-Time Voice AI Assistant (Production Pipeline)
+
+Architecture:
+   Wake Word → Whisper STT → Normalize → Fast Intent Engine
+   → Safety Check → Execute + Instant Response
+                          ↓ (background)
+                    Gemini Smart Follow-up
+
+Speed-first: fast local logic for most tasks,
+Gemini only when necessary or in background.
+"""
+
+import os
+import warnings
+os.environ["TORCHCODEC_DISABLE_LOAD"] = "1"
+# Ensure homebrew binaries (ffmpeg, etc.) are in PATH
+os.environ["PATH"] = "/opt/homebrew/bin:" + os.environ.get("PATH", "")
+warnings.filterwarnings("ignore", message=".*torchcodec.*")
+warnings.filterwarnings("ignore", message=".*FFmpeg.*")
+warnings.filterwarnings("ignore", category=UserWarning)
+
 import sys
 from core.voice_response import speak, speak_and_wait
 from core.logger import print_todays_summary
 from core.memory import clear_conversation
-from core.agent import run_agent
-# from core.agent import run_agent, LAST_AGENT_RESULT
 from core.agent import run_agent
 import core.agent as agent_module
 
@@ -128,7 +148,36 @@ ACTIONS = {
     "copy_file":       copy_file,
 }
 
-CORRECTION_WORDS = ["no", "not that", "wrong", "other", "different", "actually"]
+CORRECTION_WORDS = ["no", "not that", "wrong", "other", "different", "actually", "instead"]
+
+# ── Agent triggers for complex multi-step commands ───────────
+AGENT_TRIGGERS = [
+    "find", "search for", "look for", "check if",
+    "and then", "after that", "also open", "then",
+    "summarise", "tell me about", "read and",
+    "open and", "find and", "check my emails and",
+]
+
+
+def _initialize_fast_engine():
+    """
+    Initialize the fast intent engine on startup.
+    Loads the sentence-transformer model and pre-computes embeddings.
+    Also loads learned intents from the database.
+    """
+    print("\n🧠 Initializing fast intent engine...")
+    from core.fast_intent import initialize
+    from core.learned_intents import get_learned_examples, get_stats
+
+    # Load learned examples and inject into intent engine
+    learned = get_learned_examples()
+    initialize(learned)
+
+    stats = get_stats()
+    if stats.get("total", 0) > 0:
+        print(f"📚 Loaded {stats['total']} learned intents ({stats.get('unique_actions', 0)} unique actions)")
+    print("✅ Fast intent engine ready\n")
+
 
 def assistant_loop():
     speak("Yes, I'm listening")
@@ -149,44 +198,37 @@ def assistant_loop():
             print("😴 Jarvis going to sleep...")
             break
 
-        # Route command — returns False if user interrupted
-        # was_interrupted = route(command, ACTIONS)
-        AGENT_TRIGGERS = [
-            "find", "search for", "look for", "check if",
-            "and then", "after that", "also open", "then",
-            "summarise", "tell me about", "read and",
-            "open and", "find and", "check my emails and",
-        ]
-
-        CORRECTION_WORDS = ["no", "not that", "wrong", "other",
-                            "different", "actually", "instead"]
-
-        # if any(w in command.lower() for w in CORRECTION_WORDS) and LAST_AGENT_RESULT:
+        # Correction handling — uses agent with context
         if any(w in command.lower() for w in CORRECTION_WORDS) and agent_module.LAST_AGENT_RESULT:
-            # User correcting previous agent action
             print("🔄 Correction detected — continuing agent with context")
-            context_command = f"{command}. Previous context: {LAST_AGENT_RESULT}"
+            context_command = f"{command}. Previous context: {agent_module.LAST_AGENT_RESULT}"
             run_agent(context_command, ACTIONS)
-            was_interrupted = True
+            continue
 
-        elif any(t in command.lower() for t in AGENT_TRIGGERS):
+        # Complex multi-step commands — use agent
+        if any(t in command.lower() for t in AGENT_TRIGGERS):
             print("🤖 Complex command — using agent")
             run_agent(command, ACTIONS)
-            was_interrupted = True
+            continue
 
-        else:
-            was_interrupted = route(command, ACTIONS)
+        # ── Speed-first pipeline ─────────────────────────────
+        # This is the new pipeline:
+        # normalize → fast intent → safety check → execute
+        was_interrupted = route(command, ACTIONS)
 
-            # If interrupted mid-speech → listen immediately for new command
-            if not was_interrupted:
-                print("✋ Interrupted — listening for new command...")
-                # Loop continues naturally — next iteration calls listen()
+        if not was_interrupted:
+            print("✋ Interrupted — listening for new command...")
+            # Loop continues naturally
 
 
 def main():
     print("=" * 50)
     print("  JARVIS STARTING UP")
     print("=" * 50)
+
+    # Initialize the fast intent engine (loads model + embeddings)
+    _initialize_fast_engine()
+
     print("Say the wake word to activate Jarvis...\n")
 
     while True:

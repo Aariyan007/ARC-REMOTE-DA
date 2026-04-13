@@ -1,6 +1,17 @@
+"""
+Memory System — user profile, conversation history, and context resolution.
+
+Enhanced with:
+- Pronoun/context resolution ("it", "that", "this")
+- Last action tracking for "do that again"
+- High-confidence-only resolution (>0.85), else asks
+"""
+
 import json
 import os
+import re
 from datetime import datetime
+from typing import Optional, Tuple
 
 # ─── File Paths ──────────────────────────────────────────────
 BASE_DIR         = os.path.dirname(os.path.dirname(__file__))
@@ -8,6 +19,15 @@ PROFILE_PATH     = os.path.join(BASE_DIR, "data", "user_profile.json")
 CONVERSATION_PATH= os.path.join(BASE_DIR, "data", "conversation.json")
 MAX_HISTORY      = 20   # keep last 20 exchanges in memory
 # ─────────────────────────────────────────────────────────────
+
+# ─── Context Tracking ───────────────────────────────────────
+# Tracks last action/target for pronoun resolution.
+_last_context = {
+    "action":  None,    # e.g., "open_app"
+    "target":  None,    # e.g., "vscode"
+    "result":  None,    # e.g., "Opened VS Code"
+    "command": None,    # e.g., "open vscode"
+}
 
 
 # ── User Profile ─────────────────────────────────────────────
@@ -68,8 +88,10 @@ def save_exchange(you_said: str, jarvis_said: str) -> None:
 
 def clear_conversation() -> None:
     """Clears conversation history — called when Jarvis goes to sleep."""
+    global _last_context
     with open(CONVERSATION_PATH, "w") as f:
         json.dump([], f)
+    _last_context = {"action": None, "target": None, "result": None, "command": None}
     print("🧹 Conversation history cleared")
 
 
@@ -123,6 +145,97 @@ Your personality:
     return context
 
 
+# ── Context Resolution ────────────────────────────────────────
+
+# Pronouns/references that need resolution
+CONTEXT_PRONOUNS = {"it", "that", "this", "them", "those", "the same"}
+REPLAY_PHRASES   = {"do that again", "do it again", "repeat that", "again", "same thing", "one more time"}
+
+
+def update_context(action: str, target: str = None, result: str = None, command: str = None) -> None:
+    """
+    Updates the last action context. Called after every successful action.
+    """
+    global _last_context
+    _last_context = {
+        "action":  action,
+        "target":  target,
+        "result":  result,
+        "command": command,
+    }
+
+
+def get_last_context() -> dict:
+    """Returns the last action context."""
+    return _last_context.copy()
+
+
+def has_context_reference(text: str) -> bool:
+    """
+    Checks if the command contains pronouns or references
+    that need context resolution (e.g., "close it", "open that").
+    """
+    text_lower = text.lower().strip()
+
+    # Check replay phrases
+    for phrase in REPLAY_PHRASES:
+        if phrase in text_lower:
+            return True
+
+    # Check if command ends/contains pronoun in action context
+    # e.g., "close it", "open that", "delete it"
+    words = text_lower.split()
+    for pronoun in CONTEXT_PRONOUNS:
+        if pronoun in words:
+            return True
+
+    return False
+
+
+def resolve_context(text: str, confidence: float = 1.0) -> Tuple[str, bool]:
+    """
+    Resolves pronouns and context references in the command.
+
+    Args:
+        text:        The normalized command text
+        confidence:  The confidence of the intent match
+
+    Returns:
+        (resolved_text, was_resolved) tuple
+        - resolved_text: Command with pronouns replaced by concrete targets
+        - was_resolved: True if resolution happened
+    """
+    text_lower = text.lower().strip()
+
+    # Need high confidence for context resolution
+    if confidence < 0.85:
+        return text, False
+
+    # No context to resolve against
+    if not _last_context["target"] and not _last_context["action"]:
+        return text, False
+
+    # Check for replay phrases first
+    for phrase in REPLAY_PHRASES:
+        if phrase in text_lower:
+            if _last_context["command"]:
+                print(f"🔄 Replay: '{phrase}' → '{_last_context['command']}'")
+                return _last_context["command"], True
+
+    # Replace pronouns with last target
+    if _last_context["target"]:
+        resolved = text_lower
+        for pronoun in CONTEXT_PRONOUNS:
+            # Only replace if pronoun is a standalone word
+            pattern = r'\b' + re.escape(pronoun) + r'\b'
+            if re.search(pattern, resolved):
+                resolved = re.sub(pattern, _last_context["target"], resolved)
+                print(f"🔗 Context: '{pronoun}' → '{_last_context['target']}' in '{text}' → '{resolved}'")
+                return resolved, True
+
+    return text, False
+
+
 # ─── Quick test ──────────────────────────────────────────────
 if __name__ == "__main__":
     print("Testing memory system...\n")
@@ -139,7 +252,19 @@ if __name__ == "__main__":
     print("\nContext for Gemini:")
     print(get_context_for_gemini())
 
-    print("\nAdding a note...")
-    add_note("Aariyan prefers short responses when working")
+    # Test context resolution
+    print("\n── Context Resolution ──")
+    update_context("open_app", "vscode", "Opened VS Code", "open vscode")
 
-    print("✅ Memory system working!")
+    test_cases = [
+        ("close it", 0.90),
+        ("close it", 0.60),   # Low confidence — should NOT resolve
+        ("do that again", 0.90),
+        ("minimize that", 0.90),
+    ]
+
+    for cmd, conf in test_cases:
+        resolved, was = resolve_context(cmd, conf)
+        print(f"  '{cmd}' (conf={conf}) → '{resolved}' (resolved={was})")
+
+    print("\n✅ Memory system working!")
