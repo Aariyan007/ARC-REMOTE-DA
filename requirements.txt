@@ -12,3 +12,4 @@ webrtcvad
 setuptools
 pvporcupine
 python-dotenv
+sentence-transformers
