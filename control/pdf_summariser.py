@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 # ─── Settings ────────────────────────────────────────────────
 load_dotenv()
 GEMINI_API_KEY = os.getenv("API_KEY")
-MODEL          = "gemini-3-flash-preview"
+MODEL          = "gemini-2.5-flash"
 # ─────────────────────────────────────────────────────────────
 
 client = genai.Client(api_key=GEMINI_API_KEY)

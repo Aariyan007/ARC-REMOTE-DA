@@ -133,7 +133,7 @@ Just return the response text. Nothing else.
 """
 
             response = client.models.generate_content(
-                model="gemini-2.0-flash",
+                model="gemini-2.5-flash",
                 contents=prompt
             )
 

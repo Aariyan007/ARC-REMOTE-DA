@@ -1,1 +1,28 @@
-[]
+[
+  {
+    "normalized_input": "could you open the resume dot txt",
+    "action": "read_file",
+    "params": {
+      "filename": "resume.txt",
+      "location": null
+    },
+    "confidence": 1.0,
+    "source": "gemini",
+    "created": "2026-04-13 19:18:28",
+    "last_matched": "2026-04-13 19:18:28",
+    "match_count": 1
+  },
+  {
+    "normalized_input": "see write i am the greatest hero in the world",
+    "action": "create_file",
+    "params": {
+      "filename": "superman.txt",
+      "location": "desktop"
+    },
+    "confidence": 1.0,
+    "source": "gemini",
+    "created": "2026-04-13 22:46:22",
+    "last_matched": "2026-04-13 22:46:22",
+    "match_count": 1
+  }
+]

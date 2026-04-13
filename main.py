@@ -12,6 +12,7 @@ Gemini only when necessary or in background.
 """
 
 import os
+from google import genai
 import warnings
 os.environ["TORCHCODEC_DISABLE_LOAD"] = "1"
 # Ensure homebrew binaries (ffmpeg, etc.) are in PATH
@@ -26,6 +27,15 @@ from core.logger import print_todays_summary
 from core.memory import clear_conversation
 from core.agent import run_agent
 import core.agent as agent_module
+
+import dotenv
+
+
+dotenv.load_dotenv()
+
+client = genai.Client(api_key=os.getenv("API_KEY"))
+for m in client.models.list():
+    print(m)
 
 try:
     import pkg_resources
@@ -64,7 +74,7 @@ from control.mac.system_controls import (
 
 from control.mac.file_ops import (
     read_file, create_file, delete_file,
-    rename_file, get_recent_files, copy_file
+    rename_file, get_recent_files, copy_file, edit_file
 )
 
 # ── Action map ───────────────────────────────────────────────
@@ -142,6 +152,7 @@ ACTIONS = {
     
     "read_file":       read_file,
     "create_file":     create_file,
+    "edit_file":       edit_file,
     "delete_file":     delete_file,
     "rename_file":     rename_file,
     "get_recent_files": get_recent_files,
@@ -156,6 +167,8 @@ AGENT_TRIGGERS = [
     "and then", "after that", "also open", "then",
     "summarise", "tell me about", "read and",
     "open and", "find and", "check my emails and",
+    "add contents", "add text", "add something",
+    "write in", "write to", "add some",
 ]
 
 

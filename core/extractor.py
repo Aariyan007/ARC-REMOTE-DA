@@ -8,7 +8,7 @@ import dotenv
 # ─── Settings ────────────────────────────────────────────────
 dotenv.load_dotenv()
 GEMINI_API_KEY = os.getenv("API_KEY")
-MODEL          = "gemini-3-flash-preview"
+MODEL          = "gemini-2.5-flash"
 DATA_DIR       = os.path.join(os.path.dirname(__file__), '..', 'data', 'users')
 # ─────────────────────────────────────────────────────────────
 
