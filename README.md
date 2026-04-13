@@ -1,27 +1,26 @@
 <div align="center">
 
 <!-- HEADER BANNER -->
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0a0a0a,50:00d4ff,100:0a0a0a&height=200&section=header&text=F.R.I.E.N.D&fontSize=80&fontColor=00d4ff&fontAlignY=38&desc=Just%20A%20Rather%20Very%20Intelligent%20System&descAlignY=58&descSize=18&descColor=ffffff&animation=twinkling" />
-
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:ff7a00,50:ff9a2f,100:ff7a00&height=200&section=header&text=F.R.I.E.N.D&fontSize=80&fontColor=ffffff&fontAlignY=38&desc=Just%20A%20Rather%20Very%20Intelligent%20System&descAlignY=58&descSize=18&descColor=ffffff&animation=twinkling" />
 <br/>
 
 <!-- BADGES -->
-![Python](https://img.shields.io/badge/Python-3.10+-00d4ff?style=for-the-badge&logo=python&logoColor=white&labelColor=0a0a0a)
-![Gemini](https://img.shields.io/badge/Gemini%201.5%20Flash-LLM%20Brain-8b5cf6?style=for-the-badge&logo=google&logoColor=white&labelColor=0a0a0a)
-![Whisper](https://img.shields.io/badge/Whisper-STT-00d4ff?style=for-the-badge&logo=openai&logoColor=white&labelColor=0a0a0a)
-![Status](https://img.shields.io/badge/Status-Active%20Development-22c55e?style=for-the-badge&labelColor=0a0a0a)
-![Platform](https://img.shields.io/badge/Platform-macOS%20M2-silver?style=for-the-badge&logo=apple&logoColor=white&labelColor=0a0a0a)
+![Python](https://img.shields.io/badge/Python-3.10+-ff7a00?style=for-the-badge&logo=python&logoColor=white&labelColor=1a1a1a)
+![Gemini](https://img.shields.io/badge/Gemini%201.5%20Flash-LLM%20Brain-ff9a2f?style=for-the-badge&logo=google&logoColor=white&labelColor=1a1a1a)
+![Whisper](https://img.shields.io/badge/Whisper-STT-ff7a00?style=for-the-badge&logo=openai&logoColor=white&labelColor=1a1a1a)
+![Status](https://img.shields.io/badge/Status-Active%20Development-22c55e?style=for-the-badge&labelColor=1a1a1a)
+![Platform](https://img.shields.io/badge/Platform-macOS%20M2-silver?style=for-the-badge&logo=apple&logoColor=white&labelColor=1a1a1a)
 
 <br/>
 
 ```
-  ███████╗██████╗ ██╗███████╗███╗   ██╗██████╗ 
-  ██╔════╝██╔══██╗██║██╔════╝████╗  ██║██╔══██╗
-  █████╗  ██████╔╝██║█████╗  ██╔██╗ ██║██║  ██║
-  ██╔══╝  ██╔══██╗██║██╔══╝  ██║╚██╗██║██║  ██║
-  ██║     ██║  ██║██║███████╗██║ ╚████║██████╔╝
-  ╚═╝     ╚═╝  ╚═╝╚═╝╚══════╝╚═╝  ╚═══╝╚═════╝ 
-        PERSONAL AI VOICE ASSISTANT
+   █████╗ ██████╗  ██████╗
+  ██╔══██╗██╔══██╗██╔════╝
+  ███████║██████╔╝██║     
+  ██╔══██║██╔══██╗██║     
+  ██║  ██║██║  ██║╚██████╗
+  ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝
+        A R C   S Y S T E M
 ```
 
 *"Good morning. I've already reviewed your schedule, pre-loaded your system diagnostics, and optimized your workflow. Shall we begin?"*
@@ -292,14 +291,13 @@ THEFriend/
 **Aariyan** — Full Stack Developer · Backend Engineer · AI Builder  
 3rd Year BTech CSE @ MITS (KTU)
 
-[![GitHub](https://img.shields.io/badge/GitHub-Aariyan007-00d4ff?style=for-the-badge&logo=github&logoColor=white&labelColor=0a0a0a)](https://github.com/Aariyan007)
+[![GitHub](https://img.shields.io/badge/GitHub-Aariyan007-ff7a00?style=for-the-badge&logo=github&logoColor=white&labelColor=1a1a1a)](https://github.com/Aariyan007)
 
 ---
 
 <div align="center">
 
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0a0a0a,50:00d4ff,100:0a0a0a&height=100&section=footer" />
-
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:ff7a00,50:ff9a2f,100:ff7a00&height=100&section=footer" />
 *"The thing is, the suit and I are one."*
 
 **⭐ Star this repo if you think AI assistants should be built, not bought.**
