@@ -14,5 +14,9 @@
   },
   "open_gmail": {
     "open email": 1
+  },
+  "create_and_edit_file": {
+    "create a file name superman.txt and also add some contents in it you are doing": 1,
+    "also kind of make a file named as batman.txt and also write contents hi how are you in it": 1
   }
 }

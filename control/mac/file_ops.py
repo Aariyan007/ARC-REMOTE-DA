@@ -41,7 +41,8 @@ def _find_file(name: str, location: str = None) -> str:
             if l and not any(skip in l for skip in [
              "venv", ".git", "/System/", "/Library/",
              "PrivateFrameworks", ".framework", "/usr/",
-             "/private/", "node_modules", ".app/Contents"
+             "/private/", "node_modules", ".app/Contents",
+             ".Trash", "Mobile Documents/com~apple~CloudDocs/.Trash"
          ])]
 
     if lines:

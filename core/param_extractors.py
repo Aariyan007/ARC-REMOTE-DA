@@ -237,7 +237,8 @@ def extract_filename(text: str) -> dict:
                      "please", "here", "there", "first", "second", "last",
                      "one", "up", "ok", "okay", "sure", "yes", "no",
                      "kind", "also", "want", "like", "think",
-                     "create", "make", "delete", "read", "open", "copy", "write", "add"}
+                     "create", "make", "delete", "read", "open", "copy", "write", "add",
+                     "and", "then", "with", "for", "so", "to"}
             if candidate not in noise and candidate not in FORMAT_KEYWORDS:
                 # Apply detected format extension, fallback to .txt
                 if detected_ext and "." not in candidate:
