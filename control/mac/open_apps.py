@@ -1,4 +1,5 @@
 import subprocess
+from core.voice_response import speak
 
 def open_vscode():
     subprocess.Popen(["open", "-a", "Visual Studio Code"])
@@ -28,7 +29,6 @@ def open_any_app(app_name: str) -> None:
         )
     if result.returncode != 0:
         print(f"❌ Couldn't find app: {app_name}")
-        from core.voice_response import speak
         speak(f"Couldn't find {app_name} on your Mac.")
     else:
         print(f"✅ Opened: {app_name}")

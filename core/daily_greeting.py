@@ -21,7 +21,7 @@ from core.voice_response import speak
 # ─── Settings ────────────────────────────────────────────────
 BASE_DIR         = os.path.dirname(os.path.dirname(__file__))
 GREETING_PATH    = os.path.join(BASE_DIR, "data", "last_greeting.json")
-DEFAULT_LOCATION = "Kochi"
+DEFAULT_LOCATION = "Thrissur"
 NEWS_COUNT       = 3        # how many headlines to read
 # ─────────────────────────────────────────────────────────────
 

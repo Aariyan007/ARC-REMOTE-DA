@@ -1,11 +1,18 @@
 {
   "open_app": {
-    "open vscode": 2
+    "open vscode": 2,
+    "open command prompt": 1,
+    "open terminal": 1,
+    "open command prompt or terminal": 1,
+    "open floating terminal or window something anything": 1
   },
   "create_file": {
     "create a file named at superman.txt i also want you to add some contents in it": 1
   },
   "edit_file": {
     "write something in superman.txt i tell you": 1
+  },
+  "open_gmail": {
+    "open email": 1
   }
 }

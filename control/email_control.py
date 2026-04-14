@@ -7,6 +7,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from core.voice_response import speak
+from core.speech_to_text import listen, listen_long
 import re
 
 # ─── Settings ────────────────────────────────────────────────
@@ -148,22 +149,65 @@ def search_emails(query: str) -> None:
 
 
 def send_email(to: str = "", subject: str = "", body: str = "") -> None:
-    """Opens Gmail compose window pre-filled."""
-    speak("Opening Gmail to compose an email.")
-    params = urllib.parse.urlencode({
-        "to":      to,
-        "subject": subject,
-        "body":    body
-    })
-    url = f"https://mail.google.com/mail/?view=cm&{params}"
-    subprocess.Popen(["open", url])
-    speak("Review and send when ready.")
+    """Opens Gmail compose window pre-filled via a multi-step conversation."""
+    import webbrowser
+
+    # Step 1: Who to send to
+    if not to:
+        speak("Who do you want to send it to?")
+        to = listen()
+        if not to:
+            speak("I didn't hear a name. Trying one more time, who to?")
+            to = listen()
+            if not to:
+                speak("Still didn't catch that. Cancelling email.")
+                return
+
+    # Step 2: Subject
+    if not subject:
+        speak("What is the subject?")
+        subject = listen()
+        if not subject:
+            speak("I need a subject to continue. What's the subject?")
+            subject = listen()
+            if not subject:
+                speak("No subject provided. Cancelling email.")
+                return
+
+    # Step 3: Body (using listen_long)
+    if not body:
+        speak("What should the email say?")
+        body = listen_long(max_seconds=30, silence_seconds=2.5)
+        if not body:
+            speak("I didn't hear the message. Let's try once more, what should I say?")
+            body = listen_long(max_seconds=20)
+            if not body:
+                speak("No message provided. Cancelling email.")
+                return
+
+    # Step 4: Confirmation
+    speak(f"Ready to send to {to} about {subject}. Do you want to send it?")
+    confirmation = listen()
+    
+    if confirmation and any(word in confirmation.lower() for word in ["yes", "yeah", "yep", "sure", "do it", "send"]):
+        speak("Opening Gmail to compose.")
+        params = urllib.parse.urlencode({
+            "to":      to,
+            "subject": subject,
+            "body":    body
+        })
+        url = f"https://mail.google.com/mail/?view=cm&{params}"
+        webbrowser.open(url)
+        speak("Review and send when ready.")
+    else:
+        speak("Alright, cancelled.")
 
 
 def open_gmail() -> None:
     """Opens Gmail in Safari."""
     speak("Opening Gmail.")
-    subprocess.Popen(["open", "https://mail.google.com"])
+    import webbrowser
+    webbrowser.open("https://mail.google.com")
 
 
 # ─── Quick test ──────────────────────────────────────────────

@@ -1,55 +1,5 @@
 [
   {
-    "timestamp": "2026-04-14 12:05:10",
-    "you": "i wanted to add in",
-    "jarvis": "Adding your masterpiece."
-  },
-  {
-    "timestamp": "2026-04-14 12:05:25",
-    "you": "no no no i want you to add in the first file i told you right the first file which i told you to create",
-    "jarvis": "File incoming."
-  },
-  {
-    "timestamp": "2026-04-14 12:22:37",
-    "you": "i want you to create a file named superman it's a text file",
-    "jarvis": "Another file? Sure thing."
-  },
-  {
-    "timestamp": "2026-04-14 12:22:59",
-    "you": "also i would like to add some contents in that particular file that you just created now",
-    "jarvis": "File incoming."
-  },
-  {
-    "timestamp": "2026-04-14 12:23:17",
-    "you": "no i want you to add contents in that file too",
-    "jarvis": "Another file? Sure thing."
-  },
-  {
-    "timestamp": "2026-04-14 12:23:34",
-    "you": "i wanted to write inside that file",
-    "jarvis": "Another file? Sure thing."
-  },
-  {
-    "timestamp": "2026-04-14 17:10:16",
-    "you": "create a file i want you to create a file named superman and i also want to add some contents in it i want you to create a file",
-    "jarvis": "Another file? Sure thing."
-  },
-  {
-    "timestamp": "2026-04-14 17:12:53",
-    "you": "i want you to kind of create a file name hyperman dot txt",
-    "jarvis": "File incoming."
-  },
-  {
-    "timestamp": "2026-04-14 17:13:11",
-    "you": "i also want you to add some contents in it",
-    "jarvis": "Scribbling away."
-  },
-  {
-    "timestamp": "2026-04-14 17:13:35",
-    "you": "do to add text to not this text i will tell you what text to add",
-    "jarvis": "Adding your masterpiece."
-  },
-  {
     "timestamp": "2026-04-14 17:32:48",
     "you": "so i want you to create a file named superman dot txt and i also want you to add some contents in it",
     "jarvis": "Created superman.txt and wrote content"
@@ -98,5 +48,55 @@
     "timestamp": "2026-04-14 18:04:38",
     "you": "i also want you to delete that file",
     "jarvis": "Gone. Well, it's in trash."
+  },
+  {
+    "timestamp": "2026-04-15 00:17:25",
+    "you": "open email",
+    "jarvis": "Gmail, your second home. Opening."
+  },
+  {
+    "timestamp": "2026-04-15 00:22:36",
+    "you": "open command prompt",
+    "jarvis": "Opening, again."
+  },
+  {
+    "timestamp": "2026-04-15 00:24:30",
+    "you": "open terminal",
+    "jarvis": "Your wish is my command."
+  },
+  {
+    "timestamp": "2026-04-15 00:26:44",
+    "you": "open command prompt or terminal",
+    "jarvis": "Oh, this one. Sure."
+  },
+  {
+    "timestamp": "2026-04-15 00:49:34",
+    "you": "you send email",
+    "jarvis": "Another email? Composing."
+  },
+  {
+    "timestamp": "2026-04-15 00:50:19",
+    "you": "send an email to jidinprtripletetiz email.com",
+    "jarvis": "Email duty. Composing."
+  },
+  {
+    "timestamp": "2026-04-15 00:58:40",
+    "you": "tell me a joke",
+    "jarvis": ""
+  },
+  {
+    "timestamp": "2026-04-15 01:00:38",
+    "you": "open floating terminal or window something anything",
+    "jarvis": "Opening, again."
+  },
+  {
+    "timestamp": "2026-04-15 01:02:28",
+    "you": "what the hell is up",
+    "jarvis": ""
+  },
+  {
+    "timestamp": "2026-04-15 01:25:46",
+    "you": "send an email",
+    "jarvis": "Another email? Composing."
   }
 ]

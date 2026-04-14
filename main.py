@@ -12,11 +12,58 @@ Gemini only when necessary or in background.
 """
 
 import os
+import sys
+
+# ── Fix speechbrain lazy module crashes ──────────────────────
+# speechbrain 1.x uses lazy module loading. When Python's inspect module
+# (used by torch) calls hasattr(module, '__file__') or getfile(module),
+# it triggers the lazy loader which fails for missing optional deps (k2).
+# Even for successfully loaded modules, __file__ might be None causing
+# TypeError in inspect.getfile(). Fix both issues at the source.
+try:
+    import speechbrain.utils.importutils as _sb_importutils
+    _OrigLazyModule = _sb_importutils.LazyModule
+
+    _orig_ensure = _OrigLazyModule.ensure_module
+    def _safe_ensure(self, *args, **kwargs):
+        try:
+            return _orig_ensure(self, *args, **kwargs)
+        except (ImportError, Exception):
+            import types
+            target_name = getattr(self, 'target', 'unknown')
+            dummy = types.ModuleType(target_name)
+            dummy.__file__ = target_name.replace('.', '/') + '.py'
+            dummy.__path__ = []
+            dummy.__package__ = target_name
+            self.lazy_module = dummy
+            return dummy
+    _OrigLazyModule.ensure_module = _safe_ensure
+
+    _orig_getattr = _OrigLazyModule.__getattr__
+    def _safe_getattr(self, attr):
+        if attr == '__file__':
+            try:
+                mod = self.ensure_module(1)
+                f = getattr(mod, '__file__', None)
+                if f is not None:
+                    return f
+            except Exception:
+                pass
+            target = getattr(self, 'target', 'unknown')
+            return target.replace('.', '/') + '.py'
+        return _orig_getattr(self, attr)
+    _OrigLazyModule.__getattr__ = _safe_getattr
+except Exception:
+    pass
+# ─────────────────────────────────────────────────────────────
+
 from google import genai
 import warnings
 os.environ["TORCHCODEC_DISABLE_LOAD"] = "1"
-# Ensure homebrew binaries (ffmpeg, etc.) are in PATH
-os.environ["PATH"] = "/opt/homebrew/bin:" + os.environ.get("PATH", "")
+# Ensure homebrew binaries (ffmpeg, etc.) are in PATH (Mac only)
+import sys as _sys
+if _sys.platform == "darwin":
+    os.environ["PATH"] = "/opt/homebrew/bin:" + os.environ.get("PATH", "")
 warnings.filterwarnings("ignore", message=".*torchcodec.*")
 warnings.filterwarnings("ignore", message=".*FFmpeg.*")
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -51,28 +98,23 @@ from core.listener import start_listener
 from core.speech_to_text import listen
 from core.intent_router import route
 
-# ── Control modules ──────────────────────────────────────────
-from control.mac.open_apps import open_vscode, open_safari, open_terminal
-from control.web_search import search_google
-from control.time_utils import tell_time, tell_date
-from control.mac.system_actions import lock_screen, shutdown_pc, restart_pc, sleep_mac
-from control.mac.briefing import morning_briefing
-from control.mac.weather import tell_weather
-from control.mac.folder_control import open_folder, create_folder, search_file
-from control.email_control import read_emails, search_emails, send_email, open_gmail
-from control.pdf_summariser import summarise_latest_pdf
-from control.mac.system_controls import (
+# ── Control modules (platform-aware via control/__init__.py) ─
+from control import (
+    open_vscode, open_safari, open_terminal, open_any_app,
+    search_google, tell_time, tell_date,
+    lock_screen, shutdown_pc, restart_pc, sleep_mac,
+    morning_briefing, tell_weather,
+    open_folder, create_folder, search_file,
+    read_emails, search_emails, send_email, open_gmail,
+    summarise_latest_pdf,
     volume_up, volume_down, mute, unmute, get_volume,
     brightness_up, brightness_down, take_screenshot,
     minimise_all, minimise_app, show_desktop, close_window,
     get_battery, start_work_day, end_work_day,
     close_app, switch_to_app, fullscreen, mission_control,
-    close_tab, new_tab
-)
-
-from control.mac.file_ops import (
+    close_tab, new_tab,
     read_file, create_file, delete_file,
-    rename_file, get_recent_files, copy_file, edit_file
+    rename_file, get_recent_files, copy_file, edit_file,
 )
 
 # ── Action map ───────────────────────────────────────────────

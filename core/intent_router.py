@@ -29,6 +29,7 @@ from core.memory import (
 )
 from core.logger import log_interaction
 from core.voice_response import speak, speak_instant
+from core.speech_to_text import listen as stt_listen
 from core.llm_brain import ask_gemini
 from mood.mood_engine import get_current_mood
 from core.reinforcement import track_action, boost_confidence, get_penalty, get_boost
@@ -158,7 +159,7 @@ def _execute_action(action: str, params: dict, actions: dict) -> str:
                 actions[func_name]()
                 return f"Opened {target}"
             else:
-                from control.mac.open_apps import open_any_app
+                from control import open_any_app
                 open_any_app(target)
                 return f"Opened {target}"
 
@@ -261,8 +262,7 @@ def _execute_action(action: str, params: dict, actions: dict) -> str:
                     print(f"📄 Auto-detected format: {detected_fmt}")
                 else:
                     # Ask the user what format they want
-                    from core.voice_response import speak
-                    from core.speech_to_text import listen as stt_listen
+
                     speak(f"What format should {filename} be? Like text, document, python, or something else?")
                     fmt_response = stt_listen()
                     if fmt_response:
@@ -291,8 +291,7 @@ def _execute_action(action: str, params: dict, actions: dict) -> str:
                 return f"Appended text to {filename}"
             elif filename and not content:
                 # Ask for content and actually LISTEN for the answer
-                from core.voice_response import speak
-                from core.speech_to_text import listen as stt_listen
+
                 speak("What do you want me to write in that file?")
                 content_response = stt_listen()
                 if content_response and content_response.strip():
@@ -350,8 +349,7 @@ def _execute_action(action: str, params: dict, actions: dict) -> str:
                     update_file_context(filename, action="edit_file")
                     return f"Created {filename} and wrote content"
                 elif not content:
-                    from core.voice_response import speak
-                    from core.speech_to_text import listen as stt_listen
+
                     speak("What do you want me to write in it?")
                     content_response = stt_listen()
                     if content_response and content_response.strip():

@@ -141,6 +141,91 @@ def listen() -> str:
     return text
 
 
+def listen_long(max_seconds: int = 30, silence_seconds: float = 2.5) -> str:
+    """
+    Extended listen — for longer voice input like email body.
+    Uses a longer silence threshold and recording limit to avoid
+    cutting the user off mid-sentence.
+    """
+    audio_interface = pyaudio.PyAudio()
+
+    stream = audio_interface.open(
+        format=pyaudio.paInt16,
+        channels=1,
+        rate=SAMPLE_RATE,
+        input=True,
+        frames_per_buffer=CHUNK_SIZE
+    )
+
+    silence_threshold = calibrate_silence(stream)
+
+    print("\n🎙️  Listening (extended)...")
+
+    frames = []
+    silent_chunks = 0
+    has_speech = False
+
+    chunks_per_second = SAMPLE_RATE / CHUNK_SIZE
+    max_silent_chunks = int(chunks_per_second * silence_seconds)
+    max_total_chunks = int(chunks_per_second * max_seconds)
+
+    for _ in range(max_total_chunks):
+        raw = stream.read(CHUNK_SIZE, exception_on_overflow=False)
+
+        # ── Ignore audio while Jarvis is speaking ────────────
+        if voice_response.is_speaking:
+            continue
+        # ─────────────────────────────────────────────────────
+
+        chunk = np.frombuffer(raw, dtype=np.int16)
+        frames.append(raw)
+
+        if is_silent(chunk, silence_threshold):
+            silent_chunks += 1
+            if has_speech and silent_chunks >= max_silent_chunks:
+                print("✅ Done listening (extended)")
+                break
+        else:
+            has_speech = True
+            silent_chunks = 0
+
+    # Clean up mic
+    stream.stop_stream()
+    stream.close()
+    audio_interface.terminate()
+
+    if not has_speech:
+        print("⚠️  No speech detected (extended)")
+        return ""
+
+    # Save to temp file for Whisper
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+        tmp_path = tmp.name
+        with wave.open(tmp_path, "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(audio_interface.get_sample_size(pyaudio.paInt16))
+            wf.setframerate(SAMPLE_RATE)
+            wf.writeframes(b"".join(frames))
+
+    # Transcribe
+    print("🧠 Transcribing (extended)...")
+    result = model.transcribe(
+        tmp_path,
+        language="en",
+        fp16=False,
+        initial_prompt=WHISPER_PROMPT
+    )
+    text = result["text"].strip().lower()
+
+    for wrong, right in CORRECTIONS.items():
+        text = text.replace(wrong, right)
+
+    os.remove(tmp_path)
+
+    print(f"📝 You said (extended): '{text}'")
+    return text
+
+
 # ─── Quick test ─────────────────────────────────────────────
 if __name__ == "__main__":
     while True:
