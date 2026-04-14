@@ -160,13 +160,22 @@ ACTIONS = {
 # Correction handling now uses reinforcement learning
 from core.reinforcement import is_correction, handle_correction, track_action
 
-# ── Agent triggers for complex multi-step commands ───────────
+# ── Multi-Agent System ───────────────────────────────────────
+from core.agents.filesystem_agent import FileSystemAgent
+from core.agents.system_agent import SystemControlAgent
+from core.agents.manager_agent import ManagerAgent
+
+# Triggers that indicate multi-step / complex commands → ManagerAgent
 AGENT_TRIGGERS = [
     "search for", "look for", "check if",
-    "after that", "also open",
+    "after that", "also open", "and then",
     "summarise", "tell me about", "read and",
     "open and", "find and", "check my emails and",
+    "research", "send my", "email my",
 ]
+
+# ── Agent instances (initialized in main) ────────────────────
+_manager_agent = None
 
 
 def _initialize_fast_engine():
@@ -187,6 +196,35 @@ def _initialize_fast_engine():
     if stats.get("total", 0) > 0:
         print(f"📚 Loaded {stats['total']} learned intents ({stats.get('unique_actions', 0)} unique actions)")
     print("✅ Fast intent engine ready\n")
+
+
+def _initialize_agents():
+    """
+    Initialize the multi-agent system.
+    Creates specialized agents and the ManagerAgent orchestrator.
+    """
+    global _manager_agent
+
+    print("🤖 Initializing multi-agent system...")
+
+    # Create specialized agents with access to their relevant actions
+    fs_agent  = FileSystemAgent(actions_map=ACTIONS)
+    sys_agent = SystemControlAgent(actions_map=ACTIONS)
+
+    # Create the ManagerAgent (orchestrator)
+    _manager_agent = ManagerAgent(
+        agents={
+            "filesystem": fs_agent,
+            "system":     sys_agent,
+        },
+        actions=ACTIONS,
+    )
+
+    agents = _manager_agent.list_agents()
+    print(f"✅ Agents ready: {', '.join(agents)}")
+    for name in agents:
+        agent = _manager_agent.get_agent(name)
+        print(f"   📦 {name}: {len(agent.capabilities)} actions")
 
 
 def assistant_loop():
@@ -221,10 +259,14 @@ def assistant_loop():
             print(f"📚 Correction result: {result}")
             continue
 
-        # Complex multi-step commands — use agent
+        # Complex multi-step commands — use ManagerAgent
         if any(t in command.lower() for t in AGENT_TRIGGERS):
-            print("🤖 Complex command — using agent")
-            run_agent(command, ACTIONS)
+            print("🤖 Complex command — routing to ManagerAgent")
+            if _manager_agent:
+                _manager_agent.run(command)
+            else:
+                # Fallback to old agent if ManagerAgent not initialized
+                run_agent(command, ACTIONS)
             continue
 
         # ── Speed-first pipeline ─────────────────────────────
@@ -244,7 +286,10 @@ def main():
     # Initialize the fast intent engine (loads model + embeddings)
     _initialize_fast_engine()
 
-    print("Say the wake word to activate Jarvis...\n")
+    # Initialize the multi-agent system
+    _initialize_agents()
+
+    print("\nSay the wake word to activate Jarvis...\n")
 
     while True:
         activated = start_listener()
