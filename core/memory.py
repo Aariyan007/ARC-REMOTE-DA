@@ -29,6 +29,11 @@ _last_context = {
     "command": None,    # e.g., "open vscode"
 }
 
+# ─── File Action History ────────────────────────────────────
+# Tracks recent file operations so "that file" / "the file" resolves.
+_file_history = []      # List of {filename, path, action, timestamp}
+MAX_FILE_HISTORY = 10
+
 
 # ── User Profile ─────────────────────────────────────────────
 
@@ -88,10 +93,11 @@ def save_exchange(you_said: str, jarvis_said: str) -> None:
 
 def clear_conversation() -> None:
     """Clears conversation history — called when Jarvis goes to sleep."""
-    global _last_context
+    global _last_context, _file_history
     with open(CONVERSATION_PATH, "w") as f:
         json.dump([], f)
     _last_context = {"action": None, "target": None, "result": None, "command": None}
+    _file_history = []
     print("🧹 Conversation history cleared")
 
 
@@ -145,11 +151,47 @@ Your personality:
     return context
 
 
+# ── File Context API ──────────────────────────────────────────
+
+def update_file_context(filename: str, path: str = None, action: str = None) -> None:
+    """
+    Called after every file operation. Remembers recent files so
+    'that file', 'the file', 'it' resolve correctly.
+    """
+    global _file_history
+    entry = {
+        "filename": filename,
+        "path":     path,
+        "action":   action,
+        "timestamp": datetime.now().isoformat(),
+    }
+    _file_history.insert(0, entry)
+    if len(_file_history) > MAX_FILE_HISTORY:
+        _file_history.pop()
+
+
+def get_last_file() -> dict:
+    """Returns the most recently touched file, or empty dict."""
+    return _file_history[0] if _file_history else {}
+
+
+def get_file_history() -> list:
+    """Returns full file history for 'what files did I work on' queries."""
+    return list(_file_history)
+
+
 # ── Context Resolution ────────────────────────────────────────
 
 # Pronouns/references that need resolution
 CONTEXT_PRONOUNS = {"it", "that", "this", "them", "those", "the same"}
 REPLAY_PHRASES   = {"do that again", "do it again", "repeat that", "again", "same thing", "one more time"}
+
+# File-specific context phrases — resolved to last file in cache
+FILE_CONTEXT_PHRASES = [
+    "that file", "the file", "this file", "the particular file",
+    "that particular file", "that document", "the document",
+    "this document", "that note", "the note",
+]
 
 
 def update_context(action: str, target: str = None, result: str = None, command: str = None) -> None:
@@ -173,12 +215,18 @@ def get_last_context() -> dict:
 def has_context_reference(text: str) -> bool:
     """
     Checks if the command contains pronouns or references
-    that need context resolution (e.g., "close it", "open that").
+    that need context resolution (e.g., "close it", "open that",
+    "write to that file").
     """
     text_lower = text.lower().strip()
 
     # Check replay phrases
     for phrase in REPLAY_PHRASES:
+        if phrase in text_lower:
+            return True
+
+    # Check file-specific context phrases ("that file", "the file", etc.)
+    for phrase in FILE_CONTEXT_PHRASES:
         if phrase in text_lower:
             return True
 
@@ -207,20 +255,33 @@ def resolve_context(text: str, confidence: float = 1.0) -> Tuple[str, bool]:
     """
     text_lower = text.lower().strip()
 
-    # Need high confidence for context resolution
-    if confidence < 0.85:
+    # Need medium+ confidence for context resolution (relaxed from 0.85)
+    if confidence < 0.55:
         return text, False
 
+    # Check for replay phrases first — need last context
+    if _last_context["action"] or _last_context["target"]:
+        for phrase in REPLAY_PHRASES:
+            if phrase in text_lower:
+                if _last_context["command"]:
+                    print(f"🔄 Replay: '{phrase}' → '{_last_context['command']}'")
+                    return _last_context["command"], True
+
+    # ── File-specific context resolution ─────────────────────
+    # "that file" / "the file" / "the particular file" → last file from cache
+    last_file = get_last_file()
+    if last_file:
+        for phrase in FILE_CONTEXT_PHRASES:
+            if phrase in text_lower:
+                fname = last_file["filename"]
+                resolved = text_lower.replace(phrase, fname)
+                print(f"📎 File context: '{phrase}' → '{fname}' in '{text}' → '{resolved}'")
+                return resolved, True
+
+    # ── General pronoun resolution ───────────────────────────
     # No context to resolve against
     if not _last_context["target"] and not _last_context["action"]:
         return text, False
-
-    # Check for replay phrases first
-    for phrase in REPLAY_PHRASES:
-        if phrase in text_lower:
-            if _last_context["command"]:
-                print(f"🔄 Replay: '{phrase}' → '{_last_context['command']}'")
-                return _last_context["command"], True
 
     # Replace pronouns with last target
     if _last_context["target"]:

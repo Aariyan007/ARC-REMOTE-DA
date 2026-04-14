@@ -175,12 +175,13 @@ RESPONSE_POOL = {
     },
 
     # ── File Operations ──────────────────────────────────────
-    "read_file":       {"casual": ["Reading it.", "Let me read that."], "focused": ["Reading."], "sarcastic": ["Reading, one sec."], "night": ["Reading."]},
-    "create_file":     {"casual": ["Creating it.", "File coming up."], "focused": ["Creating."], "sarcastic": ["Another file? Creating."], "night": ["Creating."]},
-    "delete_file":     {"casual": ["Deleting.", "Moving to trash."], "focused": ["Deleting."], "sarcastic": ["Gone forever. Just kidding, it's in trash."], "night": ["Deleted."]},
-    "rename_file":     {"casual": ["Renaming.", "Done."], "focused": ["Renamed."], "sarcastic": ["New name, who dis?"], "night": ["Renamed."]},
-    "copy_file":       {"casual": ["Copying.", "Done."], "focused": ["Copied."], "sarcastic": ["Copy that. Literally."], "night": ["Copied."]},
-    "get_recent_files": {"casual": ["Checking recent files.", "Let me see."], "focused": ["Checking."], "sarcastic": ["What have you been up to? Checking."], "night": ["Checking."]},
+    "read_file":       {"casual": ["Reading it.", "Let me check that.", "One sec."], "focused": ["Reading."], "sarcastic": ["Let's see what's in there.", "Reading, one sec."], "night": ["Reading."]},
+    "create_file":     {"casual": ["Making it.", "On it.", "Creating."], "focused": ["Creating."], "sarcastic": ["Another file? Sure thing.", "File incoming."], "night": ["Creating."]},
+    "edit_file":       {"casual": ["Writing.", "Adding that.", "On it."], "focused": ["Writing."], "sarcastic": ["Scribbling away.", "Adding your masterpiece."], "night": ["Writing."]},
+    "delete_file":     {"casual": ["Moving to trash.", "Trashing it."], "focused": ["Deleting."], "sarcastic": ["Gone. Well, it's in trash.", "Bye bye."], "night": ["Deleted."]},
+    "rename_file":     {"casual": ["Renaming.", "Done.", "New name, got it."], "focused": ["Renamed."], "sarcastic": ["Name change approved.", "New identity, who dis?"], "night": ["Renamed."]},
+    "copy_file":       {"casual": ["Copying.", "Done.", "Got it."], "focused": ["Copied."], "sarcastic": ["Copy that. Literally."], "night": ["Copied."]},
+    "get_recent_files": {"casual": ["Checking.", "Let me see.", "Pulling up recent stuff."], "focused": ["Checking."], "sarcastic": ["Let's see what you've been up to.", "Checking."], "night": ["Checking."]},
 
     # ── PDF ───────────────────────────────────────────────────
     "summarise_pdf":   {"casual": ["Reading the PDF.", "Summarizing."], "focused": ["Reading PDF."], "sarcastic": ["PDF time. Summarizing."], "night": ["Reading."]},
@@ -189,6 +190,20 @@ RESPONSE_POOL = {
     "shutdown_pc":     {"casual": ["Shutting down.", "Goodbye."], "focused": ["Shutting down."], "sarcastic": ["Shutting down. See you on the other side."], "night": ["Shutting down. Night."]},
     "restart_pc":      {"casual": ["Restarting.", "Be right back."], "focused": ["Restarting."], "sarcastic": ["Restarting. Don't go anywhere."], "night": ["Restarting."]},
     "sleep_mac":       {"casual": ["Going to sleep.", "Nap time."], "focused": ["Sleeping."], "sarcastic": ["Sleepy time.", "Napping."], "night": ["Sleeping. Night."]},
+
+    # ── Conversational ──────────────────────────────────────
+    "answer_question": {
+        "casual":    ["Let me think.", "Good question.", "Hmm, let me check.", "One sec."],
+        "focused":   ["Checking.", "Let me look."],
+        "sarcastic": ["Oh, a quiz? Let me think.", "You really wanna know? Checking."],
+        "night":     ["Let me check.", "Thinking."],
+    },
+    "general_chat": {
+        "casual":    ["", "", "", ""],  # empty — Gemini response IS the response
+        "focused":   [""],
+        "sarcastic": [""],
+        "night":     [""],
+    },
 
     # ── Generic fallback ─────────────────────────────────────
     "_fallback": {

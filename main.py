@@ -34,8 +34,6 @@ import dotenv
 dotenv.load_dotenv()
 
 client = genai.Client(api_key=os.getenv("API_KEY"))
-for m in client.models.list():
-    print(m)
 
 try:
     import pkg_resources
@@ -159,16 +157,15 @@ ACTIONS = {
     "copy_file":       copy_file,
 }
 
-CORRECTION_WORDS = ["no", "not that", "wrong", "other", "different", "actually", "instead"]
+# Correction handling now uses reinforcement learning
+from core.reinforcement import is_correction, handle_correction, track_action
 
 # ── Agent triggers for complex multi-step commands ───────────
 AGENT_TRIGGERS = [
-    "find", "search for", "look for", "check if",
-    "and then", "after that", "also open", "then",
+    "search for", "look for", "check if",
+    "after that", "also open",
     "summarise", "tell me about", "read and",
     "open and", "find and", "check my emails and",
-    "add contents", "add text", "add something",
-    "write in", "write to", "add some",
 ]
 
 
@@ -193,7 +190,13 @@ def _initialize_fast_engine():
 
 
 def assistant_loop():
-    speak("Yes, I'm listening")
+    # ── Daily greeting (once per day) ────────────────────────
+    from core.daily_greeting import should_greet, daily_greeting
+    if should_greet():
+        daily_greeting()
+    else:
+        speak("Yes, I'm listening")
+
     print("\n✅ Jarvis activated — listening for your command...")
 
     while True:
@@ -211,11 +214,11 @@ def assistant_loop():
             print("😴 Jarvis going to sleep...")
             break
 
-        # Correction handling — uses agent with context
-        if any(w in command.lower() for w in CORRECTION_WORDS) and agent_module.LAST_AGENT_RESULT:
-            print("🔄 Correction detected — continuing agent with context")
-            context_command = f"{command}. Previous context: {agent_module.LAST_AGENT_RESULT}"
-            run_agent(context_command, ACTIONS)
+        # ── Correction handling (reinforcement learning) ─────
+        if is_correction(command):
+            print("🔄 Correction detected — learning from mistake")
+            result = handle_correction(command, ACTIONS)
+            print(f"📚 Correction result: {result}")
             continue
 
         # Complex multi-step commands — use agent
@@ -225,7 +228,6 @@ def assistant_loop():
             continue
 
         # ── Speed-first pipeline ─────────────────────────────
-        # This is the new pipeline:
         # normalize → fast intent → safety check → execute
         was_interrupted = route(command, ACTIONS)
 

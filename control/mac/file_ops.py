@@ -37,7 +37,12 @@ def _find_file(name: str, location: str = None) -> str:
         capture_output=True, text=True, timeout=10
     )
     lines = [l for l in result.stdout.strip().split("\n")
-             if l and "venv" not in l and ".git" not in l]
+            #  if l and "venv" not in l and ".git" not in l]
+            if l and not any(skip in l for skip in [
+             "venv", ".git", "/System/", "/Library/",
+             "PrivateFrameworks", ".framework", "/usr/",
+             "/private/", "node_modules", ".app/Contents"
+         ])]
 
     if lines:
         return lines[0]   # return first match
@@ -82,7 +87,8 @@ def read_file(name: str, location: str = None) -> None:
 def create_file(name: str, location: str = "desktop") -> None:
     """
     Creates a new file at the given location and opens it.
-    Example: create_file("ideas.txt") or create_file("test.py", "projects")
+    Supports multiple formats: .txt, .docx, .pdf, .md, .py, .html, .rtf, .pages, etc.
+    Example: create_file("ideas.txt") or create_file("resume.docx", "desktop")
     """
     if location is None:
         location = "desktop"
@@ -99,13 +105,119 @@ def create_file(name: str, location: str = "desktop") -> None:
         subprocess.Popen(["open", path])
         return
 
-    # Create the file
-    with open(path, "w") as f:
-        f.write("")
+    ext = os.path.splitext(name)[1].lower()
+
+    # Create file based on extension
+    if ext == ".docx":
+        _create_docx(path)
+    elif ext == ".rtf":
+        _create_rtf(path)
+    elif ext == ".html":
+        _create_html(path, name)
+    elif ext == ".md":
+        with open(path, "w") as f:
+            f.write(f"# {os.path.splitext(name)[0]}\n\n")
+    elif ext == ".py":
+        with open(path, "w") as f:
+            f.write(f'# {os.path.splitext(name)[0]}\n\n')
+    elif ext == ".json":
+        with open(path, "w") as f:
+            f.write("{}\n")
+    elif ext == ".csv":
+        with open(path, "w") as f:
+            f.write("")
+    elif ext == ".pages":
+        # Create via AppleScript — opens Pages with a new doc
+        _create_pages_doc(path, name)
+        return
+    elif ext == ".key":
+        # Create via AppleScript — opens Keynote
+        _create_keynote_doc(path, name)
+        return
+    elif ext == ".numbers":
+        # Create via AppleScript — opens Numbers
+        _create_numbers_doc(path, name)
+        return
+    else:
+        # Default: create as plain text
+        with open(path, "w") as f:
+            f.write("")
 
     speak(f"Created {name} on your {location}. Opening it now.")
     print(f"📄 Created: {path}")
     subprocess.Popen(["open", path])
+
+
+def _create_docx(path: str) -> None:
+    """Creates a .docx file using python-docx or fallback."""
+    try:
+        from docx import Document
+        doc = Document()
+        doc.save(path)
+    except ImportError:
+        # Fallback: create via AppleScript + TextEdit
+        # TextEdit can save as .docx
+        with open(path, "w") as f:
+            f.write("")
+        print("⚠️  python-docx not installed, created empty file")
+
+
+def _create_rtf(path: str) -> None:
+    """Creates a minimal RTF file."""
+    with open(path, "w") as f:
+        f.write(r"{\rtf1\ansi\deff0 }")
+
+
+def _create_html(path: str, name: str) -> None:
+    """Creates a minimal HTML file."""
+    title = os.path.splitext(name)[0]
+    with open(path, "w") as f:
+        f.write(f"""<!DOCTYPE html>
+<html>
+<head><title>{title}</title></head>
+<body>
+</body>
+</html>
+""")
+
+
+def _create_pages_doc(path: str, name: str) -> None:
+    """Creates a Pages document via AppleScript."""
+    script = f'''
+    tell application "Pages"
+        activate
+        set newDoc to make new document
+    end tell
+    '''
+    subprocess.run(["osascript", "-e", script])
+    speak(f"Opened a new Pages document.")
+    print(f"📄 Created Pages doc: {name}")
+
+
+def _create_keynote_doc(path: str, name: str) -> None:
+    """Creates a Keynote presentation via AppleScript."""
+    script = '''
+    tell application "Keynote"
+        activate
+        set newDoc to make new document
+    end tell
+    '''
+    subprocess.run(["osascript", "-e", script])
+    speak(f"Opened a new Keynote presentation.")
+    print(f"📄 Created Keynote: {name}")
+
+
+def _create_numbers_doc(path: str, name: str) -> None:
+    """Creates a Numbers spreadsheet via AppleScript."""
+    script = '''
+    tell application "Numbers"
+        activate
+        set newDoc to make new document
+    end tell
+    '''
+    subprocess.run(["osascript", "-e", script])
+    speak(f"Opened a new Numbers spreadsheet.")
+    print(f"📄 Created Numbers: {name}")
 
 
 def edit_file(name: str, content: str, location: str = None) -> None:

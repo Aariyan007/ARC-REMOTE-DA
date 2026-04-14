@@ -23,6 +23,17 @@ DESTRUCTIVE_ACTIONS = {
     "sleep_mac",
 }
 
+# ─── Safe With Context ───────────────────────────────────────
+# Non-destructive actions that can execute even with context
+# references ("that", "it", "the file") at medium confidence.
+SAFE_WITH_CONTEXT = {
+    "edit_file", "read_file", "create_file", "copy_file",
+    "get_recent_files", "open_app", "close_app", "switch_to_app",
+    "open_folder", "volume_up", "volume_down", "rename_file",
+    "mute", "unmute", "brightness_up", "brightness_down",
+    "tell_time", "tell_date", "get_battery", "take_screenshot",
+}
+
 # ─── Confidence Thresholds ──────────────────────────────────
 HIGH_CONFIDENCE    = 0.85   # Execute immediately (safe actions)
 MEDIUM_CONFIDENCE  = 0.50   # Execute safe actions, Gemini for destructive
@@ -75,8 +86,23 @@ def check_safety(action: str, confidence: float, has_context_reference: bool = F
             confidence
         )
 
-    # Context references need high confidence or clarification
+    # Context references — safe actions can execute at medium confidence
     if has_context_reference and confidence < HIGH_CONFIDENCE:
+        if action in SAFE_WITH_CONTEXT and confidence >= 0.60:
+            return SafetyDecision(
+                SafetyDecision.EXECUTE,
+                "Safe action with resolvable context reference",
+                action,
+                confidence
+            )
+        # Destructive + context → still ask for confirmation (not block)
+        if action in DESTRUCTIVE_ACTIONS and confidence >= 0.60:
+            return SafetyDecision(
+                SafetyDecision.CONFIRM,
+                f"Destructive action with context — confirmation required",
+                action,
+                confidence
+            )
         return SafetyDecision(
             SafetyDecision.CONTEXT_ASK,
             "Ambiguous context reference with low confidence",

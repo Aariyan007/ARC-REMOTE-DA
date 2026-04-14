@@ -123,13 +123,53 @@ LOCATION_KEYWORDS = {
     "home":      "~",
 }
 
+# File format keywords — maps spoken words to file extensions
+FORMAT_KEYWORDS = {
+    "document":     ".docx",
+    "doc":          ".docx",
+    "docx":         ".docx",
+    "word":         ".docx",
+    "word document": ".docx",
+    "pdf":          ".pdf",
+    "text":         ".txt",
+    "txt":          ".txt",
+    "markdown":     ".md",
+    "md":           ".md",
+    "python":       ".py",
+    "python file":  ".py",
+    "script":       ".py",
+    "html":         ".html",
+    "webpage":      ".html",
+    "web page":     ".html",
+    "csv":          ".csv",
+    "spreadsheet":  ".csv",
+    "json":         ".json",
+    "rtf":          ".rtf",
+    "rich text":    ".rtf",
+    "pages":        ".pages",
+    "numbers":      ".numbers",
+    "keynote":      ".key",
+    "presentation": ".key",
+    "xml":          ".xml",
+    "yaml":         ".yaml",
+    "yml":          ".yaml",
+    "log":          ".log",
+    "swift":        ".swift",
+    "java":         ".java",
+    "javascript":   ".js",
+    "js":           ".js",
+    "css":          ".css",
+    "sql":          ".sql",
+}
+
 
 def extract_filename(text: str) -> dict:
     """
     Extracts filename and optional location from the command.
     Returns dict with 'filename', 'location', and optionally 'new_name' keys.
     Handles natural speech: "create a file called ideas", "read notes.txt",
-    "rename notes.txt to ideas.txt", "delete superman file", etc.
+    "rename notes.txt to ideas.txt", "delete superman file",
+    "create a document called superman", "make a pdf called resume", etc.
     """
     result = {"filename": None, "location": None}
 
@@ -145,6 +185,25 @@ def extract_filename(text: str) -> dict:
         result["filename"] = rename_match.group(1)
         result["new_name"] = rename_match.group(2)
         return result
+
+    # Detect file format from speech ("in document format", "as a pdf", etc.)
+    detected_ext = None
+    for fmt_word, ext in sorted(FORMAT_KEYWORDS.items(), key=lambda x: len(x[0]), reverse=True):
+        # Match patterns like "in X format", "as a X", "X file", "X format", "a X called"
+        fmt_patterns = [
+            rf'in\s+{re.escape(fmt_word)}\s+format',
+            rf'as\s+(?:a\s+)?{re.escape(fmt_word)}',
+            rf'{re.escape(fmt_word)}\s+format',
+            rf'{re.escape(fmt_word)}\s+file',
+            rf'\ba\s+{re.escape(fmt_word)}\s+(?:called|named)\b',
+            rf'\ba\s+{re.escape(fmt_word)}\b',
+        ]
+        for fp in fmt_patterns:
+            if re.search(fp, text, re.IGNORECASE):
+                detected_ext = ext
+                break
+        if detected_ext:
+            break
 
     # Try patterns (order matters — most specific first):
     patterns = [
@@ -170,47 +229,147 @@ def extract_filename(text: str) -> dict:
         match = re.search(pattern, text)
         if match:
             candidate = match.group(1).strip()
-            # Skip noise words
-            if candidate not in {"a", "an", "the", "my", "this", "that", "new", "file", "it", "contents"}:
-                result["filename"] = candidate
+            # Skip noise words and format words
+            noise = {"a", "an", "the", "my", "this", "that", "new", "file",
+                     "it", "contents", "document", "format", "particular",
+                     "something", "some", "stuff", "things", "text",
+                     "now", "just", "right", "before", "earlier", "recently",
+                     "please", "here", "there", "first", "second", "last",
+                     "one", "up", "ok", "okay", "sure", "yes", "no",
+                     "kind", "also", "want", "like", "think",
+                     "create", "make", "delete", "read", "open", "copy", "write", "add"}
+            if candidate not in noise and candidate not in FORMAT_KEYWORDS:
+                # Apply detected format extension, fallback to .txt
+                if detected_ext and "." not in candidate:
+                    result["filename"] = candidate + detected_ext
+                else:
+                    result["filename"] = candidate
                 return result
 
     return result
+
+
+# ─── Meta-Word Detection ─────────────────────────────────────
+# Words that sound like content but are actually references TO content.
+# If every word in extracted content is in this set → user hasn't specified
+# actual content yet, so we should ask.
+CONTENT_META_WORDS = {
+    "contents", "content", "text", "stuff", "something", "some",
+    "things", "thing", "a", "the", "in", "it", "that", "this",
+    "to", "file", "document", "particular", "there", "into",
+    "on", "inside", "also", "want", "like", "do", "not",
+    "i", "you", "me", "my", "will", "tell", "what", "add",
+    "write", "put", "type", "insert", "append",
+}
+
+
+def _is_meta_content(content: str) -> bool:
+    """
+    Returns True if the extracted 'content' is all meta-words.
+    e.g. 'contents in it' → True (not real content)
+         'hi i am superman' → False (real content)
+    """
+    if not content:
+        return True
+    words = set(content.lower().split())
+    return words.issubset(CONTENT_META_WORDS)
 
 
 # ─── File Edit Extraction ────────────────────────────────────
 def extract_file_edit_params(text: str) -> dict:
     """
     Extracts filename, location, and content for editing a file.
+    Handles natural speech patterns like:
+    - 'write hi i am superman in create.txt'
+    - 'add the contents like hi i am the best superman'
+    - 'inside create.txt add hello world'
+    - 'put some text in that file'
     """
     result = extract_filename(text)
     result["content"] = None
 
-    # Matches: "in X write Y" or "inside X add Y"
-    match_reverse = re.search(r'(?:in|inside|on)\s+(?:that\s+|the\s+|a\s+)?(?:particular\s+)?(?:file\s+)?(?:name[d]?|called)?\s*([\w\.]+)\s+(?:write|add|append|put|type|insert)\s+(.+)', text)
+    # Pattern 1: "in/inside <filename> write/add <content>"
+    match_reverse = re.search(
+        r'(?:in|inside|on)\s+(?:that\s+|the\s+|a\s+)?(?:particular\s+)?'
+        r'(?:file\s+)?(?:name[d]?|called)?\s*([\w\.]+)\s+'
+        r'(?:write|add|append|put|type|insert)\s+(.+)', text)
     if match_reverse:
         if not result["filename"]:
-            # Might be already extracted by extract_filename, but fallback just in case
             result["filename"] = match_reverse.group(1).strip()
         result["content"] = match_reverse.group(2).strip()
         return result
 
-    # Matches: "write X in Y", "add X", etc.
+    # Pattern 2: "contents like <content>" / "something like <content>"
+    like_match = re.search(
+        r'(?:contents?|something|text|stuff)\s+like\s+(?:a\s+)?(.+)', text)
+    if like_match:
+        content = like_match.group(1).strip()
+        # Clean trailing file references
+        content = re.sub(
+            r'\s*(?:in|inside|to|into|on)\s+(?:that|the|a|this)\s+'
+            r'(?:particular\s+)?(?:file|document|note).*$',
+            '', content, flags=re.IGNORECASE).strip()
+        if content:
+            result["content"] = content
+            return result
+
+    # Pattern 3: "write/add <content> in/to <filename>"
+    match_content_first = re.search(
+        r'(?:write|add|append|put|type|insert)\s+(.+?)\s+'
+        r'(?:in|inside|to|into|on)\s+(?:that\s+|the\s+)?'
+        r'(?:particular\s+)?(?:file\s+)?(?:name[d]?\s+|called\s+)?'
+        r'([\w\.]+)\s*$', text)
+    if match_content_first:
+        content = match_content_first.group(1).strip()
+        fname = match_content_first.group(2).strip()
+        if content and fname not in {"the", "a", "that", "this", "my", "file", "document",
+                                       "note", "it", "particular", "now", "just", "right",
+                                       "here", "there", "please", "first", "last", "one",
+                                       "create", "make", "delete", "read", "open", "copy", "write", "add"}:
+            result["content"] = content
+            if not result["filename"]:
+                result["filename"] = fname
+            return result
+
+    # Pattern 4: Generic "write/add <content>" (filename from context)
     match = re.search(r'(?:write|add|append|put|type|insert)\s+(.+)', text)
     if match:
         content = match.group(1).strip()
-        
+
         # Clean up references to the file at the end
         if result["filename"]:
             fname = re.escape(result["filename"])
-            content = re.sub(rf'\s*(?:in|inside|to|into|on)\s*(?:that|the|a|this)?\s*(?:particular)?\s*(?:file|document)?\s*(?:name|named|called)?\s*{fname}.*$', '', content, flags=re.IGNORECASE).strip()
+            content = re.sub(
+                rf'\s*(?:in|inside|to|into|on)\s*(?:that|the|a|this)?'
+                rf'\s*(?:particular)?\s*(?:file|document)?\s*'
+                rf'(?:name|named|called)?\s*{fname}.*$',
+                '', content, flags=re.IGNORECASE).strip()
 
         # Clean generic references
-        content = re.sub(r'\s*(?:in|inside|to|into|on)\s+(?:that|the|a|this)\s+(?:particular\s+)?(?:file|document|note).*$', '', content, flags=re.IGNORECASE).strip()
-        content = re.sub(r'\s*(?:in|inside|to|into|on)\s+(?:it|that|this)(?:\s+file)?$', '', content, flags=re.IGNORECASE).strip()
+        content = re.sub(
+            r'\s*(?:in|inside|to|into|on)\s+(?:that|the|a|this)\s+'
+            r'(?:particular\s+)?(?:file|document|note).*$',
+            '', content, flags=re.IGNORECASE).strip()
+        content = re.sub(
+            r'\s*(?:in|inside|to|into|on)\s+(?:it|that|this)(?:\s+file)?$',
+            '', content, flags=re.IGNORECASE).strip()
+        # Clean "the contents like" prefix
+        content = re.sub(
+            r'^(?:the\s+)?(?:contents?|text|stuff)\s+(?:like\s+)?(?:a\s+)?',
+            '', content, flags=re.IGNORECASE).strip()
+        # Clean "some" prefix
+        content = re.sub(r'^some\s+', '', content, flags=re.IGNORECASE).strip()
 
         if content:
             result["content"] = content
+
+    # ── Final meta-word check ────────────────────────────────
+    # If the extracted content is all filler/meta words, the user
+    # hasn't actually specified what to write. Set to None so the
+    # router asks "What do you want me to write?"
+    if result["content"] and _is_meta_content(result["content"]):
+        print(f"📎 Content '{result['content']}' is all meta-words — clearing")
+        result["content"] = None
 
     return result
 
@@ -266,6 +425,95 @@ def extract_folder_target(text: str) -> Optional[str]:
     return None
 
 
+# ─── Compound File Extraction ────────────────────────────────
+def extract_compound_file_params(text: str) -> dict:
+    """
+    Extracts params for compound create+write commands like:
+    - 'create a file called notes.txt and write hello world in it'
+    - 'make a file named ideas then add some text'
+    - 'create superman.txt and put hi i am superman inside'
+    - 'create a file and name it superman.txt and also add contents in it'
+
+    Returns dict with filename, location, content, and is_compound flag.
+    """
+    result = {"filename": None, "location": None, "content": None, "is_compound": False}
+
+    # Smart split: split on "and/then" FOLLOWED by an edit keyword
+    # This avoids splitting on "create a file and name it as X"
+    split_match = re.split(
+        r'\b(?:and\s+(?:then\s+)?(?:also\s+)?(?:i\s+(?:also\s+)?(?:wanted?\s+(?:to\s+)?)?)?(?=(?:write|add|put|type|insert|append))|then\s+(?=(?:write|add|put|type|insert|append))|after\s+that\s+(?=(?:write|add|put|type|insert|append)))',
+        text, maxsplit=1
+    )
+
+    if len(split_match) < 2:
+        # Fallback: try simple split on "and" but validate both parts
+        split_match = re.split(r'\b(?:and\s+then|then|and|after\s+that)\b', text)
+        # Find the split point where create is before and edit is after
+        for i in range(1, len(split_match)):
+            before = " ".join(split_match[:i]).strip()
+            after  = " ".join(split_match[i:]).strip()
+            has_create = bool(re.search(r'\b(?:create|make|new)\b', before))
+            has_edit   = bool(re.search(r'\b(?:write|add|put|type|insert|append)\b', after))
+            if has_create and has_edit:
+                split_match = [before, after]
+                break
+        else:
+            return result
+
+    if len(split_match) < 2:
+        return result
+
+    create_part = split_match[0].strip()
+    edit_part   = split_match[1].strip()
+
+    # Check if create_part has create keywords
+    if not re.search(r'\b(?:create|make|new)\b', create_part):
+        return result
+
+    # Check if edit_part has edit keywords
+    if not re.search(r'\b(?:write|add|put|type|insert|append)\b', edit_part):
+        return result
+
+    # Extract filename from create part
+    file_info = extract_filename(create_part)
+    result["filename"] = file_info.get("filename")
+    result["location"] = file_info.get("location")
+
+    # If create_part didn't find a filename, try the whole text
+    # (handles "create a file and name it superman.txt and add...")
+    if not result["filename"]:
+        whole_info = extract_filename(text)
+        result["filename"] = whole_info.get("filename")
+        if not result["location"]:
+            result["location"] = whole_info.get("location")
+
+    # Extract content from edit part
+    edit_info = extract_file_edit_params(edit_part)
+    result["content"] = edit_info.get("content")
+
+    # If edit_part mentions a filename but create_part didn't find one
+    if not result["filename"] and edit_info.get("filename"):
+        result["filename"] = edit_info["filename"]
+
+    result["is_compound"] = True
+    return result
+
+
+def is_compound_file_command(text: str) -> bool:
+    """
+    Quick check: does this command contain both create AND edit keywords
+    joined by a connector word?
+    """
+    # Accept "create file", "create a file called", "create superman.txt", etc.
+    has_create = bool(re.search(
+        r'\b(?:create|make|new)\b.*?(?:\b(?:file|document|note|named|called)\b|\w+\.\w+)',
+        text
+    ))
+    has_edit   = bool(re.search(r'\b(?:write|add|put|type|insert|append)\b', text))
+    has_join   = bool(re.search(r'\b(?:and|then|after that|and then)\b', text))
+    return has_create and has_edit and has_join
+
+
 # ─── Quick test ──────────────────────────────────────────────
 if __name__ == "__main__":
     print("=" * 60)
@@ -298,9 +546,25 @@ if __name__ == "__main__":
         "write some contents in superman.txt",
         "inside superman.txt write I am a hero",
         "append this is a test to notes",
-        "add hello world"
+        "add hello world",
+        "add some contents in it",           # should → content=None
+        "add text to the file",              # should → content=None
+        "add text to not this text i will tell you what text to add",  # should → content=None
+        "write hi i am the best superman",   # should → content="hi i am the best superman"
     ]:
         print(f"  '{cmd}' → {extract_file_edit_params(cmd)}")
+
+    # Compound File
+    print("\n── Compound File Commands ──")
+    for cmd in [
+        "create a file called notes.txt and write hello world in it",
+        "make a file named ideas then add some text",
+        "create superman.txt and put hi i am superman inside",
+        "open vscode",  # not compound
+    ]:
+        is_comp = is_compound_file_command(cmd)
+        params = extract_compound_file_params(cmd) if is_comp else {}
+        print(f"  '{cmd}' → compound={is_comp} params={params}")
 
     # Email
     print("\n── Email ──")

@@ -1,0 +1,11 @@
+{
+  "open_app": {
+    "open vscode": 2
+  },
+  "create_file": {
+    "create a file named at superman.txt i also want you to add some contents in it": 1
+  },
+  "edit_file": {
+    "write something in superman.txt i tell you": 1
+  }
+}

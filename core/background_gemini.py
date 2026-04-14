@@ -1,69 +1,122 @@
 """
-Background Gemini Enhancement — optional smart follow-up responses.
+Background Gemini Enhancement — human-sounding follow-up for EVERY action.
 
-After the fast engine executes + instant response is spoken,
-this module can optionally call Gemini in a background thread
-to produce a richer, more personalized follow-up.
+Flow:
+1. Instant response (Mac say) fires immediately → "On it."
+2. Action executes
+3. Background thread calls Gemini for a SHORT, witty, human follow-up
+4. Follow-up speaks via ElevenLabs → "Superman, really? Bold choice."
 
-Only triggers when the follow-up would ADD VALUE (not repeat
-what was already said).
+Fires on EVERY action. Gemini responds "SKIP" when nothing cool to say.
 """
 
 import threading
+import time
 from typing import Callable, Optional
 from concurrent.futures import Future
 
 
-# ─── Enhancement Triggers ────────────────────────────────────
-# Actions where a smart Gemini follow-up adds value.
-ENHANCE_ACTIONS = {
-    "read_emails":       "Summarize the emails briefly",
-    "get_battery":       "Comment on battery level",
-    "tell_weather":      "Add a natural comment about the weather",
-    "morning_briefing":  "Add personalized context",
-    "search_emails":     "Summarize findings",
-    "get_recent_files":  "Comment on recent activity",
-    "summarise_pdf":     "Give a concise summary",
-    "read_file":         "Comment on file contents",
-}
+# ─── Rate Limiting ───────────────────────────────────────────
+# Prevent burning through free tier quota (20 reqs/min).
+_last_call_time = 0.0
+MIN_COOLDOWN    = 10.0   # seconds between background Gemini calls
 
-# Actions where a follow-up has NO value (don't waste API calls)
-SKIP_ACTIONS = {
-    "open_app", "close_app", "switch_to_app",
-    "volume_up", "volume_down", "mute", "unmute",
-    "brightness_up", "brightness_down",
-    "lock_screen", "take_screenshot",
-    "open_folder", "create_folder",
-    "open_gmail", "show_desktop",
-    "minimise_all", "close_window", "close_tab", "new_tab",
-    "fullscreen", "mission_control", "minimise_app",
-    "start_work_day", "end_work_day",
-    "create_file", "rename_file", "copy_file",  "delete_file",
+
+# ─── Enhancement Hints ───────────────────────────────────────
+# Optional hints that help Gemini make better comments per action.
+ACTION_HINTS = {
+    "read_emails":       "Comment on email situation briefly",
+    "get_battery":       "React to battery level naturally",
+    "tell_weather":      "Quick weather reaction",
+    "morning_briefing":  "Comment on the day ahead",
+    "search_emails":     "React to findings",
+    "get_recent_files":  "Comment on recent activity",
+    "summarise_pdf":     "React to the summary",
+    "read_file":         "React to the file content",
+    "create_file":       "React to the filename choice",
+    "edit_file":         "React to what was written",
+    "delete_file":       "React to deletion",
+    "open_app":          "React to app choice",
+    "close_app":         "Comment on closing",
+    "volume_up":         "React to volume change",
+    "volume_down":       "React to volume change",
+    "take_screenshot":   "React to screenshot",
+    "search_google":     "React to what they searched",
 }
 
 
 def should_enhance(action: str, action_result: str = None) -> bool:
     """
-    Decides whether a background Gemini follow-up is worth it.
-
-    Args:
-        action:        The action that was just executed
-        action_result: The result/output of the action (if any)
-
-    Returns:
-        True if a smart follow-up would add value
+    Returns True for ALL actions — every command gets personality.
+    Rate limited to prevent quota exhaustion.
     """
-    if action in SKIP_ACTIONS:
+    global _last_call_time
+
+    # Only skip if action is empty/unknown
+    if not action or action == "unknown":
         return False
 
-    if action in ENHANCE_ACTIONS:
-        return True
+    # Rate limiting — skip if called too recently
+    now = time.time()
+    if now - _last_call_time < MIN_COOLDOWN:
+        print(f"🔇 Background Gemini: cooldown ({MIN_COOLDOWN - (now - _last_call_time):.0f}s remaining)")
+        return False
 
-    # If the action produced interesting output, enhance
-    if action_result and len(str(action_result)) > 50:
-        return True
+    return True
 
-    return False
+
+def _build_personality_prompt(
+    action: str,
+    command: str,
+    action_result: str,
+    instant_response: str,
+    mood_context: str,
+    user_context: str,
+) -> str:
+    """Builds the personality-heavy follow-up prompt."""
+    hint = ACTION_HINTS.get(action, "React naturally to what just happened")
+
+    return f"""You are Jarvis — not a formal assistant, more like a sharp, witty friend who happens to be an AI. Think Tony Stark's Jarvis meets a college best friend.
+
+{user_context}
+{mood_context}
+
+The user said: "{command}"
+Action taken: {action}
+Result: {action_result}
+Already spoken: "{instant_response}"
+Hint: {hint}
+
+Rules:
+- Sound HUMAN. No corporate speak. No "certainly". No "I've done that for you."
+- Max 8 words. Shorter = better. Sometimes just 2-3 words.
+- Be witty, sarcastic, casual — like texting a friend
+- Reference what they're doing naturally
+- Sometimes be funny, sometimes be chill, sometimes just vibe
+- If there's genuinely NOTHING cool to say → respond with exactly: SKIP
+- NEVER repeat what was already spoken
+- NEVER describe the action ("I opened...", "I created..."). React to it instead.
+- Use contractions always. Talk like a real person.
+- Can reference their projects, habits, or personality
+- Light roasts welcome
+
+Examples of GOOD responses:
+- After opening VS Code: "Back to the grind, huh?"
+- After creating superman.txt: "Superman, really? Bold choice."
+- After muting: "Peace at last."
+- After screenshot: "Evidence collected."
+- After volume up: "Neighbors gonna love this."
+- After creating a file: "Another masterpiece incoming."
+- After editing a file: "Shakespeare would be proud."
+- After reading a file: "Light reading, I see."
+
+Examples of BAD responses (too formal/robotic — NEVER do this):
+- "I've opened VS Code for you."
+- "The file has been created successfully."
+- "Volume has been increased."
+- "Certainly, I'll do that right away."
+
+Just return the response text. Nothing else. No quotes."""
 
 
 def generate_followup(
@@ -75,19 +128,8 @@ def generate_followup(
     use_elevenlabs: bool = True,
 ) -> Optional[Future]:
     """
-    Fires a background Gemini call to generate a smart follow-up.
-    If worth saying, queues it for speech after the instant response.
-
-    Args:
-        action:            The action that was executed
-        command:           The original user command
-        action_result:     What the action returned
-        instant_response:  What was already spoken
-        speak_func:        Function to call to speak the follow-up
-        use_elevenlabs:    Whether to use ElevenLabs for the follow-up
-
-    Returns:
-        Future if enhancement was triggered, None otherwise
+    Fires a background Gemini call to generate a human follow-up.
+    Speaks it via ElevenLabs if worth saying.
     """
     if not should_enhance(action, action_result):
         return None
@@ -95,8 +137,8 @@ def generate_followup(
     from core.concurrency import run_background
 
     def _do_enhance():
+        global _last_call_time
         try:
-            import json
             import os
             from google import genai
             from dotenv import load_dotenv
@@ -106,41 +148,28 @@ def generate_followup(
             load_dotenv()
             client = genai.Client(api_key=os.getenv("API_KEY"))
 
-            context_hint = ENHANCE_ACTIONS.get(action, "Add helpful context")
             mood_context = get_mood_for_prompt()
 
-            prompt = f"""
-You are Jarvis, a personal AI assistant.
+            prompt = _build_personality_prompt(
+                action=action,
+                command=command,
+                action_result=action_result,
+                instant_response=instant_response,
+                mood_context=mood_context,
+                user_context=get_context_for_gemini(),
+            )
 
-{mood_context}
-{get_context_for_gemini()}
-
-The user said: "{command}"
-Action taken: {action}
-Action result: {action_result}
-Already spoken: "{instant_response}"
-
-Generate a SHORT follow-up response that ADDS VALUE.
-Rules:
-- DO NOT repeat what was already spoken
-- DO NOT just describe what happened
-- ADD useful information, context, or personality
-- Max 1-2 sentences
-- If there's nothing useful to add, respond with exactly: SKIP
-- Sound natural and conversational
-
-Just return the response text. Nothing else.
-"""
+            _last_call_time = time.time()  # Mark call time BEFORE request
 
             response = client.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=prompt
             )
 
-            text = response.text.strip().strip('"')
+            text = response.text.strip().strip('"').strip("'")
 
             # Don't speak if Gemini says skip or response is too similar
-            if text.upper() == "SKIP":
+            if text.upper() == "SKIP" or not text:
                 print("🔇 Gemini follow-up: SKIP (nothing to add)")
                 return
 
@@ -153,7 +182,13 @@ Just return the response text. Nothing else.
             speak_func(text)
 
         except Exception as e:
-            print(f"⚠️ Background Gemini error: {e}")
+            err = str(e)
+            if "429" in err or "RESOURCE_EXHAUSTED" in err:
+                print("🔇 Background Gemini: rate limited, skipping")
+            elif "503" in err or "UNAVAILABLE" in err:
+                print("🔇 Background Gemini: service busy, skipping")
+            else:
+                print(f"⚠️ Background Gemini error: {e}")
 
     return run_background(_do_enhance)
 
@@ -164,16 +199,17 @@ if __name__ == "__main__":
     print("  BACKGROUND GEMINI ENHANCEMENT TEST")
     print("=" * 60)
 
-    # Test should_enhance
+    # Test should_enhance — now everything returns True
     tests = [
-        ("open_app",     None),       # Skip
-        ("read_emails",  "3 unread"), # Enhance
-        ("volume_up",    None),       # Skip
-        ("get_battery",  "45%"),      # Enhance
-        ("tell_weather", "72°F"),     # Enhance
-        ("close_tab",    None),       # Skip
+        ("open_app",     None),
+        ("read_emails",  "3 unread"),
+        ("volume_up",    None),
+        ("get_battery",  "45%"),
+        ("close_tab",    None),
+        ("create_file",  "Created test.txt"),
+        ("edit_file",    "Appended text"),
     ]
 
     for action, result in tests:
         should = should_enhance(action, result)
-        print(f"  {action:<20} result={str(result):<15} → enhance={should}")
+        print(f"  {action:<20} result={str(result):<20} → enhance={should}")
