@@ -268,7 +268,7 @@ def _execute_action(action: str, params: dict, actions: dict) -> str:
                     if fmt_response:
                         ext = _resolve_format(fmt_response)
                         filename = filename + ext
-                        print(f"📄 User chose format: {ext}")
+                        print(f"📄 User chose format: {text}")
                     else:
                         filename = filename + ".txt"
                         print(f"📄 No response — defaulting to .txt")
