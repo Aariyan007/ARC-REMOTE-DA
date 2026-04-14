@@ -22,7 +22,6 @@ DESTRUCTIVE_ACTIONS = {
     "shutdown_pc",
     "restart_pc",
     "delete_file",
-    "send_email",
     "sleep_mac",
 }
 

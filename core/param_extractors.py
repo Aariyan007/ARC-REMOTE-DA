@@ -390,7 +390,8 @@ def extract_email_params(text: str) -> dict:
 
     # Extract recipient name (if no email address)
     if not result["to"]:
-        to_match = re.search(r'(?:to|email)\s+(\w+)', text)
+        # Skip noise words like "my", "the", "a"
+        to_match = re.search(r'(?:to|email)\s+(?:my\s+|the\s+|a\s+|an\s+)?(\w+)', text)
         if to_match:
             result["to"] = to_match.group(1)
 

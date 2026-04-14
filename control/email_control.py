@@ -161,7 +161,7 @@ def send_email(to: str = "", subject: str = "", body: str = "") -> None:
             to = listen()
             if not to:
                 speak("Still didn't catch that. Cancelling email.")
-                return
+                return "Cancelled — missing recipient"
 
     # Step 2: Subject
     if not subject:
@@ -172,7 +172,7 @@ def send_email(to: str = "", subject: str = "", body: str = "") -> None:
             subject = listen()
             if not subject:
                 speak("No subject provided. Cancelling email.")
-                return
+                return "Cancelled — missing subject"
 
     # Step 3: Body (using listen_long)
     if not body:
@@ -183,7 +183,7 @@ def send_email(to: str = "", subject: str = "", body: str = "") -> None:
             body = listen_long(max_seconds=20)
             if not body:
                 speak("No message provided. Cancelling email.")
-                return
+                return "Cancelled — missing body"
 
     # Step 4: Confirmation
     speak(f"Ready to send to {to} about {subject}. Do you want to send it?")
@@ -199,8 +199,10 @@ def send_email(to: str = "", subject: str = "", body: str = "") -> None:
         url = f"https://mail.google.com/mail/?view=cm&{params}"
         webbrowser.open(url)
         speak("Review and send when ready.")
+        return "Draft opened in Gmail"
     else:
         speak("Alright, cancelled.")
+        return "Email cancelled by user"
 
 
 def open_gmail() -> None:
