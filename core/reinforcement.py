@@ -216,11 +216,14 @@ CORRECTION_WORDS = {
 }
 
 
+import re
+
 def is_correction(text: str) -> bool:
     """Checks if the user's response is a correction of the last action."""
     text_lower = text.lower().strip()
     for word in CORRECTION_WORDS:
-        if word in text_lower:
+        pattern = r'\b' + re.escape(word) + r'\b'
+        if re.search(pattern, text_lower):
             return True
     return False
 

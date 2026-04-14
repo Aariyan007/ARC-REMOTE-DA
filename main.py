@@ -206,6 +206,7 @@ from core.reinforcement import is_correction, handle_correction, track_action
 from core.agents.filesystem_agent import FileSystemAgent
 from core.agents.system_agent import SystemControlAgent
 from core.agents.manager_agent import ManagerAgent
+from core.agents.music_agent import MusicAgent
 
 # Triggers that indicate multi-step / complex commands → ManagerAgent
 AGENT_TRIGGERS = [
@@ -250,14 +251,16 @@ def _initialize_agents():
     print("🤖 Initializing multi-agent system...")
 
     # Create specialized agents with access to their relevant actions
-    fs_agent  = FileSystemAgent(actions_map=ACTIONS)
-    sys_agent = SystemControlAgent(actions_map=ACTIONS)
+    fs_agent    = FileSystemAgent(actions_map=ACTIONS)
+    sys_agent   = SystemControlAgent(actions_map=ACTIONS)
+    music_agent = MusicAgent()
 
     # Create the ManagerAgent (orchestrator)
     _manager_agent = ManagerAgent(
         agents={
             "filesystem": fs_agent,
             "system":     sys_agent,
+            "music":      music_agent,
         },
         actions=ACTIONS,
     )

@@ -578,8 +578,19 @@ def _handle_compound_file(
     content  = params.get("content")
 
     if not filename:
-        speak("I heard you want to create and write to a file, but I didn't catch the filename.")
-        return True
+        speak("What do you want me to name the file?")
+        name_response = stt_listen()
+        if name_response and name_response.strip():
+            # Use param extractor to clean up user's response like "name it hello"
+            from core.param_extractors import extract_filename
+            clean_name = extract_filename(name_response).get("filename")
+            if clean_name:
+                filename = clean_name
+            else:
+                filename = name_response.strip().split()[-1]
+        else:
+            speak("I didn't catch a name. Let's try again later.")
+            return True
 
     # Handle format if no extension
     if "." not in filename:
