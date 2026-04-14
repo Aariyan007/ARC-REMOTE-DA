@@ -15,6 +15,8 @@ from datetime import datetime
 from typing import Optional
 
 from core.learned_intents import learn
+from core.voice_response import speak
+from core.speech_to_text import listen as stt_listen
 
 
 # ─── Settings ────────────────────────────────────────────────
@@ -235,8 +237,7 @@ def handle_correction(correction_text: str, actions: dict) -> str:
 
     Returns result string.
     """
-    from core.voice_response import speak
-    from core.speech_to_text import listen as stt_listen
+
 
     last = get_last_action()
 

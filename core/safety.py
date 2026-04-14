@@ -12,6 +12,9 @@ Rules:
 import time
 from typing import Optional
 
+from core.voice_response import speak
+from core.speech_to_text import listen
+
 
 # ─── Destructive Actions ─────────────────────────────────────
 # These ALWAYS require voice confirmation before execution.
@@ -152,8 +155,7 @@ def ask_voice_confirmation(prompt: str, timeout: float = 10.0) -> bool:
     Returns True if user confirms, False otherwise.
     Timeout after `timeout` seconds → cancel (returns False).
     """
-    from core.voice_response import speak
-    from core.speech_to_text import listen
+
 
     # Speak the confirmation prompt
     speak(prompt)

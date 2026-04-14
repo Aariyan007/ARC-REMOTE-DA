@@ -4,6 +4,7 @@ import time
 from google import genai
 
 from dotenv import load_dotenv
+from core.voice_response import speak
 # ─── Settings ────────────────────────────────────────────────
 load_dotenv()
 GEMINI_API_KEY = os.getenv("API_KEY")
@@ -36,7 +37,7 @@ def summarise_pdf(pdf_path: str) -> str:
     Reads a PDF and returns a spoken summary via Gemini.
     Usage: summarise_pdf("/path/to/file.pdf")
     """
-    from core.voice_response import speak
+
 
     if not os.path.exists(pdf_path):
         speak("I couldn't find that PDF file.")
@@ -100,7 +101,7 @@ def find_latest_pdf() -> str:
 
 def summarise_latest_pdf() -> None:
     """Summarises the most recent PDF in Downloads."""
-    from core.voice_response import speak
+
     pdf = find_latest_pdf()
     if pdf:
         print(f"📄 Found latest PDF: {pdf}")

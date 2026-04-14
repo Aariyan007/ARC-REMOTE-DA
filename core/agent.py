@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from core.voice_response import speak
+
 # ─── Settings ────────────────────────────────────────────────
 GEMINI_API_KEY = os.getenv("API_KEY")
 MODEL          = "gemini-1.5-flash"
@@ -267,8 +269,7 @@ def _execute_action(action: str, params: dict, actions: dict) -> str:
         # ── Speak update ─────────────────────────────────────
         if action == "speak":
             text = params.get("text", "")
-            from core.voice_response import speak as _speak
-            _speak(text)
+            speak(text)
             return f"Spoke: {text}"
 
         # ── Generic actions from ACTIONS dict ────────────────
@@ -357,7 +358,6 @@ def run_agent(command: str, actions: dict) -> None:
     """
     from core.memory import get_context_for_gemini
     from mood.mood_engine import get_mood_for_prompt
-    from core.voice_response import speak
     from core.logger import log_interaction
 
     print(f"\n🤖 Agent starting: '{command}'")

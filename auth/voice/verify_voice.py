@@ -6,10 +6,9 @@ import os
 os.environ["HF_HOME"] = r"C:\hf_cache"
 
 # ── Compatibility shim ──────────────────────────────────────
-# speechbrain 0.5.16 uses deprecated `use_auth_token` kwarg
-# which was removed in huggingface_hub >= 1.0.
-# ONLY strip that kwarg — don't touch error handling, or it
-# breaks transformers' graceful skip of optional files.
+# speechbrain 0.5.x used `speechbrain.pretrained`
+# speechbrain 1.x moved it to `speechbrain.inference`
+# Also patch huggingface_hub to strip deprecated `use_auth_token`
 import huggingface_hub
 
 _original_hf_download = huggingface_hub.hf_hub_download
@@ -25,23 +24,18 @@ if hasattr(huggingface_hub, "snapshot_download"):
         return _original_snapshot(*args, **kwargs)
     huggingface_hub.snapshot_download = _patched_snapshot
 
-# Patch speechbrain's fetching to handle new HF error types
-# (EntryNotFoundError instead of requests.HTTPError)
-import speechbrain.pretrained.fetching as _sb_fetching
-_original_fetch = _sb_fetching.fetch
-def _patched_fetch(*args, **kwargs):
-    kwargs.pop("use_auth_token", None)
+# Try speechbrain 1.x API first, fall back to 0.5.x
+try:
+    from speechbrain.inference.classifiers import EncoderClassifier
+except (ImportError, Exception):
     try:
-        return _original_fetch(*args, **kwargs)
-    except Exception as e:
-        err_str = str(e)
-        if "404" in err_str or "EntryNotFound" in type(e).__name__:
-            raise ValueError(f"File not found on HF hub: {err_str}") from e
-        raise
-_sb_fetching.fetch = _patched_fetch
+        from speechbrain.pretrained import EncoderClassifier
+    except (ImportError, Exception):
+        raise ImportError(
+            "Could not import EncoderClassifier from speechbrain. "
+            "Install a compatible version: pip install speechbrain>=1.0"
+        )
 # ─────────────────────────────────────────────────────────────
-
-from speechbrain.pretrained import EncoderClassifier
 from .vad import remove_silence
 
 SAMPLE_RATE = 16000
@@ -49,10 +43,23 @@ DURATION = 5
 TEMP_FILE = "temp_verify.wav"
 THRESHOLD = 0.50
 
+import sys
+
+# On Windows, SpeechBrain's default SYMLINK strategy requires admin privileges.
+# Use COPY strategy instead.
+_from_hparams_kwargs = {}
+if sys.platform == "win32":
+    try:
+        from speechbrain.utils.fetching import LocalStrategy
+        _from_hparams_kwargs["local_strategy"] = LocalStrategy.COPY
+    except ImportError:
+        pass
+
 classifier = EncoderClassifier.from_hparams(
     source="speechbrain/spkrec-ecapa-voxceleb",
     savedir="pretrained_models/spkrec-ecapa-voxceleb",
-    run_opts={"device": "cpu"}
+    run_opts={"device": "cpu"},
+    **_from_hparams_kwargs,
 )
 owner_embeddings = np.load("data/voice_profile/owner_embeddings.npy")
 

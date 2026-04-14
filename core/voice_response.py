@@ -112,8 +112,18 @@ def _speak_elevenlabs(text: str) -> bool:
             for chunk in audio:
                 f.write(chunk)
 
-        # Play using afplay (Mac) — non-blocking for interruption support
-        _speech_process = subprocess.Popen(["afplay", tmp_path])
+        # Play audio — use platform-appropriate player
+        if sys.platform == "darwin":
+            _speech_process = subprocess.Popen(["afplay", tmp_path])
+        else:
+            # Windows: use PowerShell to play the mp3
+            _speech_process = subprocess.Popen(
+                ["powershell", "-c",
+                 f'Add-Type -AssemblyName PresentationCore; '
+                 f'$p = New-Object System.Windows.Media.MediaPlayer; '
+                 f'$p.Open("{tmp_path}"); $p.Play(); '
+                 f'Start-Sleep -Milliseconds ($p.NaturalDuration.TimeSpan.TotalMilliseconds + 500)'],
+            )
         interrupted = _listen_for_interrupt()
 
         if interrupted:
@@ -129,8 +139,11 @@ def _speak_elevenlabs(text: str) -> bool:
         return True
 
     except Exception as e:
-        print(f"⚠️  ElevenLabs failed: {e} — falling back to Mac say")
-        return _speak_mac(text)
+        print(f"⚠️  ElevenLabs failed: {e} — falling back to local TTS")
+        if sys.platform == "darwin":
+            return _speak_mac(text)
+        else:
+            return _speak_windows(text)
 
 
 def _speak_mac(text: str) -> bool:
@@ -148,6 +161,26 @@ def _speak_mac(text: str) -> bool:
     _speech_process.wait()
     _speech_process = None
     return True
+
+
+def _speak_windows(text: str) -> bool:
+    """Speaks using pyttsx3 on Windows."""
+    global is_speaking
+    try:
+        import pyttsx3
+        engine = pyttsx3.init()
+        voices = engine.getProperty('voices')
+        for voice in voices:
+            if 'david' in voice.name.lower() or 'mark' in voice.name.lower():
+                engine.setProperty('voice', voice.id)
+                break
+        engine.setProperty('rate', 180)
+        engine.say(text)
+        engine.runAndWait()
+        return True
+    except Exception as e:
+        print(f"❌ Windows TTS error: {e}")
+        return True  # Return True anyway — don't block on TTS failure
 
 
 def _listen_for_interrupt(threshold_multiplier: float = 6.0) -> bool:
@@ -208,8 +241,10 @@ def speak(text: str, force_elevenlabs: bool = False) -> bool:
 
     if USE_ELEVENLABS:
         result = _speak_elevenlabs(text)
-    else:
+    elif sys.platform == "darwin":
         result = _speak_mac(text)
+    else:
+        result = _speak_windows(text)
 
     is_speaking = False
     return result
@@ -226,8 +261,10 @@ def speak_instant(text: str) -> bool:
 
     if USE_ELEVENLABS:
         result = _speak_elevenlabs(text)
-    else:
+    elif sys.platform == "darwin":
         result = _speak_mac(text)
+    else:
+        result = _speak_windows(text)
 
     is_speaking = False
     return result
@@ -236,7 +273,7 @@ def speak_instant(text: str) -> bool:
 def speak_smart(text: str) -> bool:
     """
     Uses ElevenLabs if available, for richer/longer responses.
-    Falls back to Mac say if ElevenLabs unavailable.
+    Falls back to local TTS if ElevenLabs unavailable.
     """
     global is_speaking
     is_speaking = True
@@ -244,8 +281,10 @@ def speak_smart(text: str) -> bool:
 
     if USE_ELEVENLABS:
         result = _speak_elevenlabs(text)
-    else:
+    elif sys.platform == "darwin":
         result = _speak_mac(text)
+    else:
+        result = _speak_windows(text)
 
     is_speaking = False
     return result
@@ -277,13 +316,28 @@ def speak_and_wait(text: str) -> None:
                 tmp_path = f.name
                 for chunk in audio:
                     f.write(chunk)
-            subprocess.run(["afplay", tmp_path])
+            if sys.platform == "darwin":
+                subprocess.run(["afplay", tmp_path])
+            else:
+                subprocess.run(
+                    ["powershell", "-c",
+                     f'Add-Type -AssemblyName PresentationCore; '
+                     f'$p = New-Object System.Windows.Media.MediaPlayer; '
+                     f'$p.Open("{tmp_path}"); $p.Play(); '
+                     f'Start-Sleep -Milliseconds ($p.NaturalDuration.TimeSpan.TotalMilliseconds + 500)'],
+                )
             os.remove(tmp_path)
         except Exception as e:
             print(f"⚠️  ElevenLabs failed: {e}")
-            subprocess.run(["say", "-v", MAC_VOICE, "-r", str(MAC_RATE), text])
+            if sys.platform == "darwin":
+                subprocess.run(["say", "-v", MAC_VOICE, "-r", str(MAC_RATE), text])
+            else:
+                _speak_windows(text)
     else:
-        subprocess.run(["say", "-v", MAC_VOICE, "-r", str(MAC_RATE), text])
+        if sys.platform == "darwin":
+            subprocess.run(["say", "-v", MAC_VOICE, "-r", str(MAC_RATE), text])
+        else:
+            _speak_windows(text)
 
     is_speaking = False
 

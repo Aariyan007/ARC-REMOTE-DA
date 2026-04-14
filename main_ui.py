@@ -35,10 +35,11 @@ from core.speech_to_text import listen
 from core.intent_router import route
 
 # ── Control ───────────────────────────────────────────────────
-from control.mac.open_apps import open_vscode, open_safari, open_terminal
-from control.web_search import search_google
-from control.time_utils import tell_time, tell_date
-from control.mac.system_actions import lock_screen, shutdown_pc, restart_pc
+from control import (
+    open_vscode, open_safari, open_terminal,
+    search_google, tell_time, tell_date,
+    lock_screen, shutdown_pc, restart_pc,
+)
 
 # ═══════════════════════════════════════════════════════════════
 #   FASTAPI APP
