@@ -285,7 +285,7 @@ def _execute_action(action: str, params: dict, actions: dict) -> str:
                 return f"Created {filename}"
             return f"Couldn't create — no filename extracted"
 
-        # ── edit_file — asks for content when missing, then listens ──
+        # ── edit_file — asks for content when missing, then listens ──t
         if action == "edit_file":
             filename = params.get("filename", "")
             content  = params.get("content", "")
