@@ -1,9 +1,11 @@
 {
   "create_file": [
-    "see create a file and also add some text in it"
+    "see create a file and also add some text in it",
+    "create a file named superman"
   ],
   "create_and_edit_file": [],
   "edit_file": [
-    "could you add text inside there"
+    "could you add text inside there",
+    "i also wanted to add some text in it"
   ]
 }

@@ -1,4 +1,4 @@
-import whisper
+
 import pyaudio
 import numpy as np
 import wave
@@ -50,9 +50,24 @@ GARBAGE_WORDS = {
 # ────────────────────────────────────────────────────────────
 # ────────────────────────────────────────────────────────────
 
-print("Loading Whisper model...")
-model = whisper.load_model("small")
-print("Whisper is wokring")
+model = None
+
+def _get_model():
+    global model
+    if model is None:
+        import whisper
+        model = whisper.load_model("small")
+    return model
+
+
+def preload_whisper():
+    """Pre-warm the Whisper model at startup so it never loads mid-command."""
+    global model
+    if model is None:
+        import whisper
+        print("🧠 Loading Whisper model...")
+        model = whisper.load_model("small")
+        print("✅ Whisper ready")
 
 
 def _deduplicate_whisper(text: str) -> str:
@@ -168,7 +183,7 @@ def listen() -> str:
 
     # Transcribe
     print("🧠 Transcribing...")
-    result = model.transcribe(
+    result = _get_model().transcribe(
         tmp_path,
         language="en",
         fp16=False,
@@ -260,7 +275,7 @@ def listen_long(max_seconds: int = 30, silence_seconds: float = 2.5) -> str:
 
     # Transcribe
     print("🧠 Transcribing (extended)...")
-    result = model.transcribe(
+    result = _get_model().transcribe(
         tmp_path,
         language="en",
         fp16=False,

@@ -309,6 +309,16 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "") ->
             location = params.get("location") or "desktop"
 
             # ── Smart format detection ────────────────────────
+            # If filename is completely missing, ask the user
+            if not filename:
+                speak("What should I name the file?")
+                name_resp = stt_listen()
+                if name_resp and name_resp.strip():
+                    filename = name_resp.strip()
+                    print(f"📄 User provided filename: {filename}")
+                else:
+                    return "Couldn't create — no filename provided"
+
             # If filename has no extension, ask the user or infer
             if filename and "." not in filename:
                 detected_fmt = _detect_format_from_context(text)

@@ -1,22 +1,12 @@
 [
   {
-    "action": "search_google",
-    "params": {},
-    "hour": 8,
-    "weekday": -1,
-    "occurrences": 5,
-    "confidence": 0.714,
-    "last_seen": "2026-04-15 15:53:15",
-    "description": "search_google usually at 8:00 (5 times, 71% confidence)"
-  },
-  {
     "action": "minimise_all",
     "params": {},
     "hour": 22,
     "weekday": -1,
     "occurrences": 4,
     "confidence": 0.667,
-    "last_seen": "2026-04-15 15:53:15",
+    "last_seen": "2026-04-15 23:33:33",
     "description": "minimise_all usually at 22:00 (4 times, 67% confidence)"
   },
   {
@@ -26,7 +16,7 @@
     "weekday": -1,
     "occurrences": 2,
     "confidence": 0.667,
-    "last_seen": "2026-04-15 15:53:15",
+    "last_seen": "2026-04-15 23:33:33",
     "description": "lock_screen usually at 23:00 (2 times, 67% confidence)"
   },
   {
@@ -62,20 +52,29 @@
     "weekday": -1,
     "occurrences": 4,
     "confidence": 0.667,
-    "last_seen": "2026-04-15 15:53:15",
+    "last_seen": "2026-04-15 23:33:33",
     "description": "create_and_edit_file usually at 17:00 (4 times, 67% confidence)"
   },
   {
-    "action": "delete_file",
-    "params": {
-      "filename": "superman.txt",
-      "location": null
-    },
-    "hour": 2,
+    "action": "delete_file_cancelled",
+    "params": {},
+    "hour": 23,
     "weekday": -1,
     "occurrences": 2,
     "confidence": 0.667,
-    "last_seen": "2026-04-14 18:04:38",
-    "description": "delete_file usually at 2:00 (2 times, 67% confidence)"
+    "last_seen": "2026-04-15 23:33:33",
+    "description": "delete_file_cancelled usually at 23:00 (2 times, 67% confidence)"
+  },
+  {
+    "action": "search_google",
+    "params": {
+      "query": "Batman movie soundtrack playlist"
+    },
+    "hour": 8,
+    "weekday": -1,
+    "occurrences": 5,
+    "confidence": 0.625,
+    "last_seen": "2026-04-15 23:22:33",
+    "description": "search_google usually at 8:00 (5 times, 62% confidence)"
   }
 ]

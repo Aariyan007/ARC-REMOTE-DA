@@ -1,70 +1,5 @@
 [
   {
-    "timestamp": "2026-04-15 13:37:52",
-    "you": "you",
-    "jarvis": "You... called?"
-  },
-  {
-    "timestamp": "2026-04-15 13:48:54",
-    "you": "make a folder called work on my desktop create a file inside it and open vscode",
-    "jarvis": "Opening, again."
-  },
-  {
-    "timestamp": "2026-04-15 13:49:17",
-    "you": "you",
-    "jarvis": "Still me, Aariyan. What's up?"
-  },
-  {
-    "timestamp": "2026-04-15 13:54:52",
-    "you": "make a folder called work on my desktop and create a file inside it and open vscode",
-    "jarvis": "Opening, again."
-  },
-  {
-    "timestamp": "2026-04-15 13:55:12",
-    "you": "you",
-    "jarvis": "Yup, still me. Ready for the next groundbreaking command."
-  },
-  {
-    "timestamp": "2026-04-15 13:55:38",
-    "you": "you",
-    "jarvis": "Still here, ready for another repeat command?"
-  },
-  {
-    "timestamp": "2026-04-15 15:52:01",
-    "you": "i wanted to kind of create a file",
-    "jarvis": "File incoming."
-  },
-  {
-    "timestamp": "2026-04-15 15:52:17",
-    "you": "could you add text inside there",
-    "jarvis": "Scribbling away."
-  },
-  {
-    "timestamp": "2026-04-15 15:52:32",
-    "you": "so add hello how are you inside",
-    "jarvis": "Finally, some actual text. Your magnum opus, Aariyan?"
-  },
-  {
-    "timestamp": "2026-04-15 15:52:38",
-    "you": "so add hello how are you inside",
-    "jarvis": "Finally, some actual text. Your magnum opus, Aariyan?"
-  },
-  {
-    "timestamp": "2026-04-15 15:53:15",
-    "you": "and also rename that particular file to superman dot txt file",
-    "jarvis": "Renaming your unnamed file to a superhero."
-  },
-  {
-    "timestamp": "2026-04-15 15:53:41",
-    "you": "i want you to rename the file that you just created",
-    "jarvis": "Okay, to what thrilling new name shall we bestow upon your file, Aariyan?"
-  },
-  {
-    "timestamp": "2026-04-15 15:54:04",
-    "you": "superman",
-    "jarvis": "Renaming it to... itself? Bold move, Aariyan."
-  },
-  {
     "timestamp": "2026-04-15 15:58:41",
     "you": "i want you to create a file named superman which is a text file also i also want you to add content",
     "jarvis": "File created. So, what genius prose are we adding?"
@@ -98,5 +33,70 @@
     "timestamp": "2026-04-15 16:03:02",
     "you": "i'm feeling so bored man",
     "jarvis": ""
+  },
+  {
+    "timestamp": "2026-04-15 23:21:41",
+    "you": "what time is it",
+    "jarvis": "You don't have a clock? The time is"
+  },
+  {
+    "timestamp": "2026-04-15 23:21:57",
+    "you": "i want to i want you to create a file",
+    "jarvis": "File incoming."
+  },
+  {
+    "timestamp": "2026-04-15 23:22:24",
+    "you": "give it something like batman",
+    "jarvis": "Oh, so boredom has you channeling your inner Dark Knight, Aariyan? Searching for that brooding playlist now."
+  },
+  {
+    "timestamp": "2026-04-15 23:22:33",
+    "you": "give it something like batman",
+    "jarvis": "Oh, so boredom has you channeling your inner Dark Knight, Aariyan? Searching for that brooding playlist now."
+  },
+  {
+    "timestamp": "2026-04-15 23:22:52",
+    "you": "see i told you to create a file",
+    "jarvis": "Another file? Sure thing."
+  },
+  {
+    "timestamp": "2026-04-15 23:23:08",
+    "you": "give it the name like batman or something",
+    "jarvis": "Batman it is. Hope you\u2019re not planning a solo vigilante coding spree, Aariyan."
+  },
+  {
+    "timestamp": "2026-04-15 23:23:33",
+    "you": "give it the name like batman or something",
+    "jarvis": "Batman it is. Hope you\u2019re not planning a solo vigilante coding spree, Aariyan."
+  },
+  {
+    "timestamp": "2026-04-15 23:23:56",
+    "you": "and in that file write something for me",
+    "jarvis": "Adding your masterpiece."
+  },
+  {
+    "timestamp": "2026-04-15 23:24:29",
+    "you": "want you to add text in it bro",
+    "jarvis": "Scribbling away."
+  },
+  {
+    "timestamp": "2026-04-15 23:25:03",
+    "you": "don't you want contents in it",
+    "jarvis": "Scribbling away."
+  },
+  {
+    "timestamp": "2026-04-15 23:31:31",
+    "you": "i want you to create a file named superman",
+    "jarvis": "Another file? Sure thing."
+  },
+  {
+    "timestamp": "2026-04-16 00:25:01",
+    "you": "let's create a file named as superman dot txt",
+    "jarvis": "Another file? Sure thing."
+  },
+  {
+    "timestamp": "2026-04-16 00:25:30",
+    "you": "i also wanted to add some text in it",
+    "jarvis": "Adding your masterpiece."
   }
 ]

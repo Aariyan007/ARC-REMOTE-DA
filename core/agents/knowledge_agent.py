@@ -27,7 +27,7 @@ class KnowledgeAgent(BaseAgent):
             
         self.register_action(
             name="save_note",
-            handler=self._save_note,
+            method=self._save_note,
             parameters={
                 "title": "REQUIRED string — The title of the note (to be used as the filename)",
                 "content": "REQUIRED string — The markdown content to save inside the note",
@@ -38,7 +38,7 @@ class KnowledgeAgent(BaseAgent):
         
         self.register_action(
             name="append_note",
-            handler=self._append_note,
+            method=self._append_note,
             parameters={
                 "title": "REQUIRED string — The name of the existing note to append to",
                 "content": "REQUIRED string — The text to add at the bottom of the note"
@@ -48,7 +48,7 @@ class KnowledgeAgent(BaseAgent):
         
         self.register_action(
             name="read_note",
-            handler=self._read_note,
+            method=self._read_note,
             parameters={
                 "title": "REQUIRED string — The exact title or filename of the note"
             },
@@ -57,7 +57,7 @@ class KnowledgeAgent(BaseAgent):
         
         self.register_action(
             name="search_vault",
-            handler=self._search_vault,
+            method=self._search_vault,
             parameters={
                 "query": "REQUIRED string — The search term or topic to look for"
             },

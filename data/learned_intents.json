@@ -96,5 +96,30 @@
     "created": "2026-04-15 15:59:16",
     "last_matched": "2026-04-15 15:59:16",
     "match_count": 1
+  },
+  {
+    "normalized_input": "give it something batman",
+    "action": "search_google",
+    "params": {
+      "query": "Batman movie soundtrack playlist"
+    },
+    "confidence": 1.0,
+    "source": "gemini",
+    "created": "2026-04-15 23:22:33",
+    "last_matched": "2026-04-15 23:22:33",
+    "match_count": 1
+  },
+  {
+    "normalized_input": "give it the name batman or something",
+    "action": "create_file",
+    "params": {
+      "filename": "batman.docx",
+      "location": "desktop"
+    },
+    "confidence": 1.0,
+    "source": "gemini",
+    "created": "2026-04-15 23:23:33",
+    "last_matched": "2026-04-15 23:23:33",
+    "match_count": 1
   }
 ]

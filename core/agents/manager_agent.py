@@ -34,7 +34,7 @@ load_dotenv()
 
 # ─── Settings ────────────────────────────────────────────────
 GEMINI_API_KEY = os.getenv("API_KEY")
-MODEL          = "gemini-2.5-flash"
+MODEL          = "gemini-2.0-flash"
 MAX_PLAN_STEPS = 8
 # ─────────────────────────────────────────────────────────────
 
@@ -241,9 +241,8 @@ OTHER RULES:
 
             except Exception as e:
                 if "429" in str(e):
-                    wait = 10 * (attempt + 1)
-                    print(f"⏳ Rate limited — waiting {wait}s...")
-                    time.sleep(wait)
+                    print(f"❌ Rate limited. Failing fast to prevent freeze.")
+                    return None
                 else:
                     print(f"❌ Planning error: {e}")
                     return None
