@@ -129,25 +129,20 @@ class MusicAgent(BaseAgent):
         self._ensure_spotify_running()
 
         if sys.platform == "darwin":
-            # Open Spotify search, wait, then press Enter to play first result
+            # Use the Spotify AppleScript 'play track' command with search URI.
+            # This is native and avoids any UI scripting.
             script = f'''
-            tell application "Spotify" to activate
-            delay 1
-            open location "spotify:search:{encoded}"
-            delay 2
-            tell application "System Events"
-                tell process "Spotify"
-                    keystroke tab
-                    delay 0.3
-                    keystroke return
-                end tell
+            tell application "Spotify"
+                play track "spotify:search:{encoded}"
             end tell
             '''
             try:
-                subprocess.run(["osascript", "-e", script], timeout=10)
-                time.sleep(2)
+                subprocess.run(["osascript", "-e", script], timeout=5)
+                time.sleep(1)
                 track = self._get_current_track()
-                return f"Playing {track['name']} by {track['artist']}"
+                if track["name"] != "Unknown":
+                    return f"Playing {track['name']} by {track['artist']}"
+                return f"Playing {query} on Spotify"
             except Exception as e:
                 return f"Error searching: {e}"
         else:
