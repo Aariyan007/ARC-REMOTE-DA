@@ -315,7 +315,7 @@ class FileSystemAgent(BaseAgent):
     # ── Folder: Open ─────────────────────────────────────────
     def _open_folder(self, params: dict) -> AgentResult:
         """Opens a folder in Finder."""
-        target = params.get("target", params.get("name", ""))
+        target = params.get("target", params.get("name", params.get("folder_name", "")))
 
         if not target:
             return AgentResult(
@@ -338,7 +338,8 @@ class FileSystemAgent(BaseAgent):
     # ── Folder: Create ───────────────────────────────────────
     def _create_folder(self, params: dict) -> AgentResult:
         """Creates a new folder."""
-        target = params.get("target", params.get("name", ""))
+        target = params.get("target", params.get("name", params.get("folder_name", "")))
+        location = params.get("location", "desktop")
 
         if not target:
             return AgentResult(
@@ -347,7 +348,7 @@ class FileSystemAgent(BaseAgent):
             )
 
         if "create_folder" in self._actions:
-            self._actions["create_folder"](target)
+            self._actions["create_folder"](target, location=location)
             return AgentResult(
                 success=True, action="create_folder",
                 result=f"Created folder {target}",

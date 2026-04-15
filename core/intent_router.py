@@ -36,6 +36,8 @@ from mood.mood_engine import get_current_mood
 from core.reinforcement import track_action, boost_confidence, get_penalty, get_boost
 from core.thinking_ui import update_thinking
 from core.interrupt_manager import is_interrupt, get_interrupt_manager
+from core.confidence import evaluate_confidence
+from core.brain import get_brain, BrainDecision
 
 # ── Format Keywords → Extensions ───────────────────────────────
 FORMAT_MAP = {
@@ -551,8 +553,47 @@ def route(command: str, actions: dict) -> bool:
                 params.update(fresh_params)
             print(f"🔗 Context resolved → '{cleaned}' keeping intent={intent.action} (conf={intent.confidence:.2f})")
 
-    # ── Step 5: Safety check ─────────────────────────────────
-    safety = check_safety(intent.action, intent.confidence, has_ctx, word_count=len(cleaned.split()))
+    # ── Step 5: Confidence evaluation ────────────────────────
+    conf_result = evaluate_confidence(
+        action=intent.action,
+        intent_confidence=intent.confidence,
+        params=params,
+        text=cleaned,
+        has_context_ref=has_ctx,
+        context_resolved=was_resolved if has_ctx else False,
+    )
+    print(f"🎯 Confidence: {conf_result.score:.2f} ({conf_result.tier.value}) — {conf_result.recommendation}")
+    update_thinking(command=command, intent=intent.action, confidence=conf_result.score, stage="Confidence")
+
+    # ── Step 5.5: ManagerBrain Decision (Phase 3) ────────────
+    brain = get_brain()
+    decision_result = brain.decide(
+        command=command, 
+        intent_action=intent.action, 
+        intent_confidence=conf_result.score, 
+        params=params, 
+        text=cleaned, 
+        has_context_ref=has_ctx, 
+        context_resolved=was_resolved if has_ctx else False
+    )
+
+    if decision_result.decision == BrainDecision.PLAN_AND_EXECUTE:
+        print("🤖 ManagerBrain: Complex command detected — routing to ManagerAgent")
+        update_thinking(command=command, stage="Planning Task Graph")
+        if brain._manager:
+            brain._manager.run(command)
+        else:
+            print("⚠️ ManagerAgent not available — falling back to old logic")
+            # Let it fall through to execution if no manager
+        return True
+
+    elif decision_result.decision == BrainDecision.CHAT:
+        print("💬 ManagerBrain: Conversational input detected")
+        # Ensure it skips execution and falls to Gemini
+        conf_result.score = 0.0  
+
+    # ── Step 6: Safety check ─────────────────────────────────
+    safety = check_safety(intent.action, conf_result.score, has_ctx, word_count=len(cleaned.split()))
     print(f"🛡️  Safety: {safety.decision} — {safety.reason}")
 
     mood = get_current_mood().get("name", "casual")

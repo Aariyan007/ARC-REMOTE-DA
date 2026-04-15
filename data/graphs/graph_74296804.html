@@ -1,0 +1,66 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jarvis Task Graph: Test Graph</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #1a1a2e;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #7c3aed;
+            margin: 0 0 10px 0;
+        }
+        .summary {
+            color: #a0a0b0;
+            font-size: 14px;
+        }
+        .mermaid {
+            background-color: #2a2a40;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+    <!-- Include Mermaid.js -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'dark',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+    </script>
+</head>
+<body>
+    <div class="header">
+        <h1>🧠 Jarvis Execution Plan</h1>
+        <div class="summary">Task: Test Graph &nbsp;|&nbsp; Nodes: 2</div>
+    </div>
+    
+    <div class="mermaid">
+        graph TD\n\n    system_prepare_0(("system.prepare<br/><i>prepare</i>"))\n    system_execute_1(("system.execute<br/><i>execute</i>"))\n\n    system_prepare_0 --> system_execute_1
+    </div>
+</body>
+</html>

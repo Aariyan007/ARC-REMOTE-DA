@@ -1,35 +1,5 @@
 [
   {
-    "timestamp": "2026-04-15 10:06:53",
-    "you": "send an email send an email send an email",
-    "jarvis": "Another email? Composing."
-  },
-  {
-    "timestamp": "2026-04-15 10:07:08",
-    "you": "you",
-    "jarvis": "Me? Don't tell me you forgot my name already, Aariyan."
-  },
-  {
-    "timestamp": "2026-04-15 10:07:27",
-    "you": "tell me a joke",
-    "jarvis": ""
-  },
-  {
-    "timestamp": "2026-04-15 10:07:47",
-    "you": "now tell me a joke",
-    "jarvis": ""
-  },
-  {
-    "timestamp": "2026-04-15 10:15:33",
-    "you": "open terminal",
-    "jarvis": "Your wish is my command."
-  },
-  {
-    "timestamp": "2026-04-15 10:15:49",
-    "you": "you",
-    "jarvis": "You still expecting that joke, Aariyan? My comedy debut is taking longer than THEFriend."
-  },
-  {
     "timestamp": "2026-04-15 10:16:21",
     "you": "open power cell",
     "jarvis": "Power Cell, really? Not some boring old app like VS Code?"
@@ -98,5 +68,35 @@
     "timestamp": "2026-04-15 10:50:21",
     "you": "open spotify and they play a music any music",
     "jarvis": "Oh, this one. Sure."
+  },
+  {
+    "timestamp": "2026-04-15 13:37:52",
+    "you": "you",
+    "jarvis": "You... called?"
+  },
+  {
+    "timestamp": "2026-04-15 13:48:54",
+    "you": "make a folder called work on my desktop create a file inside it and open vscode",
+    "jarvis": "Opening, again."
+  },
+  {
+    "timestamp": "2026-04-15 13:49:17",
+    "you": "you",
+    "jarvis": "Still me, Aariyan. What's up?"
+  },
+  {
+    "timestamp": "2026-04-15 13:54:52",
+    "you": "make a folder called work on my desktop and create a file inside it and open vscode",
+    "jarvis": "Opening, again."
+  },
+  {
+    "timestamp": "2026-04-15 13:55:12",
+    "you": "you",
+    "jarvis": "Yup, still me. Ready for the next groundbreaking command."
+  },
+  {
+    "timestamp": "2026-04-15 13:55:38",
+    "you": "you",
+    "jarvis": "Still here, ready for another repeat command?"
   }
 ]

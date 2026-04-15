@@ -217,6 +217,7 @@ from core.agents.system_agent import SystemControlAgent
 from core.agents.manager_agent import ManagerAgent
 from core.agents.music_agent import MusicAgent
 from core.agents.companion_agent import CompanionAgent
+from core.agents.research_agent import ResearchAgent
 
 # Triggers that indicate multi-step / complex commands → ManagerAgent
 AGENT_TRIGGERS = [
@@ -225,6 +226,7 @@ AGENT_TRIGGERS = [
     "summarise", "tell me about", "read and",
     "open and", "find and", "check my emails and",
     "research", "send my", "email my",
+    "look up", "find out", "what is", "who is",
 ]
 
 # ── Agent instances (initialized in main) ────────────────────
@@ -265,6 +267,7 @@ def _initialize_agents():
     sys_agent       = SystemControlAgent(actions_map=ACTIONS)
     music_agent     = MusicAgent()
     companion_agent = CompanionAgent()
+    research_agent  = ResearchAgent()
 
     # Create the ManagerAgent (orchestrator)
     _manager_agent = ManagerAgent(
@@ -273,6 +276,7 @@ def _initialize_agents():
             "system":     sys_agent,
             "music":      music_agent,
             "companion":  companion_agent,
+            "research":   research_agent,
         },
         actions=ACTIONS,
     )
@@ -316,18 +320,8 @@ def assistant_loop():
             print(f"📚 Correction result: {result}")
             continue
 
-        # Complex multi-step commands — use ManagerAgent
-        if any(t in command.lower() for t in AGENT_TRIGGERS):
-            print("🤖 Complex command — routing to ManagerAgent")
-            if _manager_agent:
-                _manager_agent.run(command)
-            else:
-                # Fallback to old agent if ManagerAgent not initialized
-                run_agent(command, ACTIONS)
-            continue
-
-        # ── Speed-first pipeline ─────────────────────────────
-        # normalize → fast intent → safety check → execute
+        # ── Fast/Brain pipeline ──────────────────────────────
+        # ManagerBrain will intercept complex commands inside route()
         was_interrupted = route(command, ACTIONS)
 
         if not was_interrupted:
@@ -359,13 +353,79 @@ def main():
     _interrupt_mgr = get_interrupt_manager()
     print("⛔ Interrupt manager ready")
 
+    # ── Initialize Event Bus ─────────────────────────────────
+    from core.event_bus import get_event_bus
+    _event_bus = get_event_bus()
+    print("📡 Event bus ready")
+
+    # ── Initialize Perception Engine ─────────────────────────
+    from core.perception_engine import get_perception_engine
+    _perception = get_perception_engine()
+    _perception.start()
+
+    # ── Initialize Proactive Context Loop ────────────────────
+    from core.proactive_loop import get_proactive_loop
+    _proactive = get_proactive_loop(
+        speak_func=speak,
+        listen_func=listen,
+    )
+    _proactive.start()
+
+    # ── Wire proactive music triggers to MusicAgent ──────────
+    def _on_proactive_music(event):
+        """Handle proactive music suggestion from ProactiveLoop."""
+        data = event.data
+        if data.get("trigger") == "music_suggestion" and _manager_agent:
+            agent = _manager_agent.get_agent("music")
+            if agent:
+                agent.execute("play_playlist", {"query": data.get("query", "focus playlist")})
+
+    _event_bus.subscribe("proactive_trigger", _on_proactive_music)
+
+
+    # ── Initialize ManagerBrain (Phase 3) ────────────────────
+    from core.brain import get_brain
+    _brain = get_brain(manager_agent=_manager_agent, actions=ACTIONS)
+    print("\U0001f9e0 ManagerBrain ready")
+
+    # ── Initialize Vector Memory ─────────────────────────────
+    try:
+        from core.vector_memory import get_vector_memory
+        _vector_mem = get_vector_memory()
+        print(f"\U0001f4be Vector memory ready ({_vector_mem.document_count} documents)")
+    except Exception as e:
+        print(f"\u26a0\ufe0f  Vector memory skipped: {e}")
+
+    # ── Initialize Habits Engine ─────────────────────────────
+    try:
+        from core.habits import refresh_habits, get_suggestions_for_now
+        habits = refresh_habits(days=30)
+        if habits:
+            print(f"\U0001f501 Habits: {len(habits)} patterns detected")
+        suggestions = get_suggestions_for_now()
+        if suggestions:
+            print(f"\U0001f4a1 Suggestions for now: {len(suggestions)}")
+    except Exception as e:
+        print(f"\u26a0\ufe0f  Habits engine skipped: {e}")
+
     print("\nSay the wake word to activate Jarvis...\n")
 
-    while True:
-        activated = start_listener()
-        if activated:
-            assistant_loop()
-            print("\nWaiting for wake word again...\n")
+    try:
+        while True:
+            activated = start_listener()
+            if activated:
+                assistant_loop()
+                print("\nWaiting for wake word again...\n")
+    except KeyboardInterrupt:
+        print("\n⚠️  Shutting down...")
+    finally:
+        # ── Clean shutdown ─────────────────────────────────
+        _proactive.stop()
+        _perception.stop()
+        _event_bus.shutdown()
+        if _manager_agent:
+            _manager_agent.shutdown()
+        print("✅ Jarvis shut down cleanly.")
 
 
 if __name__ == "__main__":

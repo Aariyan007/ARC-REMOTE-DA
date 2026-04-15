@@ -218,37 +218,53 @@ class GraphExecutor:
     """
     Executes a TaskGraph by dispatching nodes to agent handlers.
 
+    Now with observational re-evaluation:
+    After each node completes, observation_hook is called.
+    If it returns a GraphRewrite, remaining nodes are dynamically adjusted.
+
     Args:
-        agent_registry: dict mapping agent_name → callable(action, params) → result
-        max_parallel:   max nodes to run in parallel
-        on_node_start:  optional callback(node) when a node starts
-        on_node_done:   optional callback(node) when a node completes
+        agent_registry:   dict mapping agent_name -> callable(action, params) -> result
+        max_parallel:     max nodes to run in parallel
+        on_node_start:    optional callback(node) when a node starts
+        on_node_done:     optional callback(node) when a node completes
+        observation_hook: optional callback(node, graph) -> Optional[GraphRewrite]
     """
 
     def __init__(
         self,
-        agent_registry: dict,
-        max_parallel:   int = 3,
-        on_node_start:  Optional[Callable] = None,
-        on_node_done:   Optional[Callable] = None,
+        agent_registry:   dict,
+        max_parallel:     int = 3,
+        on_node_start:    Optional[Callable] = None,
+        on_node_done:     Optional[Callable] = None,
+        observation_hook: Optional[Callable] = None,
     ):
-        self.agents        = agent_registry
-        self.max_parallel  = max_parallel
-        self.on_node_start = on_node_start
-        self.on_node_done  = on_node_done
-        self._executor     = ThreadPoolExecutor(
+        self.agents           = agent_registry
+        self.max_parallel     = max_parallel
+        self.on_node_start    = on_node_start
+        self.on_node_done     = on_node_done
+        self.observation_hook = observation_hook
+        self._executor        = ThreadPoolExecutor(
             max_workers=max_parallel, thread_name_prefix="jarvis_graph"
         )
 
     def execute(self, graph: TaskGraph) -> TaskGraph:
         """
         Executes the task graph, respecting dependencies and parallelism.
+        After each batch, runs observation hooks for dynamic re-planning.
         Returns the graph with all nodes updated.
         """
         # Validate and sort
         graph._topological_sort()
         print(f"\n📊 Executing {graph.summary()}")
         print(f"   Order: {' → '.join(graph.order)}")
+
+        # ── Visualizer Hook ─────────────────────────
+        try:
+            from core.graph.visualizer import visualize_graph
+            if len(graph.nodes) > 1:  # Only visualize complex tasks
+                visualize_graph(graph)
+        except Exception as e:
+            print(f"   ⚠️  Graph visualizer failed: {e}")
 
         while not graph.is_complete and not graph.is_interrupted:
             ready_nodes = graph.get_ready_nodes()
@@ -294,6 +310,20 @@ class GraphExecutor:
                     node.error = str(e)
                     node.end_time = time.time()
                     print(f"   ❌ Failed: {node.description} — {e}")
+
+            # ── Observation: evaluate after each batch ────────
+            if self.observation_hook:
+                for future in futures:
+                    node = futures[future]
+                    if node.status in (NodeStatus.DONE, NodeStatus.FAILED):
+                        try:
+                            rewrite = self.observation_hook(node, graph)
+                            if rewrite:
+                                GraphRewriter.apply(graph, rewrite)
+                                # Re-sort after rewrite
+                                graph._topological_sort()
+                        except Exception as e:
+                            print(f"   ⚠️  Observation hook error: {e}")
 
         graph.completed_at = time.time()
         total_ms = (graph.completed_at - graph.created_at) * 1000
@@ -342,6 +372,94 @@ class GraphExecutor:
     def shutdown(self):
         """Cleanly shut down the executor thread pool."""
         self._executor.shutdown(wait=False)
+
+
+# ─── Graph Rewriter ──────────────────────────────────────────
+@dataclass
+class GraphRewrite:
+    """Instructions for dynamically modifying a running TaskGraph."""
+    skip_nodes:    list = field(default_factory=list)   # Node IDs to skip
+    add_nodes:     list = field(default_factory=list)   # New TaskNode dicts to add
+    modify_params: dict = field(default_factory=dict)   # node_id -> {param updates}
+    reason:        str  = ""                            # Why the rewrite happened
+
+
+class GraphRewriter:
+    """
+    Dynamically modifies a running TaskGraph based on observation.
+
+    Capabilities:
+    - Skip nodes that are no longer needed
+    - Add new nodes (e.g., error recovery steps)
+    - Modify params of pending nodes based on upstream results
+
+    Usage by observation_hook:
+        def my_hook(node, graph) -> Optional[GraphRewrite]:
+            if node.action == "create_folder" and "already exists" in str(node.result):
+                return GraphRewrite(
+                    skip_nodes=[],
+                    reason="Folder already exists, continuing"
+                )
+            return None
+    """
+
+    @staticmethod
+    def apply(graph: TaskGraph, rewrite: GraphRewrite) -> None:
+        """Apply a GraphRewrite to a live TaskGraph."""
+        if rewrite.reason:
+            print(f"   🔄 Graph rewrite: {rewrite.reason}")
+
+        # Skip nodes
+        for node_id in rewrite.skip_nodes:
+            if node_id in graph.nodes:
+                node = graph.nodes[node_id]
+                if node.status == NodeStatus.PENDING:
+                    node.status = NodeStatus.SKIPPED
+                    node.error = f"Skipped by rewriter: {rewrite.reason}"
+                    print(f"   ⏭️  Rewriter skipped: {node.description}")
+
+        # Modify params of pending nodes
+        for node_id, param_updates in rewrite.modify_params.items():
+            if node_id in graph.nodes:
+                node = graph.nodes[node_id]
+                if node.status == NodeStatus.PENDING:
+                    node.params.update(param_updates)
+                    print(f"   ✏️  Rewriter updated params: {node.description}")
+
+        # Add new nodes
+        for node_def in rewrite.add_nodes:
+            node_id = graph.add_node(
+                agent=node_def.get("agent", "system"),
+                action=node_def.get("action", ""),
+                params=node_def.get("params", {}),
+                depends_on=node_def.get("depends_on", []),
+                description=node_def.get("description", "Dynamic node"),
+            )
+            print(f"   ➕ Rewriter added: {node_def.get('description', node_id)}")
+
+    @staticmethod
+    def create_skip(node_ids: list, reason: str = "") -> GraphRewrite:
+        """Helper: create a rewrite that skips nodes."""
+        return GraphRewrite(skip_nodes=node_ids, reason=reason)
+
+    @staticmethod
+    def create_param_update(node_id: str, params: dict, reason: str = "") -> GraphRewrite:
+        """Helper: create a rewrite that updates node params."""
+        return GraphRewrite(modify_params={node_id: params}, reason=reason)
+
+    @staticmethod
+    def create_recovery_node(agent: str, action: str, params: dict, depends_on: list = None, reason: str = "") -> GraphRewrite:
+        """Helper: create a rewrite that adds a recovery node."""
+        return GraphRewrite(
+            add_nodes=[{
+                "agent": agent,
+                "action": action,
+                "params": params,
+                "depends_on": depends_on or [],
+                "description": f"Recovery: {action}",
+            }],
+            reason=reason,
+        )
 
 
 # ─── Quick Test ──────────────────────────────────────────────
