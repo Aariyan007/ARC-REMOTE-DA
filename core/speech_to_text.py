@@ -28,12 +28,43 @@ CORRECTIONS = {
     "dava":    "jarvis",   # fixed — removed space
     "crome":   "chrome",
     "saf":     "safari",
+    # Terminal mishearings
+    "power cell":  "powershell",
+    "power shell": "powershell",
+    "power sel":   "powershell",
+    "powersel":    "powershell",
+    "powercell":   "powershell",
 }
 # ────────────────────────────────────────────────────────────
 
 print("Loading Whisper model...")
 model = whisper.load_model("small")
 print("Whisper is wokring")
+
+
+def _deduplicate_whisper(text: str) -> str:
+    """Remove stuttered/repeated phrases from Whisper output.
+    e.g. 'send email send email' → 'send email'
+    e.g. 'open terminal open terminal open' → 'open terminal'
+    """
+    if not text:
+        return text
+    words = text.split()
+    if len(words) < 4:
+        return text
+
+    # Try phrase lengths from half-sentence down to 2 words
+    for phrase_len in range(len(words) // 2, 1, -1):
+        phrase = ' '.join(words[:phrase_len])
+        rest = ' '.join(words[phrase_len:])
+        # Check if the rest starts with the same phrase
+        if rest.startswith(phrase):
+            # Remove the repeated portion, keep any trailing words
+            remainder = rest[len(phrase):].strip()
+            cleaned = phrase + (" " + remainder if remainder else "")
+            return _deduplicate_whisper(cleaned)  # recurse
+
+    return text
 
 
 def calibrate_silence(stream) -> float:
@@ -135,6 +166,8 @@ def listen() -> str:
     for wrong, right in CORRECTIONS.items():
         text = text.replace(wrong, right)
 
+    text = _deduplicate_whisper(text)
+
     os.remove(tmp_path)
 
     print(f"📝 You said: '{text}'")
@@ -219,6 +252,8 @@ def listen_long(max_seconds: int = 30, silence_seconds: float = 2.5) -> str:
 
     for wrong, right in CORRECTIONS.items():
         text = text.replace(wrong, right)
+
+    text = _deduplicate_whisper(text)
 
     os.remove(tmp_path)
 

@@ -35,6 +35,8 @@ SHORT_RESPONSE_WORDS = 6
 
 is_speaking     = False
 _speech_process = None
+_elevenlabs_fail_count = 0
+_elevenlabs_max_fails  = 3     # disable for session after N consecutive fails
 
 
 # ── Mood → Voice Settings ────────────────────────────────────
@@ -85,7 +87,7 @@ def _is_short_response(text: str) -> bool:
 
 def _speak_elevenlabs(text: str) -> bool:
     """Speaks using ElevenLabs API with mood-based voice settings."""
-    global is_speaking, _speech_process
+    global is_speaking, _speech_process, _elevenlabs_fail_count
     try:
         from elevenlabs import ElevenLabs, VoiceSettings, play
         import io
@@ -136,10 +138,15 @@ def _speak_elevenlabs(text: str) -> bool:
 
         _speech_process.wait()
         os.remove(tmp_path)
+        _elevenlabs_fail_count = 0   # reset on success
         return True
 
     except Exception as e:
-        print(f"⚠️  ElevenLabs failed: {e} — falling back to local TTS")
+        _elevenlabs_fail_count += 1
+        if _elevenlabs_fail_count >= _elevenlabs_max_fails:
+            print(f"⚠️  ElevenLabs failed {_elevenlabs_fail_count}x — disabling for this session")
+        else:
+            print(f"⚠️  ElevenLabs failed: {e} — falling back to local TTS")
         if sys.platform == "darwin":
             return _speak_mac(text)
         else:
@@ -239,7 +246,7 @@ def speak(text: str, force_elevenlabs: bool = False) -> bool:
     is_speaking = True
     print(f"🔊 Jarvis: {text}")
 
-    if USE_ELEVENLABS:
+    if USE_ELEVENLABS and _elevenlabs_fail_count < _elevenlabs_max_fails:
         result = _speak_elevenlabs(text)
     elif sys.platform == "darwin":
         result = _speak_mac(text)
@@ -259,7 +266,7 @@ def speak_instant(text: str) -> bool:
     is_speaking = True
     print(f"🔊 Jarvis (instant): {text}")
 
-    if USE_ELEVENLABS:
+    if USE_ELEVENLABS and _elevenlabs_fail_count < _elevenlabs_max_fails:
         result = _speak_elevenlabs(text)
     elif sys.platform == "darwin":
         result = _speak_mac(text)
@@ -279,7 +286,7 @@ def speak_smart(text: str) -> bool:
     is_speaking = True
     print(f"🔊 Jarvis (smart): {text}")
 
-    if USE_ELEVENLABS:
+    if USE_ELEVENLABS and _elevenlabs_fail_count < _elevenlabs_max_fails:
         result = _speak_elevenlabs(text)
     elif sys.platform == "darwin":
         result = _speak_mac(text)
@@ -296,7 +303,7 @@ def speak_and_wait(text: str) -> None:
     is_speaking = True
     print(f"🔊 Jarvis: {text}")
 
-    if USE_ELEVENLABS:
+    if USE_ELEVENLABS and _elevenlabs_fail_count < _elevenlabs_max_fails:
         try:
             from elevenlabs import ElevenLabs, VoiceSettings
             client   = ElevenLabs(api_key=ELEVENLABS_API_KEY)

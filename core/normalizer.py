@@ -101,7 +101,6 @@ SYNONYMS = {
     "command line":     "terminal",
     "shell":            "terminal",
     "console":          "terminal",
-    "cmd":              "terminal",
     # System
     "my laptop":        "mac",
     "my computer":      "mac",

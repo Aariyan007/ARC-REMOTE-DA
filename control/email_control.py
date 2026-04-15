@@ -2,13 +2,14 @@ import os
 import base64
 import subprocess
 import urllib.parse
+import webbrowser
+import re
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from core.voice_response import speak
 from core.speech_to_text import listen, listen_long
-import re
 
 # ─── Settings ────────────────────────────────────────────────
 SCOPES           = ["https://www.googleapis.com/auth/gmail.modify"]
@@ -16,6 +17,76 @@ CREDENTIALS_FILE = os.path.join(os.path.dirname(__file__), '..', 'credentials.js
 TOKEN_FILE       = os.path.join(os.path.dirname(__file__), '..', 'token.json')
 # ─────────────────────────────────────────────────────────────
 
+
+# ─── Helpers ─────────────────────────────────────────────────
+
+def _safe(value) -> str:
+    """Sanitise a value for use in email fields. Never returns None."""
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
+def _voice_input_with_retry(
+    prompt: str,
+    confirm_label: str = "",
+    max_retries: int = 2,
+    use_long_listen: bool = False,
+    long_max_seconds: int = 30,
+    long_silence_seconds: float = 2.5,
+) -> str:
+    """
+    Ask a voice question, listen for the answer, optionally confirm,
+    and retry up to `max_retries` times if the input is empty or rejected.
+
+    Returns the confirmed text, or "" if all retries exhausted.
+    """
+    for attempt in range(max_retries + 1):
+        speak(prompt if attempt == 0 else f"Let me try again. {prompt}")
+
+        if use_long_listen:
+            raw = listen_long(max_seconds=long_max_seconds,
+                              silence_seconds=long_silence_seconds)
+        else:
+            raw = listen()
+
+        text = _safe(raw)
+        if not text:
+            if attempt < max_retries:
+                speak("I didn't catch that.")
+                continue
+            else:
+                speak("Still couldn't hear you. Skipping this.")
+                return ""
+
+        # ── Confirmation step ────────────────────────────────
+        if confirm_label:
+            speak(f"Did you say {confirm_label}: {text}?")
+            confirmation = listen()
+            if confirmation and any(
+                w in confirmation.lower()
+                for w in ["yes", "yeah", "yep", "correct", "right", "sure", "that's right"]
+            ):
+                return text
+            elif confirmation and any(
+                w in confirmation.lower()
+                for w in ["no", "nope", "wrong", "change", "not right"]
+            ):
+                if attempt < max_retries:
+                    continue
+                else:
+                    speak("Alright, going with what I heard.")
+                    return text
+            else:
+                # Ambiguous response — accept what we heard
+                return text
+        else:
+            return text
+
+    return ""
+
+
+# ─── Gmail Service ───────────────────────────────────────────
 
 def get_gmail_service():
     """Authenticates and returns Gmail API service."""
@@ -32,6 +103,8 @@ def get_gmail_service():
             f.write(creds.to_json())
     return build("gmail", "v1", credentials=creds)
 
+
+# ─── Email Body Extraction ──────────────────────────────────
 
 def _extract_body(payload: dict) -> str:
     """Extracts plain text body from email payload."""
@@ -95,6 +168,8 @@ def _speak_email(service, msg_id: str, read_body: bool = False) -> None:
             speak("Couldn't read the email body.")
 
 
+# ─── Read / Search / Open ────────────────────────────────────
+
 def read_emails(count: int = 5) -> None:
     """Reads latest unread email subjects aloud."""
     speak("Checking your inbox.")
@@ -148,67 +223,83 @@ def search_emails(query: str) -> None:
         speak("Couldn't search emails right now.")
 
 
+# ─── Send Email (Voice-Driven Multi-Step) ────────────────────
+
 def send_email(to: str = "", subject: str = "", body: str = "") -> None:
-    """Opens Gmail compose window pre-filled via a multi-step conversation."""
-    import webbrowser
+    """Opens Gmail compose window pre-filled via a multi-step voice conversation."""
 
     # Step 1: Who to send to
+    to = _safe(to)
     if not to:
-        speak("Who do you want to send it to?")
-        to = listen()
+        to = _voice_input_with_retry(
+            prompt="Who do you want to send the email to?",
+            confirm_label="recipient",
+            max_retries=2,
+        )
         if not to:
-            speak("I didn't hear a name. Trying one more time, who to?")
-            to = listen()
-            if not to:
-                speak("Still didn't catch that. Cancelling email.")
-                return "Cancelled — missing recipient"
+            speak("Cancelled. No recipient provided.")
+            return "Cancelled — missing recipient"
 
     # Step 2: Subject
+    subject = _safe(subject)
     if not subject:
-        speak("What is the subject?")
-        subject = listen()
+        subject = _voice_input_with_retry(
+            prompt="What is the subject?",
+            confirm_label="subject",
+            max_retries=2,
+        )
         if not subject:
-            speak("I need a subject to continue. What's the subject?")
-            subject = listen()
-            if not subject:
-                speak("No subject provided. Cancelling email.")
-                return "Cancelled — missing subject"
+            speak("Cancelled. No subject provided.")
+            return "Cancelled — missing subject"
 
-    # Step 3: Body (using listen_long)
+    # Step 3: Body (use long listen for extended speech)
+    body = _safe(body)
     if not body:
-        speak("What should the email say?")
-        body = listen_long(max_seconds=30, silence_seconds=2.5)
+        body = _voice_input_with_retry(
+            prompt="What should the email say?",
+            confirm_label="",  # skip confirmation for body — too long
+            max_retries=2,
+            use_long_listen=True,
+            long_max_seconds=30,
+            long_silence_seconds=2.5,
+        )
         if not body:
-            speak("I didn't hear the message. Let's try once more, what should I say?")
-            body = listen_long(max_seconds=20)
-            if not body:
-                speak("No message provided. Cancelling email.")
-                return "Cancelled — missing body"
+            speak("Cancelled. No message provided.")
+            return "Cancelled — missing body"
 
-    # Step 4: Confirmation
-    speak(f"Ready to send to {to} about {subject}. Do you want to send it?")
+    # Step 4: Final confirmation
+    speak(f"Ready to compose email to {to}, subject: {subject}. Should I open it?")
     confirmation = listen()
-    
-    if confirmation and any(word in confirmation.lower() for word in ["yes", "yeah", "yep", "sure", "do it", "send"]):
+
+    if confirmation and any(
+        word in confirmation.lower()
+        for word in ["yes", "yeah", "yep", "sure", "do it", "send", "open", "go"]
+    ):
         speak("Opening Gmail to compose.")
-        params = urllib.parse.urlencode({
-            "to":      to,
-            "subject": subject,
-            "body":    body
-        })
-        url = f"https://mail.google.com/mail/?view=cm&{params}"
+
+        # ── Proper URL construction — fixes Issue 1 ──────────
+        params = urllib.parse.urlencode(
+            {
+                "to":      _safe(to),
+                "su":      _safe(subject),
+                "body":    _safe(body),
+            },
+            quote_via=urllib.parse.quote,
+        )
+
+        url = f"https://mail.google.com/mail/?view=cm&fs=1&{params}"
+        print(f"📧 Gmail URL: {url[:120]}...")
         webbrowser.open(url)
-        speak("Review and send when ready.")
+        speak("Review and send when you're ready.")
         return "Draft opened in Gmail"
     else:
-        speak("Alright, cancelled.")
+        speak("Alright, email cancelled.")
         return "Email cancelled by user"
 
 
 def open_gmail() -> None:
-    """Opens Gmail in Safari."""
+    """Opens Gmail in the default browser."""
     speak("Opening Gmail.")
-    import webbrowser
     webbrowser.open("https://mail.google.com")
 
 
