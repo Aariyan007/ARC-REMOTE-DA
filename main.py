@@ -199,6 +199,15 @@ ACTIONS = {
     "copy_file":       copy_file,
 }
 
+# ── Add Windows-specific terminal actions ─────────────────────
+import sys as _sys_check
+if _sys_check.platform == "win32":
+    from control import open_cmd, open_powershell, open_windows_terminal
+    ACTIONS["open_cmd"]              = open_cmd
+    ACTIONS["open_powershell"]       = open_powershell
+    ACTIONS["open_windows_terminal"] = open_windows_terminal
+
+
 # Correction handling now uses reinforcement learning
 from core.reinforcement import is_correction, handle_correction, track_action
 
@@ -207,6 +216,7 @@ from core.agents.filesystem_agent import FileSystemAgent
 from core.agents.system_agent import SystemControlAgent
 from core.agents.manager_agent import ManagerAgent
 from core.agents.music_agent import MusicAgent
+from core.agents.companion_agent import CompanionAgent
 
 # Triggers that indicate multi-step / complex commands → ManagerAgent
 AGENT_TRIGGERS = [
@@ -251,9 +261,10 @@ def _initialize_agents():
     print("🤖 Initializing multi-agent system...")
 
     # Create specialized agents with access to their relevant actions
-    fs_agent    = FileSystemAgent(actions_map=ACTIONS)
-    sys_agent   = SystemControlAgent(actions_map=ACTIONS)
-    music_agent = MusicAgent()
+    fs_agent        = FileSystemAgent(actions_map=ACTIONS)
+    sys_agent       = SystemControlAgent(actions_map=ACTIONS)
+    music_agent     = MusicAgent()
+    companion_agent = CompanionAgent()
 
     # Create the ManagerAgent (orchestrator)
     _manager_agent = ManagerAgent(
@@ -261,6 +272,7 @@ def _initialize_agents():
             "filesystem": fs_agent,
             "system":     sys_agent,
             "music":      music_agent,
+            "companion":  companion_agent,
         },
         actions=ACTIONS,
     )
@@ -333,6 +345,19 @@ def main():
 
     # Initialize the multi-agent system
     _initialize_agents()
+
+    # Initialize the Floating Thinking UI
+    try:
+        from core.thinking_ui import init_thinking_ui
+        init_thinking_ui()
+        print("🖥️  Thinking UI started")
+    except Exception as e:
+        print(f"⚠️  Thinking UI skipped: {e}")
+
+    # Initialize the Interrupt Manager
+    from core.interrupt_manager import get_interrupt_manager
+    _interrupt_mgr = get_interrupt_manager()
+    print("⛔ Interrupt manager ready")
 
     print("\nSay the wake word to activate Jarvis...\n")
 

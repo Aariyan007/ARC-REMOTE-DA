@@ -24,5 +24,31 @@
     "created": "2026-04-13 22:46:22",
     "last_matched": "2026-04-13 22:46:22",
     "match_count": 1
+  },
+  {
+    "normalized_input": "open power cell",
+    "action": "open_app",
+    "params": {
+      "target": "power cell",
+      "name": "power cell"
+    },
+    "confidence": 1.0,
+    "source": "gemini",
+    "created": "2026-04-15 10:16:39",
+    "last_matched": "2026-04-15 10:16:39",
+    "match_count": 1
+  },
+  {
+    "normalized_input": "open terminal of mac not on the anti gravity outside mac there is a terminal or a command prompt or a power terminal for mac the inbuilt system power terminal or inbuilt system",
+    "action": "open_app",
+    "params": {
+      "target": "terminal",
+      "name": "terminal"
+    },
+    "confidence": 1.0,
+    "source": "gemini",
+    "created": "2026-04-15 10:18:54",
+    "last_matched": "2026-04-15 10:18:54",
+    "match_count": 1
   }
 ]

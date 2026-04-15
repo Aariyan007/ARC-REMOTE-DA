@@ -11,6 +11,7 @@ If fast engine fails → Gemini fallback → learn from result.
 """
 
 import time
+import sys
 from core.normalizer import normalize
 from core.fast_intent import classify, IntentResult
 from core.param_extractors import (
@@ -33,6 +34,8 @@ from core.speech_to_text import listen as stt_listen
 from core.llm_brain import ask_gemini
 from mood.mood_engine import get_current_mood
 from core.reinforcement import track_action, boost_confidence, get_penalty, get_boost
+from core.thinking_ui import update_thinking
+from core.interrupt_manager import is_interrupt, get_interrupt_manager
 
 # ── Format Keywords → Extensions ───────────────────────────────
 FORMAT_MAP = {
@@ -381,6 +384,78 @@ def _execute_action(action: str, params: dict, actions: dict) -> str:
         return f"Error: {str(e)}"
 
 
+def _handle_terminal_preroute(command: str, actions: dict, start_time: float) -> bool:
+    """
+    Hard-coded pre-routing for Windows terminal commands.
+    Bypasses normalization and intent engine entirely.
+    Returns True if handled, False if not a terminal command.
+    """
+    cmd_lower = command.lower()
+
+    # ── Command Prompt / CMD ─────────────────────────────────
+    if "command prompt" in cmd_lower or ("cmd" in cmd_lower and "cmd" in cmd_lower.split()):
+        if "open_cmd" in actions:
+            speak_instant("Opening Command Prompt.")
+            actions["open_cmd"]()
+        else:
+            # Direct fallback
+            import subprocess
+            speak_instant("Opening Command Prompt.")
+            subprocess.Popen(["cmd"])
+        update_thinking(command=command, action="open_cmd", confidence=1.0, stage="Executed")
+        log_interaction(
+            you_said=command, action_taken="open_cmd",
+            was_understood=True, intent_source="preroute",
+            confidence=1.0, latency_ms=(time.time() - start_time) * 1000,
+            normalized_text=command,
+        )
+        return True
+
+    # ── PowerShell ───────────────────────────────────────────
+    if "powershell" in cmd_lower or "power shell" in cmd_lower:
+        if "open_powershell" in actions:
+            speak_instant("Opening PowerShell.")
+            actions["open_powershell"]()
+        else:
+            import subprocess, shutil
+            speak_instant("Opening PowerShell.")
+            if shutil.which("pwsh"):
+                subprocess.Popen(["pwsh"])
+            else:
+                subprocess.Popen(["powershell"])
+        update_thinking(command=command, action="open_powershell", confidence=1.0, stage="Executed")
+        log_interaction(
+            you_said=command, action_taken="open_powershell",
+            was_understood=True, intent_source="preroute",
+            confidence=1.0, latency_ms=(time.time() - start_time) * 1000,
+            normalized_text=command,
+        )
+        return True
+
+    # ── Windows Terminal ─────────────────────────────────────
+    if "windows terminal" in cmd_lower:
+        if "open_windows_terminal" in actions:
+            speak_instant("Opening Windows Terminal.")
+            actions["open_windows_terminal"]()
+        else:
+            import subprocess
+            speak_instant("Opening Windows Terminal.")
+            try:
+                subprocess.Popen(["wt"])
+            except FileNotFoundError:
+                subprocess.Popen(["cmd"])
+        update_thinking(command=command, action="open_windows_terminal", confidence=1.0, stage="Executed")
+        log_interaction(
+            you_said=command, action_taken="open_windows_terminal",
+            was_understood=True, intent_source="preroute",
+            confidence=1.0, latency_ms=(time.time() - start_time) * 1000,
+            normalized_text=command,
+        )
+        return True
+
+    return False
+
+
 def route(command: str, actions: dict) -> bool:
     """
     Speed-first intent routing pipeline.
@@ -403,10 +478,37 @@ def route(command: str, actions: dict) -> bool:
     command = command.strip().lower()
     print(f"\n🔍 Routing: '{command}'")
 
+    # ── Update thinking UI ───────────────────────────────────
+    update_thinking(command=command, stage="Routing")
+
+    # ── Pre-route: Interrupt detection ───────────────────────
+    if is_interrupt(command):
+        mgr = get_interrupt_manager()
+        mgr.cancel(reason=command)
+        speak_instant("Alright, stopping.")
+        update_thinking(command=command, action="interrupted", stage="Cancelled")
+        log_interaction(
+            you_said=command, action_taken="interrupt",
+            was_understood=True, intent_source="builtin",
+            confidence=1.0, latency_ms=(time.time() - start_time) * 1000,
+            normalized_text=command,
+        )
+        mgr.reset()
+        return True
+
+    # ── Pre-route: Hard-coded terminal commands (Windows) ────
+    # These bypass normalization and intent engine entirely.
+    if sys.platform == "win32":
+        handled = _handle_terminal_preroute(command, actions, start_time)
+        if handled:
+            return True
+
     # ── Step 1: Normalize ────────────────────────────────────
     normalized = normalize(command)
     cleaned    = normalized.cleaned
     print(f"📋 Normalized: '{cleaned}'")
+
+    update_thinking(command=command, stage="Normalized", intent=cleaned)
 
     # ── Step 2: Compound command? (create + write in one) ────
     if is_compound_file_command(cleaned):
@@ -431,6 +533,8 @@ def route(command: str, actions: dict) -> bool:
         intent = classify(cleaned)
         params = _extract_params(intent.action, cleaned)
         print(f"⚡ Fast intent: {intent.action} (conf={intent.confidence:.2f}, source={intent.source}, match='{intent.matched_example}')")
+
+    update_thinking(command=command, intent=intent.action, confidence=intent.confidence, stage="Classified")
 
     # ── Step 4: Context resolution ───────────────────────────
     # FIX 1: After resolving "that file" → "superman.txt", DON'T re-classify.
