@@ -15,10 +15,12 @@
     "play the music from spotify": 1
   },
   "create_file": {
-    "create a file named at superman.txt i also want you to add some contents in it": 1
+    "create a file named at superman.txt i also want you to add some contents in it": 1,
+    "i wanted to kind of create a file": 1
   },
   "edit_file": {
-    "write something in superman.txt i tell you": 1
+    "write something in superman.txt i tell you": 1,
+    "could you add text inside there": 1
   },
   "open_gmail": {
     "open email": 1
@@ -34,6 +36,11 @@
   },
   "general_chat": {
     "tell me a joke": 2,
-    "now tell me a joke": 1
+    "now tell me a joke": 1,
+    "i'm feeling bored man": 1
+  },
+  "play_mood_music": {
+    "play some music according to my mood": 1,
+    "a song according to my mood": 1
   }
 }

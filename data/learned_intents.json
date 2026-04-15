@@ -50,5 +50,51 @@
     "created": "2026-04-15 10:18:54",
     "last_matched": "2026-04-15 10:18:54",
     "match_count": 1
+  },
+  {
+    "normalized_input": "add hello how are you inside",
+    "action": "edit_file",
+    "params": {
+      "filename": null,
+      "location": null,
+      "content": "hello how are you"
+    },
+    "confidence": 1.0,
+    "source": "gemini",
+    "created": "2026-04-15 15:52:38",
+    "last_matched": "2026-04-15 15:52:38",
+    "match_count": 1
+  },
+  {
+    "normalized_input": "could you add text inside there",
+    "action": "rename_file",
+    "params": {
+      "type": "action",
+      "action": "rename_file",
+      "target": null,
+      "query": null,
+      "filename": "superman.txt",
+      "new_name": null,
+      "response": "Okay, to what thrilling new name shall we bestow upon your file, Aariyan?"
+    },
+    "confidence": 1.0,
+    "source": "correction",
+    "created": "2026-04-15 15:53:41",
+    "last_matched": "2026-04-15 15:53:41",
+    "match_count": 1
+  },
+  {
+    "normalized_input": "add hello how are you",
+    "action": "edit_file",
+    "params": {
+      "filename": "superman.txt",
+      "location": null,
+      "content": "hello how are you"
+    },
+    "confidence": 1.0,
+    "source": "gemini",
+    "created": "2026-04-15 15:59:16",
+    "last_matched": "2026-04-15 15:59:16",
+    "match_count": 1
   }
 ]

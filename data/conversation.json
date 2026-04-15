@@ -1,110 +1,5 @@
 [
   {
-    "timestamp": "2026-04-15 10:16:21",
-    "you": "open power cell",
-    "jarvis": "Power Cell, really? Not some boring old app like VS Code?"
-  },
-  {
-    "timestamp": "2026-04-15 10:16:39",
-    "you": "open power cell",
-    "jarvis": "Power Cell, really? Not some boring old app like VS Code?"
-  },
-  {
-    "timestamp": "2026-04-15 10:16:50",
-    "you": "open power shell",
-    "jarvis": "Oh, this one. Sure."
-  },
-  {
-    "timestamp": "2026-04-15 10:17:30",
-    "you": "open command prompt",
-    "jarvis": "Let me guess, work? Opening."
-  },
-  {
-    "timestamp": "2026-04-15 10:17:49",
-    "you": "open terminal on pc",
-    "jarvis": "Opening, again."
-  },
-  {
-    "timestamp": "2026-04-15 10:18:15",
-    "you": "open",
-    "jarvis": "Open *what*, Aariyan? My patience? You know I need specifics."
-  },
-  {
-    "timestamp": "2026-04-15 10:18:47",
-    "you": "open terminal of the system not on the anti gravity outside the system there is a terminal or a command prompt or a power shell for the system the inbuilt system power shell or inbuilt system",
-    "jarvis": "Understood, the *earthly* terminal. Not the anti-gravity one. Opening."
-  },
-  {
-    "timestamp": "2026-04-15 10:18:54",
-    "you": "open terminal of the system not on the anti gravity outside the system there is a terminal or a command prompt or a power shell for the system the inbuilt system power shell or inbuilt system",
-    "jarvis": "Understood, the *earthly* terminal. Not the anti-gravity one. Opening."
-  },
-  {
-    "timestamp": "2026-04-15 10:39:02",
-    "you": "open terminal",
-    "jarvis": "Opening, again."
-  },
-  {
-    "timestamp": "2026-04-15 10:39:16",
-    "you": "open terminal",
-    "jarvis": "Oh, this one. Sure."
-  },
-  {
-    "timestamp": "2026-04-15 10:43:18",
-    "you": "send an email",
-    "jarvis": "Email duty. Composing."
-  },
-  {
-    "timestamp": "2026-04-15 10:45:23",
-    "you": "tell me a joke",
-    "jarvis": ""
-  },
-  {
-    "timestamp": "2026-04-15 10:45:42",
-    "you": "open vscode and play any music",
-    "jarvis": "Your wish is my command."
-  },
-  {
-    "timestamp": "2026-04-15 10:50:21",
-    "you": "open spotify and they play a music any music",
-    "jarvis": "Oh, this one. Sure."
-  },
-  {
-    "timestamp": "2026-04-15 11:49:53",
-    "you": "could you kind of play music for me",
-    "jarvis": "Your wish is my command."
-  },
-  {
-    "timestamp": "2026-04-15 11:50:13",
-    "you": "you",
-    "jarvis": "Me? Just here, waiting for your next profound command, Aariyan."
-  },
-  {
-    "timestamp": "2026-04-15 11:50:29",
-    "you": "play the music from spotify",
-    "jarvis": "Opening, again."
-  },
-  {
-    "timestamp": "2026-04-15 11:50:49",
-    "you": "you",
-    "jarvis": "Still here, Aariyan. Did you forget something, or just admiring my efficiency?"
-  },
-  {
-    "timestamp": "2026-04-15 11:55:31",
-    "you": "percent email to my friend",
-    "jarvis": "Email duty. Composing."
-  },
-  {
-    "timestamp": "2026-04-15 12:30:49",
-    "you": "open spotify and play and play a song",
-    "jarvis": "Your personal jukebox."
-  },
-  {
-    "timestamp": "2026-04-15 12:32:55",
-    "you": "could you play open spotify and play the song",
-    "jarvis": "Music time, as usual."
-  },
-  {
     "timestamp": "2026-04-15 13:37:52",
     "you": "you",
     "jarvis": "You... called?"
@@ -133,5 +28,75 @@
     "timestamp": "2026-04-15 13:55:38",
     "you": "you",
     "jarvis": "Still here, ready for another repeat command?"
+  },
+  {
+    "timestamp": "2026-04-15 15:52:01",
+    "you": "i wanted to kind of create a file",
+    "jarvis": "File incoming."
+  },
+  {
+    "timestamp": "2026-04-15 15:52:17",
+    "you": "could you add text inside there",
+    "jarvis": "Scribbling away."
+  },
+  {
+    "timestamp": "2026-04-15 15:52:32",
+    "you": "so add hello how are you inside",
+    "jarvis": "Finally, some actual text. Your magnum opus, Aariyan?"
+  },
+  {
+    "timestamp": "2026-04-15 15:52:38",
+    "you": "so add hello how are you inside",
+    "jarvis": "Finally, some actual text. Your magnum opus, Aariyan?"
+  },
+  {
+    "timestamp": "2026-04-15 15:53:15",
+    "you": "and also rename that particular file to superman dot txt file",
+    "jarvis": "Renaming your unnamed file to a superhero."
+  },
+  {
+    "timestamp": "2026-04-15 15:53:41",
+    "you": "i want you to rename the file that you just created",
+    "jarvis": "Okay, to what thrilling new name shall we bestow upon your file, Aariyan?"
+  },
+  {
+    "timestamp": "2026-04-15 15:54:04",
+    "you": "superman",
+    "jarvis": "Renaming it to... itself? Bold move, Aariyan."
+  },
+  {
+    "timestamp": "2026-04-15 15:58:41",
+    "you": "i want you to create a file named superman which is a text file also i also want you to add content",
+    "jarvis": "File created. So, what genius prose are we adding?"
+  },
+  {
+    "timestamp": "2026-04-15 15:59:07",
+    "you": "i want to add hello how are you",
+    "jarvis": "Adding your profound message to the file."
+  },
+  {
+    "timestamp": "2026-04-15 15:59:16",
+    "you": "i want to add hello how are you",
+    "jarvis": "Adding your profound message to the file."
+  },
+  {
+    "timestamp": "2026-04-15 16:00:09",
+    "you": "delete that file",
+    "jarvis": "Bye bye."
+  },
+  {
+    "timestamp": "2026-04-15 16:00:49",
+    "you": "i want you to play some music according to my mood",
+    "jarvis": "Let me read your soul."
+  },
+  {
+    "timestamp": "2026-04-15 16:01:51",
+    "you": "please a song according to my mood",
+    "jarvis": "Mood music? How artsy."
+  },
+  {
+    "timestamp": "2026-04-15 16:03:02",
+    "you": "i'm feeling so bored man",
+    "jarvis": ""
   }
 ]
