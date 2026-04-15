@@ -1,0 +1,54 @@
+# Jarvis OS-Level AI Architecture Plan (Phased Roadmap)
+
+Because this vision transforms Jarvis into a massive **Personal AI OS layer**, the execution must be divided into distinct, manageable phases. This ensures we lay down the foundation before building complex reasoning and perception features.
+
+## User Review Required
+
+> [!IMPORTANT]  
+> Please review this phased roadmap. **Phase 1 is now complete!** If you approve these additions, we will proceed to **Phase 2**.
+
+---
+
+## The Phased Roadmap
+
+### Phase 1: The Core Brain & Multi-Agent Foundation (✅ COMPLETED)
+Before doing anything advanced, we need the non-linear execution layer.
+1. **Folder Structure Redesign:** Cleanly separate agents, memory arrays, tools, and perception layers into specialized modules.
+2. **`ManagerAgent` (The Orchestrator):** Analyzes the prompt and determines if it requires a single agent or a compound workflow.
+3. **Task Graph Engine (`task_graph.py`):** The system that breaks requests down into DAGs (Directed Acyclic Graphs). Example: `[Search Web] → [Read Sources] → [Synthesize]`.
+4. **Offline/Connectivity Layer:** If the internet is down, Jarvis will immediately pause and inform the user ("Please connect to the internet") rather than failing silently or hanging.
+5. **Basic Agent Ports:** Move the existing logic into formal `FileSystemAgent` and `SystemControlAgent`.
+
+### Phase 2: UI, Interrupts, & Companion Capabilities
+Bringing life and visibility to the OS.
+1. **Floating "Thinking" Terminal:** A tiny, floating visual UI that displays the Task Graph being built and traversed, so the user knows exactly what Jarvis is doing under the hood.
+2. **CompanionAgent:** A dedicated agent specifically for casual conversation, banter, and jokes. This agent has primary read access to the Long-Term Memory.
+3. **MusicAgent (Spotify Integration):** An agent dedicated to controlling Spotify and curating playlists based on local mood states.
+4. **Interrupt Manager (`interrupt_manager.py`):** Allows the user to interrupt a running Task Graph ("Wait, change that file instead") and gracefully rebuilds the graph mid-execution.
+
+### Phase 3: Research Mode, Confidence & Perception
+Making Jarvis incredibly smart and context-aware.
+1. **Research Mode:** Utilize the Task Graph to spawn a `WebScrapingAgent` to scrape, read, summarize, and save information automatically.
+2. **Confidence Layer:** Strict routing. If an intent's confidence is low, Jarvis explicitly asks for clarification ("Did you mean resume.pdf or resume_v2.pdf?").
+3. **Perception Engine (`perception_engine.py`):** Background monitoring of active apps, time, and user activity to allow Jarvis to proactively suggest actions.
+    * **Proactive Context Loops:** When the Perception Engine detects you opening VSCode, it triggers the CompanionAgent to proactively ask: *"Are you motivated today, or how are you feeling?"* Based on your spoken reply, the `MusicAgent` instantly plays a matching Spotify playlist (e.g., Lo-Fi for tired, Phonk for motivated).
+
+### Phase 4: Long-term Memory & Advanced Learning
+Making Jarvis remember *you*.
+1. **Continuous Memory (`long_term_memory.py`):** Automatically extracts and stores facts (e.g., preference, family names) in a structured local DB for the CompanionAgent to reference.
+2. **Learning Engine:** Captures direct corrections ("No, use the other file") and maps them tightly so the error is never repeated.
+3. **Execution Memory (`working_memory.py`):** Short term context of the last 5 actions to allow for Explainability ("Why did you do that?").
+
+### Phase 5 (Future Vision): Complete Delegation
+1. **ProxyAgent:** An advanced telephonic/communication agent capable of intercepting incoming calls, holding conversations on your behalf if you are busy, and summarizing the interaction.
+2. **Multi-Modal Fusion:** Combining voice with gesture or screen-pointing.
+
+---
+
+## Verification Plan
+
+We will proceed phase by phase. 
+For **Phase 2**, verification will involve:
+1. Creating the visual floating UI terminal.
+2. Adding Spotify SDK integration into `MusicAgent`.
+3. Verifying the Interrupt logic by deliberately interrupting a running TaskGraph.

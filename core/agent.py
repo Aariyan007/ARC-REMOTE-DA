@@ -10,7 +10,7 @@ from core.voice_response import speak
 
 # ─── Settings ────────────────────────────────────────────────
 GEMINI_API_KEY = os.getenv("API_KEY")
-MODEL          = "gemini-1.5-flash"
+MODEL          = "gemini-2.5-flash"
 MAX_STEPS      = 5   # max actions before giving up
 # ─────────────────────────────────────────────────────────────
 

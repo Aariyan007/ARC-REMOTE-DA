@@ -35,6 +35,19 @@ CORRECTIONS = {
     "powersel":    "powershell",
     "powercell":   "powershell",
 }
+
+# ─── Garbage Words ───────────────────────────────────────────
+# Single-word transcriptions Whisper hallucinates from ambient noise.
+# If the entire transcript is just one of these, discard it.
+GARBAGE_WORDS = {
+    "you", "the", "a", "an", "and", "is", "it", "to", "of",
+    "in", "on", "i", "he", "she", "we", "they", "do", "so",
+    "if", "or", "but", "be", "at", "by", "my", "me", "no",
+    "oh", "ah", "uh", "um", "hmm", "huh", "ok", "okay",
+    "yeah", "yes", "yep", "nah", "nope", "right", "well",
+    "thank", "thanks", "bye", "hi", "hey", "percent","pls.",
+}
+# ────────────────────────────────────────────────────────────
 # ────────────────────────────────────────────────────────────
 
 print("Loading Whisper model...")
@@ -170,6 +183,11 @@ def listen() -> str:
 
     os.remove(tmp_path)
 
+    # ── Reject garbage single-word hallucinations ────────────
+    if text and len(text.split()) <= 1 and text in GARBAGE_WORDS:
+        print(f"🗑️  Ignoring noise: '{text}'")
+        return ""
+
     print(f"📝 You said: '{text}'")
     return text
 
@@ -256,6 +274,11 @@ def listen_long(max_seconds: int = 30, silence_seconds: float = 2.5) -> str:
     text = _deduplicate_whisper(text)
 
     os.remove(tmp_path)
+
+    # ── Reject garbage single-word hallucinations ────────────
+    if text and len(text.split()) <= 1 and text in GARBAGE_WORDS:
+        print(f"🗑️  Ignoring noise: '{text}'")
+        return ""
 
     print(f"📝 You said (extended): '{text}'")
     return text
