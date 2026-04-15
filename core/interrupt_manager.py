@@ -35,23 +35,24 @@ INTERRUPT_PHRASES = [
 
 def is_interrupt(command: str) -> bool:
     """
-    Returns True if the command matches an interrupt phrase.
-    Uses substring matching — "stop that" will match "stop".
+    Returns True if the entire command is an interrupt phrase.
+    Prevents false positives on commands like "stop the music".
     """
     if not command:
         return False
-    cmd = command.lower().strip()
+    
+    # Clean up the command (remove punctuation, extraneous spaces)
+    import string
+    cmd = command.translate(str.maketrans('', '', string.punctuation)).lower().strip()
+    
+    # Strip optional "jarvis" from the beginning or end
+    if cmd.startswith("jarvis "):
+        cmd = cmd[7:].strip()
+    elif cmd.endswith(" jarvis"):
+        cmd = cmd[:-7].strip()
 
-    # Exact match first
-    if cmd in INTERRUPT_PHRASES:
-        return True
-
-    # Substring match — command starts with or contains an interrupt phrase
-    for phrase in INTERRUPT_PHRASES:
-        if cmd.startswith(phrase) or phrase in cmd:
-            return True
-
-    return False
+    # Must be an exact match to a known interrupt phrase
+    return cmd in INTERRUPT_PHRASES
 
 
 class InterruptManager:
