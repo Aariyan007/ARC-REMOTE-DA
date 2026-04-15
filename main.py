@@ -291,15 +291,22 @@ def _initialize_agents():
         print(f"   📦 {name}: {len(agent.capabilities)} actions")
 
 
-def assistant_loop():
-    # ── Daily greeting (once per day) ────────────────────────
-    from core.daily_greeting import should_greet, daily_greeting
-    if should_greet():
-        daily_greeting()
-    else:
-        speak("Yes, I'm listening")
+_greeted_this_boot = False   # only greet once per process launch
 
+def assistant_loop():
+    global _greeted_this_boot
+
+    # Respond immediately so the user knows Jarvis is active
+    speak("Yes, I'm listening")
     print("\n✅ Jarvis activated — listening for your command...")
+
+    # ── Daily greeting runs in background (won't freeze the mic) ─
+    if not _greeted_this_boot:
+        _greeted_this_boot = True
+        from core.daily_greeting import should_greet, daily_greeting
+        if should_greet():
+            import threading
+            threading.Thread(target=daily_greeting, daemon=True).start()
 
     while True:
         command = listen()
@@ -339,6 +346,10 @@ def main():
 
     # Initialize the fast intent engine (loads model + embeddings)
     _initialize_fast_engine()
+
+    # Pre-warm Whisper so it never loads mid-command
+    from core.speech_to_text import preload_whisper
+    preload_whisper()
 
     # Initialize the multi-agent system
     _initialize_agents()

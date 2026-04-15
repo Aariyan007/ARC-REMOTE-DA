@@ -53,7 +53,7 @@ class BrainResult:
 
 # ─── Complexity Detection ────────────────────────────────────
 COMPLEX_INDICATORS = [
-    "after that", "and then", "also", "then",
+    "after that", "and then",
     "but if", "unless", "otherwise",
     "first", "next", "finally",
     "search for", "research", "look up", "find out",

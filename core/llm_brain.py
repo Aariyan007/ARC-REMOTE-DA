@@ -21,7 +21,7 @@ import dotenv
 
 dotenv.load_dotenv()
 GEMINI_API_KEY = os.getenv("API_KEY")
-MODEL          = "gemini-2.5-flash"
+MODEL          = "gemini-2.0-flash"
 
 
 client = genai.Client(api_key=GEMINI_API_KEY)

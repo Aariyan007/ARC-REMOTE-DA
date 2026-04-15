@@ -209,6 +209,8 @@ def get_boost(text: str, action: str) -> float:
 # 3. CORRECTION LOOP — "no, I meant X"
 # ═══════════════════════════════════════════════════════════════
 
+import re
+
 CORRECTION_WORDS = {
     "no", "wrong", "not that", "that's wrong", "incorrect",
     "other", "different", "actually", "instead", "i meant",
@@ -216,11 +218,28 @@ CORRECTION_WORDS = {
 }
 
 
-import re
+ACTION_VERBS_RE = re.compile(
+    r'\b(?:open|close|delete|remove|create|make|write|add|search|play|send|read|rename|copy|find|launch|start|stop|shutdown|restart|lock|take|show|bring|switch|go)\b'
+)
 
 def is_correction(text: str) -> bool:
-    """Checks if the user's response is a correction of the last action."""
+    """Checks if the user's response is a correction of the last action.
+
+    Returns False if:
+    - The text contains an action verb (it's a new command, not a correction)
+    - The text is longer than 6 words (likely a full sentence/command)
+    """
     text_lower = text.lower().strip()
+    words = text_lower.split()
+
+    # Ignore if it contains a real action verb — user is giving a new command
+    if ACTION_VERBS_RE.search(text_lower):
+        return False
+
+    # Long sentences are commands, not corrections
+    if len(words) > 7:
+        return False
+
     for word in CORRECTION_WORDS:
         pattern = r'\b' + re.escape(word) + r'\b'
         if re.search(pattern, text_lower):
