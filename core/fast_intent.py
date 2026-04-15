@@ -365,6 +365,29 @@ INTENT_REGISTRY = {
         "show me my recent files", "what have i been working on",
         "recent documents", "recently modified files",
     ],
+
+    # ── Music / Spotify ─────────────────────────────────────
+    "play_song": [
+        "play a song", "play some music", "play music for me",
+        "play a song on spotify", "play music on spotify",
+        "play despacito", "play shape of you", "can you play a song",
+        "play something", "put on some music", "play my music",
+        "play the song", "play that song", "play this song",
+        "play music from spotify", "play the music from spotify",
+        "could you play music", "play music please",
+        "play a track", "put on a song", "i want to hear music",
+        "play blinding lights", "play bohemian rhapsody",
+    ],
+    "play_mood_music": [
+        "play music according to my mood", "play something for my mood",
+        "play music based on how i feel", "mood music", "play chill music",
+        "play something relaxing", "play happy music", "play sad music",
+        "play focus music", "play workout music", "play party music",
+        "play something based on my mood", "match my mood with music",
+        "play upbeat music", "play calm music", "play energetic music",
+        "play something to help me focus", "play study music",
+        "play lo-fi", "play lo-fi beats",
+    ],
 }
 
 
