@@ -28,7 +28,7 @@ FILLER_WORDS = {
     "would you", "will you", "hey", "yo", "okay",
     "so", "well", "just", "right", "alright",
     "i want you to", "i need you to", "i want to",
-    "go ahead and", "i'd like you to", "i'd like to",
+    "go ahead and", "i'd like you to", "i'd like to","right","write","daym",
 }
 
 # Multi-word fillers — matched as phrases before word-level removal
