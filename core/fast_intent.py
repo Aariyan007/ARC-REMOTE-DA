@@ -388,6 +388,33 @@ INTENT_REGISTRY = {
         "play something to help me focus", "play study music",
         "play lo-fi", "play lo-fi beats",
     ],
+    # ── Memory / Knowledge Base (Second Brain) ───────────────
+    "save_note": [
+        "save note", "create a note", "remember this",
+        "save a new note", "put this in my brain",
+        "write a note", "make a note", "save this to my brain",
+        "create a new memory", "store this",
+        "save to obsidian", "create a new note in obsidian",
+        "take a note", "write this down",
+        "save note that my favorite fruit is apple",
+        "remember that my name is alex",
+        "create a note saying that i need milk",
+        "save this memory to the brain",
+    ],
+    "append_note": [
+        "append note", "add to note", "update note",
+        "add this to my daily note", "append to daily note",
+        "add this to the project note", "update my notes",
+        "write this into my note", "add some info to the note",
+        "append that the meeting is cancelled",
+        "add to the daily note that i finished the work",
+    ],
+    "search_vault": [
+        "search my brain", "search vault", "search obsidian",
+        "do i have any notes on", "find in my notes",
+        "search my knowledge base", "look up in my brain",
+        "check my notes for", "what do my notes say about",
+    ],
 }
 
 

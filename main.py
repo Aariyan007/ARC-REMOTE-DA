@@ -263,11 +263,13 @@ def _initialize_agents():
     print("🤖 Initializing multi-agent system...")
 
     # Create specialized agents with access to their relevant actions
+    from core.agents.knowledge_agent import KnowledgeAgent
     fs_agent        = FileSystemAgent(actions_map=ACTIONS)
     sys_agent       = SystemControlAgent(actions_map=ACTIONS)
     music_agent     = MusicAgent()
     companion_agent = CompanionAgent()
     research_agent  = ResearchAgent()
+    knowledge_agent = KnowledgeAgent()
 
     # Create the ManagerAgent (orchestrator)
     _manager_agent = ManagerAgent(
@@ -277,6 +279,7 @@ def _initialize_agents():
             "music":      music_agent,
             "companion":  companion_agent,
             "research":   research_agent,
+            "knowledge":  knowledge_agent,
         },
         actions=ACTIONS,
     )

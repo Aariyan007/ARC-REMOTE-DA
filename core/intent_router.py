@@ -168,6 +168,21 @@ def _get_music_agent():
         return None
 
 
+# ── Knowledge Agent Access ───────────────────────────────────
+def _get_knowledge_agent():
+    """Access the KnowledgeAgent from the main module's agent registry."""
+    try:
+        import main as main_module
+        if hasattr(main_module, '_manager_agent') and main_module._manager_agent:
+            return main_module._manager_agent.get_agent("knowledge")
+    except Exception:
+        pass
+    try:
+        from core.agents.knowledge_agent import KnowledgeAgent
+        return KnowledgeAgent()
+    except Exception:
+        return None
+
 def _auto_play_focus_music():
     """Background task: auto-plays focus music when opening productive apps."""
     import time
@@ -399,6 +414,40 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "") ->
                     return f"Created {filename} (no content specified)"
             return "Couldn't create — no filename"
 
+        # ── Knowledge Base ───────────────────────────────────
+        if action in ("save_note", "append_note", "search_vault", "read_note_vault"):
+            agent = _get_knowledge_agent()
+            if agent:
+                if action == "save_note":
+                    title = params.get("title", params.get("target", ""))
+                    content = params.get("content", text)
+                    if not title:
+                        speak("What should I title this note?")
+                        title_res = stt_listen()
+                        title = title_res.strip() if title_res else text[:20].strip()
+                    res = agent.execute("save_note", {"title": title, "content": content})
+                    return res.result if res.success else f"Error: {res.error}"
+
+                elif action == "append_note":
+                    res = agent.execute("append_note", params)
+                    return res.result if res.success else f"Error: {res.error}"
+
+                elif action == "search_vault":
+                    query = params.get("query", extract_query(text) or "")
+                    res = agent.execute("search_vault", {"query": query})
+                    if res.success and res.data.get("matches"):
+                        matches = res.data["matches"]
+                        speak(f"I found {len(matches)} notes. The first one is from {matches[0]['title']}.")
+                        return res.result
+                    else:
+                        speak("I couldn't find anything about that in my brain.")
+                        return res.result if res.success else f"Error: {res.error}"
+
+                elif action == "read_note_vault":
+                    res = agent.execute("read_note", {"title": params.get("title", "")})
+                    return res.result if res.success else f"Error: {res.error}"
+            return "Knowledge agent not available"
+
         # ── Music: play_song ─────────────────────────────────
         if action == "play_song":
             agent = _get_music_agent()
@@ -406,7 +455,7 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "") ->
                 # Extract song name from query
                 song_query = params.get("query", "")
                 if not song_query:
-                    song_query = extract_query(text) or ""
+                	song_query = extract_query(text) or ""
                 result = agent.execute("play_song", {"query": song_query})
                 return result.result if result.success else f"Error: {result.error}"
             return "Music agent not available"
