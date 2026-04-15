@@ -26,7 +26,7 @@ from core.agents.base_agent import AgentResult
 from core.graph.task_graph import TaskGraph, GraphExecutor, NodeStatus
 from core.network.connectivity import require_online
 from core.voice_response import speak, speak_instant
-from core.memory import get_context_for_gemini, save_exchange, update_context
+from core.memory import get_context_for_gemini, save_exchange, update_context, get_last_file, get_last_context
 from mood.mood_engine import get_mood_for_prompt
 from core.logger import log_interaction
 
@@ -101,11 +101,22 @@ class ManagerAgent:
         mood_context = get_mood_for_prompt()
         agent_desc   = self._get_agent_descriptions()
 
+        # ── Inject working memory (last file + last action) ──
+        last_file    = get_last_file()
+        last_ctx     = get_last_context()
+        working_mem  = ""
+        if last_file:
+            working_mem += f'Last file touched: "{last_file["filename"]}" (action: {last_file.get("action", "unknown")})\n'
+        if last_ctx.get("action"):
+            working_mem += f'Last action taken: {last_ctx["action"]} on "{last_ctx.get("target", "")}"\n'
+        if working_mem:
+            working_mem = f"\nCurrent working context (use this to resolve 'that file', 'it', 'the file you just created'):\n{working_mem}"
+
         return f"""You are Jarvis's planning brain. Analyze the user's command and create an execution plan.
 
 {user_context}
 {mood_context}
-
+{working_mem}
 Available agents and their tools:
 {agent_desc}
 
@@ -116,6 +127,7 @@ Respond with ONLY a JSON object. No markdown. No explanation.
 If the command needs MULTIPLE steps, return a task graph:
 {{
     "type": "graph",
+    "thought": "Brief explanation of your reasoning and what you extracted from the command",
     "name": "short_task_name",
     "steps": [
         {{"id": "step_0", "agent": "agent_name", "action": "action_name", "params": {{}}, "depends_on": [], "description": "What this step does"}},
@@ -127,6 +139,7 @@ If the command needs MULTIPLE steps, return a task graph:
 If the command is a SINGLE action, route directly:
 {{
     "type": "single",
+    "thought": "Brief explanation of your reasoning and what you extracted from the command",
     "agent": "agent_name",
     "action": "action_name",
     "params": {{}},
@@ -136,10 +149,20 @@ If the command is a SINGLE action, route directly:
 If the command is a question or chat (no system action needed):
 {{
     "type": "chat",
+    "thought": "Why I think this is chat, not an action",
     "response": "Natural conversational response (2-3 sentences max)"
 }}
 
-Rules:
+CRITICAL RULES FOR PARAMS:
+- You MUST fill in ALL "REQUIRED" params listed in the tool description above.
+- Extract names, filenames, targets from the user's natural speech. DO NOT leave params empty.
+- For file operations: if user says "text file" or "txt", append ".txt" to the filename.
+  Example: "create a file named superman and it should be a text file" → params: {{"name": "superman.txt"}}
+- For file operations: if user says "pdf", append ".pdf". If no extension mentioned, default to ".txt".
+- Ignore filler words like "kind of", "I mean", "actually", "I want you to".
+- Focus on extracting the REAL intent — the noun (filename, app name) and the action verb.
+
+OTHER RULES:
 - Use the correct agent for each action
 - If a step depends on another step's output, add it to depends_on
 - Keep spoken responses SHORT (max 8 words). Sound human, not robotic.
@@ -170,6 +193,13 @@ Rules:
             return "Planning failed"
 
         print(f"📋 Plan type: {plan.get('type', 'unknown')}")
+
+        # ── Debug: Log AI reasoning (training mode) ──────────
+        thought = plan.get("thought", "")
+        if thought:
+            print(f"🧠 AI Reasoning: {thought}")
+        if plan.get("params"):
+            print(f"📦 Extracted params: {plan.get('params')}")
 
         # ── Chat response (no action) ────────────────────────
         if plan["type"] == "chat":

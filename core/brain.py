@@ -72,22 +72,47 @@ CONVERSATIONAL_INDICATORS = [
 def _is_complex(command: str) -> bool:
     """Detect if a command requires multi-step planning."""
     cmd_lower = command.lower()
-    # 1. Explicit indicators
-    matches = sum(1 for ind in COMPLEX_INDICATORS if ind in cmd_lower)
+
+    # Strip filler words that confuse conjunction detection
+    filler_words = [
+        "kind of", "i mean", "actually", "basically", "i want you to",
+        "could you", "can you", "please", "i want to", "i need you to",
+        "sort of", "you know", "like", "just",
+        "want you to make it", "make it a", "it should be",
+        "i kind of want you to", "want to make it",
+    ]
+    cleaned = cmd_lower
+    for filler in filler_words:
+        cleaned = cleaned.replace(filler, " ")
+    # Collapse multiple spaces
+    cleaned = " ".join(cleaned.split())
+
+    # 1. Explicit multi-step indicators
+    matches = sum(1 for ind in COMPLEX_INDICATORS if ind in cleaned)
     if matches >= 1:
         return True
-        
-    # 2. Conjunctions in longer commands (e.g. "make a folder ... and create a file")
-    if " and " in cmd_lower and len(cmd_lower.split()) >= 6:
+
+    # 2. "and" connecting TWO DIFFERENT action verbs
+    #    e.g., "create a folder and open vscode" → complex
+    #    e.g., "create a file named superman and it should be txt" → NOT complex (same action)
+    action_verbs = ["create", "make", "open", "delete", "remove", "close",
+                    "start", "stop", "search", "find", "send", "email", "tell",
+                    "play", "read", "write", "edit", "rename", "copy", "move"]
+
+    if " and " in cleaned:
+        parts = cleaned.split(" and ", 1)
+        verbs_before = [v for v in action_verbs if f"{v} " in parts[0] or f"{v}" == parts[0].strip()]
+        verbs_after  = [v for v in action_verbs if f"{v} " in parts[1] or f"{v}" == parts[1].strip()]
+        # Only complex if there's an action verb on BOTH sides of "and"
+        if verbs_before and verbs_after:
+            return True
+
+    # 3. Multiple action verbs without conjunctions
+    #    e.g., "make a folder create a file open vscode"
+    verbs_found = sum(1 for verb in action_verbs if f"{verb} " in cleaned)
+    if verbs_found >= 2 and " and " not in cleaned:
         return True
-        
-    # 3. Multiple action verbs without conjunctions 
-    # e.g., "make a folder create a file open vscode"
-    action_verbs = ["create", "make", "open", "delete", "remove", "close", "start", "stop", "search", "find", "send", "email", "tell"]
-    verbs_found = sum(1 for verb in action_verbs if f"{verb} " in cmd_lower)
-    if verbs_found >= 2:
-        return True
-        
+
     return False
 
 

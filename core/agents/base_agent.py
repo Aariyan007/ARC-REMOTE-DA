@@ -41,7 +41,8 @@ class BaseAgent(ABC):
     """
 
     def __init__(self):
-        self._action_map = {}   # action_name → method
+        self._action_map = {}      # action_name → method
+        self._action_meta = {}     # action_name → {parameters, help}
 
     @property
     @abstractmethod
@@ -65,13 +66,22 @@ class BaseAgent(ABC):
         """
         Human-readable description of this agent's tools.
         Used when ManagerAgent needs to describe available actions to Gemini.
+        Now includes required parameter schemas.
         """
         lines = [f"Agent: {self.name} — {self.description}", "Actions:"]
         for action_name, method in self._action_map.items():
-            doc = method.__doc__ or "No description"
-            # Take first line of docstring
+            meta = self._action_meta.get(action_name, {})
+            doc = meta.get("help") or method.__doc__ or "No description"
             first_line = doc.strip().split("\n")[0]
-            lines.append(f"  - {action_name}: {first_line}")
+
+            params = meta.get("parameters", {})
+            if params:
+                param_parts = [f'"{k}": {v}' for k, v in params.items()]
+                param_str = "Required params: {" + ", ".join(param_parts) + "}"
+                lines.append(f"  - {action_name}: {first_line}")
+                lines.append(f"    {param_str}")
+            else:
+                lines.append(f"  - {action_name}: {first_line}")
         return "\n".join(lines)
 
     def can_handle(self, action: str) -> bool:
@@ -118,9 +128,21 @@ class BaseAgent(ABC):
                 duration_ms=duration,
             )
 
-    def register_action(self, name: str, method):
-        """Registers a callable as an action for this agent."""
+    def register_action(self, name: str, method, parameters: dict = None, help_text: str = None):
+        """
+        Registers a callable as an action for this agent.
+
+        Args:
+            name:       Action name (e.g. "create_file")
+            method:     The callable handler
+            parameters: Dict of param_name → description string
+            help_text:  Optional override for the docstring
+        """
         self._action_map[name] = method
+        self._action_meta[name] = {
+            "parameters": parameters or {},
+            "help": help_text,
+        }
 
     def __repr__(self):
         return (
