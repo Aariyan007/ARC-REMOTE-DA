@@ -1,12 +1,22 @@
 [
   {
+    "action": "play_song",
+    "params": {},
+    "hour": 12,
+    "weekday": -1,
+    "occurrences": 4,
+    "confidence": 1.0,
+    "last_seen": "2026-04-16 12:22:26",
+    "description": "play_song usually at 12:00 (4 times, 100% confidence)"
+  },
+  {
     "action": "minimise_all",
     "params": {},
     "hour": 22,
     "weekday": -1,
     "occurrences": 4,
     "confidence": 0.667,
-    "last_seen": "2026-04-16 12:06:12",
+    "last_seen": "2026-04-16 12:22:26",
     "description": "minimise_all usually at 22:00 (4 times, 67% confidence)"
   },
   {
@@ -16,7 +26,7 @@
     "weekday": -1,
     "occurrences": 2,
     "confidence": 0.667,
-    "last_seen": "2026-04-16 12:06:12",
+    "last_seen": "2026-04-16 12:22:26",
     "description": "lock_screen usually at 23:00 (2 times, 67% confidence)"
   },
   {
@@ -52,7 +62,7 @@
     "weekday": -1,
     "occurrences": 4,
     "confidence": 0.667,
-    "last_seen": "2026-04-16 12:06:12",
+    "last_seen": "2026-04-16 12:22:26",
     "description": "create_and_edit_file usually at 17:00 (4 times, 67% confidence)"
   },
   {
@@ -62,7 +72,7 @@
     "weekday": -1,
     "occurrences": 2,
     "confidence": 0.667,
-    "last_seen": "2026-04-16 12:06:12",
+    "last_seen": "2026-04-16 12:22:26",
     "description": "delete_file_cancelled usually at 23:00 (2 times, 67% confidence)"
   },
   {

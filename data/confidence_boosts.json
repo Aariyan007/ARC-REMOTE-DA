@@ -39,7 +39,7 @@
   },
   "send_email": {
     "send an email send an email send an email": 1,
-    "send an email": 1,
+    "send an email": 2,
     "percent email to my friend": 1
   },
   "general_chat": {
@@ -61,5 +61,8 @@
   "play_song": {
     "hear some good songs man": 1,
     "stop playing the song": 1
+  },
+  "read_emails": {
+    "check what all emails have come": 1
   }
 }

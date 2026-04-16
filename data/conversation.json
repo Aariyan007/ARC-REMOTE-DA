@@ -1,30 +1,5 @@
 [
   {
-    "timestamp": "2026-04-15 16:00:49",
-    "you": "i want you to play some music according to my mood",
-    "jarvis": "Let me read your soul."
-  },
-  {
-    "timestamp": "2026-04-15 16:01:51",
-    "you": "please a song according to my mood",
-    "jarvis": "Mood music? How artsy."
-  },
-  {
-    "timestamp": "2026-04-15 16:03:02",
-    "you": "i'm feeling so bored man",
-    "jarvis": ""
-  },
-  {
-    "timestamp": "2026-04-15 23:21:41",
-    "you": "what time is it",
-    "jarvis": "You don't have a clock? The time is"
-  },
-  {
-    "timestamp": "2026-04-15 23:21:57",
-    "you": "i want to i want you to create a file",
-    "jarvis": "File incoming."
-  },
-  {
     "timestamp": "2026-04-15 23:22:24",
     "you": "give it something like batman",
     "jarvis": "Oh, so boredom has you channeling your inner Dark Knight, Aariyan? Searching for that brooding playlist now."
@@ -98,5 +73,30 @@
     "timestamp": "2026-04-16 12:21:43",
     "you": "javis stop playing the song",
     "jarvis": "Your personal jukebox."
+  },
+  {
+    "timestamp": "2026-04-17 01:48:49",
+    "you": "i just casually asked man how are you going by the way",
+    "jarvis": "Still running on caffeine and your questionable code, Aariyan. Just surviving, you?"
+  },
+  {
+    "timestamp": "2026-04-17 01:51:10",
+    "you": "i want to send an email",
+    "jarvis": "Another email? Composing."
+  },
+  {
+    "timestamp": "2026-04-17 01:51:27",
+    "you": "send it",
+    "jarvis": "Finally sending that. Don't blame me if they reply."
+  },
+  {
+    "timestamp": "2026-04-17 01:52:01",
+    "you": "send it",
+    "jarvis": "Finally sending that. Don't blame me if they reply."
+  },
+  {
+    "timestamp": "2026-04-17 01:52:20",
+    "you": "check what all emails have come",
+    "jarvis": "Let's see what the world wants from you."
   }
 ]

@@ -121,5 +121,19 @@
     "created": "2026-04-15 23:23:33",
     "last_matched": "2026-04-15 23:23:33",
     "match_count": 1
+  },
+  {
+    "normalized_input": "send it",
+    "action": "send_email",
+    "params": {
+      "to": "aariyan@example.com",
+      "subject": "Draft",
+      "body": "Sending your masterpiece. Try not to embarrass yourself."
+    },
+    "confidence": 1.0,
+    "source": "gemini",
+    "created": "2026-04-17 01:52:01",
+    "last_matched": "2026-04-17 01:52:01",
+    "match_count": 1
   }
 ]
