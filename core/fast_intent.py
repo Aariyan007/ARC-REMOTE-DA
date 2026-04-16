@@ -230,6 +230,12 @@ INTENT_REGISTRY = {
         "morning briefing", "brief me", "what's today like",
         "give me a briefing", "daily brief", "what's happening today",
     ],
+    "read_news": [
+        "what's the news", "read me the news", "today's news",
+        "news headlines", "what's in the news today",
+        "tell me the news", "world news", "any news today",
+        "what is today's news man",
+    ],
 
     # ── PDF ───────────────────────────────────────────────────
     "summarise_pdf": [

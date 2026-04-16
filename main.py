@@ -116,6 +116,7 @@ from control import (
     read_file, create_file, delete_file,
     rename_file, get_recent_files, copy_file, edit_file,
 )
+from core.daily_greeting import read_news
 
 # ── Action map ───────────────────────────────────────────────
 ACTIONS = {
@@ -140,6 +141,7 @@ ACTIONS = {
     # Info
     "morning_briefing":  morning_briefing,
     "tell_weather":      tell_weather,
+    "read_news":         read_news,
 
     # Folders
     "open_folder":       open_folder,
