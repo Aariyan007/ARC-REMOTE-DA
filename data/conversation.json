@@ -1,25 +1,5 @@
 [
   {
-    "timestamp": "2026-04-15 15:58:41",
-    "you": "i want you to create a file named superman which is a text file also i also want you to add content",
-    "jarvis": "File created. So, what genius prose are we adding?"
-  },
-  {
-    "timestamp": "2026-04-15 15:59:07",
-    "you": "i want to add hello how are you",
-    "jarvis": "Adding your profound message to the file."
-  },
-  {
-    "timestamp": "2026-04-15 15:59:16",
-    "you": "i want to add hello how are you",
-    "jarvis": "Adding your profound message to the file."
-  },
-  {
-    "timestamp": "2026-04-15 16:00:09",
-    "you": "delete that file",
-    "jarvis": "Bye bye."
-  },
-  {
     "timestamp": "2026-04-15 16:00:49",
     "you": "i want you to play some music according to my mood",
     "jarvis": "Let me read your soul."
@@ -98,5 +78,25 @@
     "timestamp": "2026-04-16 00:25:30",
     "you": "i also wanted to add some text in it",
     "jarvis": "Adding your masterpiece."
+  },
+  {
+    "timestamp": "2026-04-16 12:05:26",
+    "you": "what is today's news man",
+    "jarvis": "Rise and shine. Here's your briefing."
+  },
+  {
+    "timestamp": "2026-04-16 12:06:12",
+    "you": "what is today's news i want",
+    "jarvis": "The daily news."
+  },
+  {
+    "timestamp": "2026-04-16 12:20:55",
+    "you": "i want to hear some good songs man",
+    "jarvis": "DJ Jarvis at your service."
+  },
+  {
+    "timestamp": "2026-04-16 12:21:43",
+    "you": "javis stop playing the song",
+    "jarvis": "Your personal jukebox."
   }
 ]

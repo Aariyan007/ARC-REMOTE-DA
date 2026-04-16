@@ -53,5 +53,13 @@
   },
   "tell_time": {
     "what time is it": 1
+  },
+  "morning_briefing": {
+    "what is today's news man": 1,
+    "what is today's news i want": 1
+  },
+  "play_song": {
+    "hear some good songs man": 1,
+    "stop playing the song": 1
   }
 }

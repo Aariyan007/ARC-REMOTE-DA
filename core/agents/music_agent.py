@@ -170,7 +170,7 @@ Examples:
 - "party" → party dance hits 2024
 - "romantic" → love songs R&B
 """
-            response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+            response = client.models.generate_content(model="gemini-3.1-flash-lite-preview", contents=prompt)
             query = response.text.strip()
             print(f"🎵 Mood '{mood_text}' → Spotify query: '{query}'")
             return query

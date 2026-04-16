@@ -77,7 +77,7 @@ Examples:
 - "send it to my friend aryan" → aryan
 - "just write hello world" → hello world
 """
-        response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+        response = client.models.generate_content(model="gemini-3.1-flash-lite-preview", contents=prompt)
         extracted = response.text.strip()
         if extracted:
             print(f"🧠 Gemini extracted {field_type}: '{raw_text}' → '{extracted}'")
