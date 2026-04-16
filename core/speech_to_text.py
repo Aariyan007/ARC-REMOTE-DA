@@ -44,7 +44,7 @@ GARBAGE_WORDS = {
     "in", "on", "i", "he", "she", "we", "they", "do", "so",
     "if", "or", "but", "be", "at", "by", "my", "me", "no",
     "oh", "ah", "uh", "um", "hmm", "huh", "ok", "okay",
-    "yeah", "yes", "yep", "nah", "nope", "right", "well",
+    "nah", "nope", "right", "well",
     "thank", "thanks", "bye", "hi", "hey", "percent","pls.",
 }
 # ────────────────────────────────────────────────────────────
