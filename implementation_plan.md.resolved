@@ -1,0 +1,73 @@
+# Master Implementation Plan: The Human OS Evolution (Final)
+
+This blueprint outlines the complete transformation of Jarvis into a state-of-the-art, human-like AI OS.
+
+## 🎯 Project Goals
+1.  **High Stability**: Intelligent fallbacks (Gemini -> Grok) and robust error handling.
+2.  **Context Density**: Awareness of frontmost apps and past conversation history.
+3.  **Human Personality**: Fillers, emotional prosody, and a self-healing reinforcement loop.
+
+---
+
+## 🛠️ Proposed Changes
+
+### [Phase 1] Foundation & Stability
+
+#### [MODIFY] [llm_brain.py](file:///Users/lynux/Desktop/BackEnd/Startup/core/llm_brain.py)
+ - **Grok Fallback**: Update `ask_gemini` to handle rate-limits (429) by switching to the xAI Grok API. 
+ - **Frontmost Awareness**: Inject currently focused Mac application context into every LLM prompt.
+
+#### [MODIFY] [email_control.py](file:///Users/lynux/Desktop/BackEnd/Startup/control/email_control.py)
+ - **Auth Recovery**: Implement `invalid_grant` detection to automatically reset OAuth tokens.
+
+#### [MODIFY] [speech_to_text.py](file:///Users/lynux/Desktop/BackEnd/Startup/core/speech_to_text.py)
+ - **Tuning**: Adjust silence thresholds (2.2x multiplier) and briefing timeouts for better sensitivity.
+
+#### [MODIFY] [brain.py](file:///Users/lynux/Desktop/BackEnd/Startup/core/brain.py) & [fast_intent.py](file:///Users/lynux/Desktop/BackEnd/Startup/core/fast_intent.py)
+ - **Casual Talk**: Expand conversational triggers to handle phrases like "planning to complete making you."
+
+### [Phase 2] The Human Persona (The Soul)
+
+#### [MODIFY] [llm_brain.py](file:///Users/lynux/Desktop/BackEnd/Startup/core/llm_brain.py)
+ - **The Filler Engine**: Mandate natural fillers (`hmm`, `uh`, `...`) and emotional markers in responses.
+
+#### [MODIFY] [memory.py](file:///Users/lynux/Desktop/BackEnd/Startup/core/memory.py)
+ - **SemanticLogSearch**: Index and retrieve past interactions from `logs/` for long-term recall.
+
+#### [MODIFY] [voice_response.py](file:///Users/lynux/Desktop/BackEnd/Startup/core/voice_response.py)
+ - **Dynamic Prosody**: Link ElevenLabs "Stability" and "Style" settings to the current mood/sentiment.
+
+### [Phase 3] Advanced OS Agents (The Muscles)
+
+#### [NEW] [browser_agent.py](file:///Users/lynux/Desktop/BackEnd/Startup/core/agents/browser_agent.py)
+ - Control Safari/Chrome tabs, URLs, and navigation via AppleScript.
+
+#### [NEW] [window_agent.py](file:///Users/lynux/Desktop/BackEnd/Startup/core/agents/window_agent.py)
+ - Native Mac window layouts (Tiling, Resizing, Grid).
+
+#### [MODIFY] [system_agent.py](file:///Users/lynux/Desktop/BackEnd/Startup/core/agents/system_agent.py)
+ - Add `psutil`-based system diagnostics (CPU, RAM, Net) and OS toggles.
+
+### [Phase 4] The Intelligence Loop (The Evolution)
+
+#### [NEW] [supervisor.py](file:///Users/lynux/Desktop/BackEnd/Startup/core/supervisor.py)
+ - **Background Auditor**: Asynchronously verify intents against Gemini 1.5 Pro to identify misalignments.
+
+#### [MODIFY] [reinforcement.py](file:///Users/lynux/Desktop/BackEnd/Startup/core/reinforcement.py)
+ - **Silent Learning**: Auto-inject "Negative Examples" from Supervisor audits to heal the direct routing engine.
+
+---
+
+## ⚠️ User Review Required
+
+> [!IMPORTANT]
+> **API Keys**: Please ensure `GROK_API_KEY` is added to your `.env` file for the fallback to work.
+
+> [!NOTE]
+> **Self-Healing**: This feature will cause slightly higher background API usage, but will result in a near-perfect intent engine over time.
+
+## 🧪 Verification Plan
+ 1. **Grok Fallback**: Mock a 429 error in Gemini to verify Grok takes over.
+ 2. **Persona**: Test "hmm" and ellipses in voice responses.
+ 3. **Memory**: Ask "What did we do yesterday?"
+ 4. **Tiling**: "Jarvis, tile VS Code to the left."

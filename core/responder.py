@@ -8,7 +8,7 @@ from mood.mood_engine import get_mood_for_prompt
 
 # ─── Settings ────────────────────────────────────────────────
 GEMINI_API_KEY = "YOUR_GEMINI_API_KEY"
-MODEL          = "gemini-1.5-flash"
+MODEL          = "gemini-3.1-flash-lite-preview"
 # ─────────────────────────────────────────────────────────────
 
 load_dotenv()

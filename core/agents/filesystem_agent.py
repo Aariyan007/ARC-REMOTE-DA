@@ -13,6 +13,7 @@ It cannot send emails, control volume, or browse the web.
 import os
 import subprocess
 from core.agents.base_agent import BaseAgent, AgentResult
+from core.memory import update_file_context, update_context
 
 
 class FileSystemAgent(BaseAgent):
@@ -38,18 +39,39 @@ class FileSystemAgent(BaseAgent):
         super().__init__()
         self._actions = actions_map or {}
 
-        # Register all file capabilities
-        self.register_action("search_file",    self._search_file)
-        self.register_action("open_file",      self._open_file)
-        self.register_action("read_file",      self._read_file)
-        self.register_action("create_file",    self._create_file)
-        self.register_action("edit_file",      self._edit_file)
-        self.register_action("delete_file",    self._delete_file)
-        self.register_action("rename_file",    self._rename_file)
-        self.register_action("copy_file",      self._copy_file)
-        self.register_action("recent_files",   self._recent_files)
-        self.register_action("open_folder",    self._open_folder)
-        self.register_action("create_folder",  self._create_folder)
+        # Register all file capabilities with parameter schemas
+        self.register_action("search_file", self._search_file,
+            parameters={"name": "REQUIRED string — filename or partial name to search for"},
+            help_text="Search for files on this computer by name.")
+        self.register_action("open_file", self._open_file,
+            parameters={"path": "REQUIRED string — full absolute file path"},
+            help_text="Open a file in its default application.")
+        self.register_action("read_file", self._read_file,
+            parameters={"name": "REQUIRED string — filename with extension (e.g. 'notes.txt')", "location": "optional string — folder name"},
+            help_text="Read text content from a file.")
+        self.register_action("create_file", self._create_file,
+            parameters={"name": "REQUIRED string — filename WITH extension (e.g. 'superman.txt', 'report.md')", "location": "optional string — folder, defaults to desktop"},
+            help_text="Create a new empty file. MUST include the file extension in the name.")
+        self.register_action("edit_file", self._edit_file,
+            parameters={"name": "REQUIRED string — filename with extension", "content": "REQUIRED string — text to write into the file"},
+            help_text="Write or append text content to an existing file.")
+        self.register_action("delete_file", self._delete_file,
+            parameters={"name": "REQUIRED string — filename with extension"},
+            help_text="Move a file to the trash.")
+        self.register_action("rename_file", self._rename_file,
+            parameters={"name": "REQUIRED string — current filename", "new_name": "REQUIRED string — new filename"},
+            help_text="Rename a file.")
+        self.register_action("copy_file", self._copy_file,
+            parameters={"name": "REQUIRED string — filename to copy", "location": "REQUIRED string — destination folder"},
+            help_text="Copy a file to another location.")
+        self.register_action("recent_files", self._recent_files,
+            help_text="List recently modified files from the last 24 hours.")
+        self.register_action("open_folder", self._open_folder,
+            parameters={"name": "REQUIRED string — folder name (e.g. 'Downloads', 'Desktop')"},
+            help_text="Open a folder in Finder.")
+        self.register_action("create_folder", self._create_folder,
+            parameters={"name": "REQUIRED string — new folder name", "location": "optional string — parent folder"},
+            help_text="Create a new folder.")
 
     # ── File: Search ─────────────────────────────────────────
     def _search_file(self, params: dict) -> AgentResult:
@@ -167,6 +189,9 @@ class FileSystemAgent(BaseAgent):
 
         if "create_file" in self._actions:
             self._actions["create_file"](name, location)
+            # ✅ Update file context so follow-up commands can reference "that file"
+            update_file_context(name, action="create_file")
+            update_context(action="create_file", target=name, result=f"Created {name}")
             return AgentResult(
                 success=True, action="create_file",
                 result=f"Created {name} on {location}",
@@ -197,6 +222,8 @@ class FileSystemAgent(BaseAgent):
 
         if "edit_file" in self._actions:
             self._actions["edit_file"](name, content, location)
+            update_file_context(name, action="edit_file")
+            update_context(action="edit_file", target=name, result=f"Edited {name}")
             return AgentResult(
                 success=True, action="edit_file",
                 result=f"Appended text to {name}",
@@ -221,6 +248,7 @@ class FileSystemAgent(BaseAgent):
 
         if "delete_file" in self._actions:
             self._actions["delete_file"](name, location)
+            update_context(action="delete_file", target=name, result=f"Deleted {name}")
             return AgentResult(
                 success=True, action="delete_file",
                 result=f"Moved {name} to trash",
@@ -246,6 +274,9 @@ class FileSystemAgent(BaseAgent):
 
         if "rename_file" in self._actions:
             self._actions["rename_file"](old, new, location)
+            # Track the new name as the current active file
+            update_file_context(new, action="rename_file")
+            update_context(action="rename_file", target=new, result=f"Renamed {old} to {new}")
             return AgentResult(
                 success=True, action="rename_file",
                 result=f"Renamed {old} to {new}",

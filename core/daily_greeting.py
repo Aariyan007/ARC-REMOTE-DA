@@ -124,6 +124,18 @@ def _get_news_headlines(count: int = NEWS_COUNT) -> list:
         print(f"⚠️ News fetch error: {e}")
         return []
 
+def read_news() -> None:
+    """Standalone capability to read current news without full morning greeting."""
+    headlines = _get_news_headlines()
+    if headlines:
+        speak(f"Here are today's top {len(headlines)} headlines.")
+        for i, headline in enumerate(headlines, 1):
+            speak(f"{i}. {headline}")
+            print(f"📰 {i}. {headline}")
+    else:
+        speak("Couldn't fetch the news right now.")
+
+
 
 def should_greet() -> bool:
     """Returns True if daily greeting hasn't been done today."""
