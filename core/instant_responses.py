@@ -191,6 +191,44 @@ RESPONSE_POOL = {
     "restart_pc":      {"casual": ["Restarting.", "Be right back."], "focused": ["Restarting."], "sarcastic": ["Restarting. Don't go anywhere."], "night": ["Restarting."]},
     "sleep_mac":       {"casual": ["Going to sleep.", "Nap time."], "focused": ["Sleeping."], "sarcastic": ["Sleepy time.", "Napping."], "night": ["Sleeping. Night."]},
 
+    # ── Music ────────────────────────────────────────────────
+    "play_song": {
+        "casual":    ["Playing now.", "Music incoming.", "Let me find that.", "Queuing it up."],
+        "focused":   ["Playing.", "On it."],
+        "sarcastic": ["DJ Jarvis at your service.", "Music time, as usual.", "Your personal jukebox."],
+        "night":     ["Playing.", "Here you go."],
+    },
+    "play_mood_music": {
+        "casual":    ["Let me set the mood.", "Music for the vibes.", "Matching the mood."],
+        "focused":   ["Setting the mood.", "Playing."],
+        "sarcastic": ["Mood music? How artsy.", "Let me read your soul.", "Vibes incoming."],
+        "night":     ["Setting the mood.", "Playing."],
+    },
+    "play_music": {
+        "casual":    ["Playing music.", "Music time.", "Here we go."],
+        "focused":   ["Playing."],
+        "sarcastic": ["Music again? Sure.", "DJ mode activated."],
+        "night":     ["Playing."],
+    },
+    "pause_music": {
+        "casual":    ["Paused.", "Music paused.", "Holding."],
+        "focused":   ["Paused."],
+        "sarcastic": ["Silence. Finally.", "Paused, enjoy the quiet."],
+        "night":     ["Paused."],
+    },
+    "next_track": {
+        "casual":    ["Skipping.", "Next one.", "Moving on."],
+        "focused":   ["Next."],
+        "sarcastic": ["Not feeling that one? Next.", "Skipping, picky."],
+        "night":     ["Next."],
+    },
+    "previous_track": {
+        "casual":    ["Going back.", "Previous track.", "Rewinding."],
+        "focused":   ["Previous."],
+        "sarcastic": ["Going back. Nostalgia?", "Previous track."],
+        "night":     ["Previous."],
+    },
+
     # ── Conversational ──────────────────────────────────────
     "answer_question": {
         "casual":    ["Let me think.", "Good question.", "Hmm, let me check.", "One sec."],

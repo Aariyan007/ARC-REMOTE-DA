@@ -12,6 +12,7 @@ If fast engine fails → Gemini fallback → learn from result.
 
 import time
 import sys
+import threading
 from core.normalizer import normalize
 from core.fast_intent import classify, IntentResult
 from core.param_extractors import (
@@ -152,7 +153,51 @@ def _extract_params(action: str, text: str) -> dict:
     return params
 
 
-def _execute_action(action: str, params: dict, actions: dict) -> str:
+# ── Music Agent Access ───────────────────────────────────────
+def _get_music_agent():
+    """Access the MusicAgent from the main module's agent registry."""
+    try:
+        import main as main_module
+        if hasattr(main_module, '_manager_agent') and main_module._manager_agent:
+            return main_module._manager_agent.get_agent("music")
+    except Exception:
+        pass
+    # Fallback: create a standalone instance
+    try:
+        from core.agents.music_agent import MusicAgent
+        return MusicAgent()
+    except Exception:
+        return None
+
+
+# ── Knowledge Agent Access ───────────────────────────────────
+def _get_knowledge_agent():
+    """Access the KnowledgeAgent from the main module's agent registry."""
+    try:
+        import main as main_module
+        if hasattr(main_module, '_manager_agent') and main_module._manager_agent:
+            return main_module._manager_agent.get_agent("knowledge")
+    except Exception:
+        pass
+    try:
+        from core.agents.knowledge_agent import KnowledgeAgent
+        return KnowledgeAgent()
+    except Exception:
+        return None
+
+def _auto_play_focus_music():
+    """Background task: auto-plays focus music when opening productive apps."""
+    import time
+    time.sleep(3)  # Wait for the app to fully open
+    try:
+        agent = _get_music_agent()
+        if agent and hasattr(agent, 'play_focus_music_silent'):
+            agent.play_focus_music_silent()
+    except Exception as e:
+        print(f"⚠️  Auto-play failed: {e}")
+
+
+def _execute_action(action: str, params: dict, actions: dict, text: str = "") -> str:
     """
     Executes an action with extracted params.
     Returns result string for logging and context.
@@ -164,11 +209,16 @@ def _execute_action(action: str, params: dict, actions: dict) -> str:
             func_name = f"open_{target.lower().replace(' ', '_')}"
             if func_name in actions:
                 actions[func_name]()
-                return f"Opened {target}"
             else:
                 from control import open_any_app
                 open_any_app(target)
-                return f"Opened {target}"
+
+            # ── Auto-play focus music for productive apps ────
+            PRODUCTIVE_APPS = {"vscode", "terminal", "xcode", "sublime", "pycharm", "intellij"}
+            if target and target.lower() in PRODUCTIVE_APPS:
+                threading.Thread(target=_auto_play_focus_music, daemon=True).start()
+
+            return f"Opened {target}"
 
         # ── Close app ───────────────────────────────────────
         if action == "close_app":
@@ -261,6 +311,16 @@ def _execute_action(action: str, params: dict, actions: dict) -> str:
             location = params.get("location") or "desktop"
 
             # ── Smart format detection ────────────────────────
+            # If filename is completely missing, ask the user
+            if not filename:
+                speak("What should I name the file?")
+                name_resp = stt_listen()
+                if name_resp and name_resp.strip():
+                    filename = name_resp.strip()
+                    print(f"📄 User provided filename: {filename}")
+                else:
+                    return "Couldn't create — no filename provided"
+
             # If filename has no extension, ask the user or infer
             if filename and "." not in filename:
                 detected_fmt = _detect_format_from_context(text)
@@ -287,7 +347,7 @@ def _execute_action(action: str, params: dict, actions: dict) -> str:
                 return f"Created {filename}"
             return f"Couldn't create — no filename extracted"
 
-        # ── edit_file — asks for content when missing, then listens ──
+        # ── edit_file — asks for content when missing, then listens ──t
         if action == "edit_file":
             filename = params.get("filename", "")
             content  = params.get("content", "")
@@ -365,6 +425,60 @@ def _execute_action(action: str, params: dict, actions: dict) -> str:
                         return f"Created {filename} and wrote content"
                     return f"Created {filename} (no content specified)"
             return "Couldn't create — no filename"
+
+        # ── Knowledge Base ───────────────────────────────────
+        if action in ("save_note", "append_note", "search_vault", "read_note_vault"):
+            agent = _get_knowledge_agent()
+            if agent:
+                if action == "save_note":
+                    title = params.get("title", params.get("target", ""))
+                    content = params.get("content", text)
+                    if not title:
+                        speak("What should I title this note?")
+                        title_res = stt_listen()
+                        title = title_res.strip() if title_res else text[:20].strip()
+                    res = agent.execute("save_note", {"title": title, "content": content})
+                    return res.result if res.success else f"Error: {res.error}"
+
+                elif action == "append_note":
+                    res = agent.execute("append_note", params)
+                    return res.result if res.success else f"Error: {res.error}"
+
+                elif action == "search_vault":
+                    query = params.get("query", extract_query(text) or "")
+                    res = agent.execute("search_vault", {"query": query})
+                    if res.success and res.data.get("matches"):
+                        matches = res.data["matches"]
+                        speak(f"I found {len(matches)} notes. The first one is from {matches[0]['title']}.")
+                        return res.result
+                    else:
+                        speak("I couldn't find anything about that in my brain.")
+                        return res.result if res.success else f"Error: {res.error}"
+
+                elif action == "read_note_vault":
+                    res = agent.execute("read_note", {"title": params.get("title", "")})
+                    return res.result if res.success else f"Error: {res.error}"
+            return "Knowledge agent not available"
+
+        # ── Music: play_song ─────────────────────────────────
+        if action == "play_song":
+            agent = _get_music_agent()
+            if agent:
+                # Extract song name from query
+                song_query = params.get("query", "")
+                if not song_query:
+                	song_query = extract_query(text) or ""
+                result = agent.execute("play_song", {"query": song_query})
+                return result.result if result.success else f"Error: {result.error}"
+            return "Music agent not available"
+
+        # ── Music: play_mood_music ───────────────────────────
+        if action == "play_mood_music":
+            agent = _get_music_agent()
+            if agent:
+                result = agent.execute("play_mood_music", params)
+                return result.result if result.success else f"Error: {result.error}"
+            return "Music agent not available"
 
         # ── Generic action ──────────────────────────────────
         # ── Conversational intents → Gemini for answer ─────────
@@ -615,7 +729,7 @@ def route(command: str, actions: dict) -> bool:
             )
             return False
 
-        result = _execute_action(intent.action, params, actions)
+        result = _execute_action(intent.action, params, actions, text=command)
         print(f"✅ Result: {result}")
 
         update_context(
@@ -684,7 +798,7 @@ def route(command: str, actions: dict) -> bool:
         if confirmed:
             response_text = get_instant_response(intent.action, mood)
             speak_instant(response_text)
-            result = _execute_action(intent.action, params, actions)
+            result = _execute_action(intent.action, params, actions, text=cleaned)
             print(f"✅ Confirmed & executed: {result}")
 
             update_context(
@@ -938,7 +1052,7 @@ def _gemini_fallback(
             if key in result:
                 params[key] = result[key]
 
-        exec_result = _execute_action(action, params, actions)
+        exec_result = _execute_action(action, params, actions, text=raw_command)
         print(f"✅ Gemini action result: {exec_result}")
 
         update_context(

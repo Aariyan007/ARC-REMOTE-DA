@@ -10,13 +10,25 @@
     "open vscode and play any music": 1,
     "open spotify and they play a music any music": 1,
     "make a folder called work on desktop create a file inside it and open vscode": 1,
-    "make a folder called work on desktop and create a file inside it and open vscode": 1
+    "make a folder called work on desktop and create a file inside it and open vscode": 1,
+    "could you kind of play music": 1,
+    "play the music from spotify": 1
   },
   "create_file": {
-    "create a file named at superman.txt i also want you to add some contents in it": 1
+    "create a file named at superman.txt i also want you to add some contents in it": 1,
+    "i wanted to kind of create a file": 1,
+    "create a file": 1,
+    "see i told you to create a file": 1,
+    "create a file named superman": 1,
+    "let's create a file named as superman.txt": 1
   },
   "edit_file": {
-    "write something in superman.txt i tell you": 1
+    "write something in superman.txt i tell you": 1,
+    "could you add text inside there": 1,
+    "and in batman.docx write something": 1,
+    "want you to add text in it bro": 1,
+    "don't you want contents in it": 1,
+    "i also wanted to add some text in it": 1
   },
   "open_gmail": {
     "open email": 1
@@ -27,10 +39,30 @@
   },
   "send_email": {
     "send an email send an email send an email": 1,
-    "send an email": 1
+    "send an email": 2,
+    "percent email to my friend": 1
   },
   "general_chat": {
     "tell me a joke": 2,
-    "now tell me a joke": 1
+    "now tell me a joke": 1,
+    "i'm feeling bored man": 1
+  },
+  "play_mood_music": {
+    "play some music according to my mood": 1,
+    "a song according to my mood": 1
+  },
+  "tell_time": {
+    "what time is it": 1
+  },
+  "morning_briefing": {
+    "what is today's news man": 1,
+    "what is today's news i want": 1
+  },
+  "play_song": {
+    "hear some good songs man": 1,
+    "stop playing the song": 1
+  },
+  "read_emails": {
+    "check what all emails have come": 1
   }
 }

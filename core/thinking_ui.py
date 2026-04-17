@@ -12,6 +12,7 @@ Gracefully skips if Tkinter or display not available.
 """
 
 import threading
+import multiprocessing
 import time
 import sys
 
@@ -33,12 +34,12 @@ class ThinkingUI:
 
     def __init__(self):
         self._root = None
-        self._thread = None
-        self._running = False
-        self._pending_update = None
-        self._lock = threading.Lock()
-        self._last_update_time = 0
+        self._process = None
+        self._queue = multiprocessing.Queue()
         self._auto_hide_seconds = 5
+
+        # Initialize to empty strings/floats locally (so we don't break old API)
+        self._last_update_time = 0
 
         # State
         self._command = ""
@@ -48,37 +49,39 @@ class ThinkingUI:
         self._stage = ""
 
     def start(self):
-        """Start the UI in a background thread."""
+        """Start the UI in a background process."""
         if not _tk_available:
             print("⚠️  Tkinter not available — Thinking UI disabled")
             return
 
-        self._running = True
-        self._thread = threading.Thread(target=self._run_loop, daemon=True)
-        self._thread.start()
+        # Use multiprocessing to avoid macOS main thread UI restrictions
+        self._process = multiprocessing.Process(target=self._run_loop, args=(self._queue,), daemon=True)
+        self._process.start()
 
     def stop(self):
         """Stop the UI."""
-        self._running = False
+        if self._process and self._process.is_alive():
+            self._process.terminate()
+            self._process.join()
 
     def update(self, command: str = "", intent: str = "", action: str = "",
                confidence: float = 0.0, stage: str = ""):
         """
-        Update the UI state. Thread-safe.
+        Update the UI state. Process-safe.
         Call from route() or anywhere in the pipeline.
         """
-        with self._lock:
-            self._pending_update = {
-                "command": command,
-                "intent": intent,
-                "action": action,
-                "confidence": confidence,
-                "stage": stage,
-            }
-            self._last_update_time = time.time()
+        # Send update data over the queue
+        update_data = {
+            "command": command,
+            "intent": intent,
+            "action": action,
+            "confidence": confidence,
+            "stage": stage,
+        }
+        self._queue.put(update_data)
 
-    def _run_loop(self):
-        """Main Tkinter loop — runs in its own thread."""
+    def _run_loop(self, queue):
+        """Main Tkinter loop — runs in its own process on the main thread of that process."""
         try:
             self._root = tk.Tk()
             self._root.title("Jarvis • Thinking")
@@ -160,35 +163,32 @@ class ThinkingUI:
             self._root.withdraw()
 
             # ── Poll for updates ─────────────────────────────
-            self._poll()
+            self._poll(queue)
             self._root.mainloop()
 
         except Exception as e:
-            print(f"⚠️  Thinking UI failed to start: {e}")
-            self._running = False
+            print(f"⚠️  Thinking UI process failed: {e}")
 
-    def _poll(self):
+    def _poll(self, queue):
         """Check for pending updates every 100ms."""
-        if not self._running:
+        update = None
+        # Drain the queue, keeping only the latest update
+        while not queue.empty():
             try:
-                self._root.destroy()
+                update = queue.get_nowait()
             except Exception:
-                pass
-            return
-
-        with self._lock:
-            update = self._pending_update
-            self._pending_update = None
+                break
 
         if update:
             self._apply_update(update)
             self._root.deiconify()  # Show window
+            self._last_update_time = time.time()
 
         # Auto-hide after inactivity
-        if (time.time() - self._last_update_time) > self._auto_hide_seconds:
+        if self._last_update_time > 0 and (time.time() - self._last_update_time) > self._auto_hide_seconds:
             self._root.withdraw()
 
-        self._root.after(100, self._poll)
+        self._root.after(100, self._poll, queue)
 
     def _apply_update(self, data: dict):
         """Apply state update to labels."""

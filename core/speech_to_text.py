@@ -1,4 +1,4 @@
-import whisper
+
 import pyaudio
 import numpy as np
 import wave
@@ -35,11 +35,39 @@ CORRECTIONS = {
     "powersel":    "powershell",
     "powercell":   "powershell",
 }
+
+# ─── Garbage Words ───────────────────────────────────────────
+# Single-word transcriptions Whisper hallucinates from ambient noise.
+# If the entire transcript is just one of these, discard it.
+GARBAGE_WORDS = {
+    "you", "the", "a", "an", "and", "is", "it", "to", "of",
+    "in", "on", "i", "he", "she", "we", "they", "do", "so",
+    "if", "or", "but", "be", "at", "by", "my", "me", "no",
+    "oh", "ah", "uh", "um", "hmm", "huh", "ok", "okay",
+    "nah", "nope", "right", "well",
+    "thank", "thanks", "bye", "hi", "hey", "percent","pls.",
+}
+# ────────────────────────────────────────────────────────────
 # ────────────────────────────────────────────────────────────
 
-print("Loading Whisper model...")
-model = whisper.load_model("small")
-print("Whisper is wokring")
+model = None
+
+def _get_model():
+    global model
+    if model is None:
+        import whisper
+        model = whisper.load_model("small")
+    return model
+
+
+def preload_whisper():
+    """Pre-warm the Whisper model at startup so it never loads mid-command."""
+    global model
+    if model is None:
+        import whisper
+        print("🧠 Loading Whisper model...")
+        model = whisper.load_model("small")
+        print("✅ Whisper ready")
 
 
 def _deduplicate_whisper(text: str) -> str:
@@ -155,7 +183,7 @@ def listen() -> str:
 
     # Transcribe
     print("🧠 Transcribing...")
-    result = model.transcribe(
+    result = _get_model().transcribe(
         tmp_path,
         language="en",
         fp16=False,
@@ -169,6 +197,11 @@ def listen() -> str:
     text = _deduplicate_whisper(text)
 
     os.remove(tmp_path)
+
+    # ── Reject garbage single-word hallucinations ────────────
+    if text and len(text.split()) <= 1 and text in GARBAGE_WORDS:
+        print(f"🗑️  Ignoring noise: '{text}'")
+        return ""
 
     print(f"📝 You said: '{text}'")
     return text
@@ -242,7 +275,7 @@ def listen_long(max_seconds: int = 30, silence_seconds: float = 2.5) -> str:
 
     # Transcribe
     print("🧠 Transcribing (extended)...")
-    result = model.transcribe(
+    result = _get_model().transcribe(
         tmp_path,
         language="en",
         fp16=False,
@@ -256,6 +289,11 @@ def listen_long(max_seconds: int = 30, silence_seconds: float = 2.5) -> str:
     text = _deduplicate_whisper(text)
 
     os.remove(tmp_path)
+
+    # ── Reject garbage single-word hallucinations ────────────
+    if text and len(text.split()) <= 1 and text in GARBAGE_WORDS:
+        print(f"🗑️  Ignoring noise: '{text}'")
+        return ""
 
     print(f"📝 You said (extended): '{text}'")
     return text

@@ -152,26 +152,17 @@ def ask_voice_confirmation(prompt: str, timeout: float = 10.0) -> bool:
     """
     Asks the user a yes/no question via voice, listens for response.
     Returns True if user confirms, False otherwise.
-    Timeout after `timeout` seconds → cancel (returns False).
     """
-
-
     # Speak the confirmation prompt
     speak(prompt)
 
-    # Listen for yes/no
-    print(f"⏳ Waiting for confirmation ({timeout}s timeout)...")
-    start = time.time()
-
+    # Listen — listen() already has its own silence+timeout logic
+    print(f"⏳ Waiting for confirmation...")
     response = listen()
 
-    if time.time() - start > timeout:
-        print("⏰ Confirmation timed out — cancelling")
+    if not response or not response.strip():
+        print("⏰ No response — cancelling")
         speak("Timed out. Cancelling.")
-        return False
-
-    if not response:
-        speak("I didn't catch that. Cancelling to be safe.")
         return False
 
     response = response.lower().strip()

@@ -230,6 +230,12 @@ INTENT_REGISTRY = {
         "morning briefing", "brief me", "what's today like",
         "give me a briefing", "daily brief", "what's happening today",
     ],
+    "read_news": [
+        "what's the news", "read me the news", "today's news",
+        "news headlines", "what's in the news today",
+        "tell me the news", "world news", "any news today",
+        "what is today's news man",
+    ],
 
     # ── PDF ───────────────────────────────────────────────────
     "summarise_pdf": [
@@ -364,6 +370,56 @@ INTENT_REGISTRY = {
         "what files did i work on today",
         "show me my recent files", "what have i been working on",
         "recent documents", "recently modified files",
+    ],
+
+    # ── Music / Spotify ─────────────────────────────────────
+    "play_song": [
+        "play a song", "play some music", "play music for me",
+        "play a song on spotify", "play music on spotify",
+        "play despacito", "play shape of you", "can you play a song",
+        "play something", "put on some music", "play my music",
+        "play the song", "play that song", "play this song",
+        "play music from spotify", "play the music from spotify",
+        "could you play music", "play music please",
+        "play a track", "put on a song", "i want to hear music",
+        "play blinding lights", "play bohemian rhapsody",
+    ],
+    "play_mood_music": [
+        "play music according to my mood", "play something for my mood",
+        "play music based on how i feel", "mood music", "play chill music",
+        "play something relaxing", "play happy music", "play sad music",
+        "play focus music", "play workout music", "play party music",
+        "play something based on my mood", "match my mood with music",
+        "play upbeat music", "play calm music", "play energetic music",
+        "play something to help me focus", "play study music",
+        "play lo-fi", "play lo-fi beats",
+    ],
+    # ── Memory / Knowledge Base (Second Brain) ───────────────
+    "save_note": [
+        "save note", "create a note", "remember this",
+        "save a new note", "put this in my brain",
+        "write a note", "make a note", "save this to my brain",
+        "create a new memory", "store this",
+        "save to obsidian", "create a new note in obsidian",
+        "take a note", "write this down",
+        "save note that my favorite fruit is apple",
+        "remember that my name is alex",
+        "create a note saying that i need milk",
+        "save this memory to the brain",
+    ],
+    "append_note": [
+        "append note", "add to note", "update note",
+        "add this to my daily note", "append to daily note",
+        "add this to the project note", "update my notes",
+        "write this into my note", "add some info to the note",
+        "append that the meeting is cancelled",
+        "add to the daily note that i finished the work",
+    ],
+    "search_vault": [
+        "search my brain", "search vault", "search obsidian",
+        "do i have any notes on", "find in my notes",
+        "search my knowledge base", "look up in my brain",
+        "check my notes for", "what do my notes say about",
     ],
 }
 

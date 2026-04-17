@@ -1,4 +1,5 @@
 import os
+import json
 import base64
 import subprocess
 import urllib.parse
@@ -27,6 +28,66 @@ def _safe(value) -> str:
     return str(value).strip()
 
 
+def _resolve_contact(name: str) -> str:
+    """
+    Resolves a contact name to an email address from data/contacts.json.
+    Falls back to returning the original name if no match found.
+    """
+    contacts_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'contacts.json')
+    if os.path.exists(contacts_path):
+        try:
+            with open(contacts_path) as f:
+                contacts = json.load(f)
+            name_lower = name.lower().strip()
+            # Exact match
+            if name_lower in contacts:
+                email = contacts[name_lower]
+                print(f"📞 Contact resolved: '{name}' → {email}")
+                return email
+            # Fuzzy substring match
+            for contact_name, email in contacts.items():
+                if contact_name in name_lower or name_lower in contact_name:
+                    print(f"📞 Contact resolved (fuzzy): '{name}' → {email}")
+                    return email
+        except Exception as e:
+            print(f"⚠️  Contact lookup error: {e}")
+    return name
+
+
+def _extract_meaning_with_gemini(raw_text: str, field_type: str) -> str:
+    """
+    Use Gemini to extract the actual meaning from a voice transcription.
+    field_type: 'subject', 'recipient', 'body', etc.
+    """
+    try:
+        from google import genai
+        client = genai.Client(api_key=os.getenv("API_KEY"))
+        prompt = f"""Extract the actual email {field_type} from this voice input.
+The user was asked "What is the {field_type}?" and they said: "{raw_text}"
+
+Return ONLY the extracted {field_type}, nothing else. No quotes, no explanation.
+Examples:
+- "my college is the subject" → my college
+- "write subject as my college" → my college
+- "the subject is meeting tomorrow" → meeting tomorrow
+- "right subject as my college" → my college
+- "i said my college" → my college
+- "no i said my college" → my college
+- "say hi to Aariyan" → Aariyan
+- "send it to my friend aryan" → aryan
+- "just write hello world" → hello world
+"""
+        response = client.models.generate_content(model="gemini-3.1-flash-lite-preview", contents=prompt)
+        extracted = response.text.strip()
+        if extracted:
+            print(f"🧠 Gemini extracted {field_type}: '{raw_text}' → '{extracted}'")
+            return extracted
+        return raw_text
+    except Exception as e:
+        print(f"⚠️  Gemini extraction failed: {e}")
+        return raw_text
+
+
 def _voice_input_with_retry(
     prompt: str,
     confirm_label: str = "",
@@ -34,10 +95,15 @@ def _voice_input_with_retry(
     use_long_listen: bool = False,
     long_max_seconds: int = 30,
     long_silence_seconds: float = 2.5,
+    gemini_field: str = "",
 ) -> str:
     """
     Ask a voice question, listen for the answer, optionally confirm,
     and retry up to `max_retries` times if the input is empty or rejected.
+
+    Args:
+        gemini_field: If set (e.g. 'subject', 'recipient'), uses Gemini
+                      to extract the actual meaning from natural speech.
 
     Returns the confirmed text, or "" if all retries exhausted.
     """
@@ -59,6 +125,10 @@ def _voice_input_with_retry(
                 speak("Still couldn't hear you. Skipping this.")
                 return ""
 
+        # ── Gemini-assisted extraction ─────────────────────
+        if gemini_field:
+            text = _extract_meaning_with_gemini(text, gemini_field)
+
         # ── Confirmation step ────────────────────────────────
         if confirm_label:
             speak(f"Did you say {confirm_label}: {text}?")
@@ -72,6 +142,17 @@ def _voice_input_with_retry(
                 w in confirmation.lower()
                 for w in ["no", "nope", "wrong", "change", "not right"]
             ):
+                # ── Smart correction: extract what they actually said ──
+                if gemini_field and confirmation:
+                    corrected = _extract_meaning_with_gemini(confirmation, gemini_field)
+                    if corrected and corrected.lower() != confirmation.lower():
+                        speak(f"Got it. {confirm_label}: {corrected}. Correct?")
+                        second_confirm = listen()
+                        if second_confirm and any(
+                            w in second_confirm.lower()
+                            for w in ["yes", "yeah", "yep", "correct", "right", "sure"]
+                        ):
+                            return corrected
                 if attempt < max_retries:
                     continue
                 else:
@@ -235,10 +316,14 @@ def send_email(to: str = "", subject: str = "", body: str = "") -> None:
             prompt="Who do you want to send the email to?",
             confirm_label="recipient",
             max_retries=2,
+            gemini_field="recipient",
         )
         if not to:
             speak("Cancelled. No recipient provided.")
             return "Cancelled — missing recipient"
+
+    # ── Resolve contact name to email address ────────────────
+    to = _resolve_contact(to)
 
     # Step 2: Subject
     subject = _safe(subject)
@@ -247,6 +332,7 @@ def send_email(to: str = "", subject: str = "", body: str = "") -> None:
             prompt="What is the subject?",
             confirm_label="subject",
             max_retries=2,
+            gemini_field="subject",
         )
         if not subject:
             speak("Cancelled. No subject provided.")
