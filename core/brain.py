@@ -6,9 +6,16 @@ Replaces simple intent routing with a multi-stage Think → Plan → Execute loo
 Pipeline:
     1. Fast Match (local intent engine)
     2. Confidence check
-    3. If LOW / complex → ManagerBrain planning via Gemini
-    4. Execution via agent dispatch
-    5. Observation + optional re-plan
+    3. Memory Integrator check (corrections → preferences → context)
+    4. If LOW / complex → ManagerBrain planning via Gemini
+    5. Execution via agent dispatch
+    6. Observation + optional re-plan
+
+Memory Decision Priority (MANDATORY enforcement):
+    1. Learned corrections  (HIGHEST) — override action/params
+    2. Explicit preferences            — inject into params
+    3. Long-term context               — add to Gemini context
+    4. Default logic        (LOWEST)  — existing intent engine
 
 Fallback Loop:
     If a local action fails → automatically attempt Cloud Re-plan
@@ -26,6 +33,7 @@ from dataclasses import dataclass, field
 
 from core.confidence import evaluate_confidence, ConfidenceTier, ConfidenceResult
 from core.event_bus import get_event_bus
+from core.memory_integrator import get_memory_integrator, MemoryDecision
 
 
 # ─── Decision Types ──────────────────────────────────────────
@@ -41,14 +49,16 @@ class BrainDecision(Enum):
 @dataclass
 class BrainResult:
     """Result from ManagerBrain decision."""
-    decision:      BrainDecision
-    confidence:    ConfidenceResult
-    action:        str         = ""
-    params:        dict        = field(default_factory=dict)
-    plan:          dict        = None     # Multi-step plan from Gemini
-    observation:   str         = ""       # What the brain observed post-execution
-    retry_count:   int         = 0
-    total_ms:      float       = 0.0
+    decision:        BrainDecision
+    confidence:      ConfidenceResult
+    action:          str              = ""
+    params:          dict             = field(default_factory=dict)
+    plan:            dict             = None     # Multi-step plan from Gemini
+    observation:     str              = ""       # What the brain observed post-execution
+    retry_count:     int              = 0
+    total_ms:        float            = 0.0
+    memory_decision: MemoryDecision   = None     # Memory layer decision
+    memory_context:  str              = ""       # Context string for Gemini
 
 
 # ─── Complexity Detection ────────────────────────────────────
@@ -130,6 +140,8 @@ class ManagerBrain:
         """
         Main entry point. Analyzes the command and returns a BrainDecision.
 
+        Flow: Intent → Confidence → Memory Integrator → Final Decision
+
         Returns:
             BrainResult with the optimal execution strategy.
         """
@@ -145,7 +157,48 @@ class ManagerBrain:
             context_resolved=context_resolved,
         )
 
-        # ── Step 2: Check if conversational ──────────────────
+        # ── Step 2: Memory Integrator (MANDATORY) ────────────
+        # Runs AFTER confidence so memory has intent+confidence context.
+        # Returns overrides that MUST be enforced.
+        integrator = get_memory_integrator()
+        mem_decision = integrator.pre_action_check(
+            command=command,
+            intent=intent_action,
+            params=params,
+            confidence=conf.score,
+        )
+
+        # ── Step 2a: ENFORCE correction overrides (HIGHEST PRIORITY) ──
+        if mem_decision.has_override:
+            # Corrections override EVERYTHING — skip all other logic
+            override_action = mem_decision.override_action or intent_action
+            override_params = dict(params)
+            if mem_decision.override_params:
+                override_params.update(mem_decision.override_params)
+
+            result = BrainResult(
+                decision=BrainDecision.FAST_EXECUTE,
+                confidence=conf,
+                action=override_action,
+                params=override_params,
+                total_ms=(time.time() - start) * 1000,
+                memory_decision=mem_decision,
+            )
+            self._log_decision(command, result)
+            self._publish_decision(command, result, conf)
+            return result
+
+        # ── Step 2b: ENFORCE preference injection (MUST inject) ──
+        if mem_decision.has_preferences:
+            if mem_decision.override_params:
+                params.update(mem_decision.override_params)
+
+        # ── Step 2c: ENFORCE context injection (MUST add) ────
+        memory_context = ""
+        if mem_decision.has_context:
+            memory_context = integrator.build_context_string(mem_decision)
+
+        # ── Step 3: Check if conversational ──────────────────
         if _is_conversational(command):
             return BrainResult(
                 decision=BrainDecision.CHAT,
@@ -153,12 +206,14 @@ class ManagerBrain:
                 action="casual_chat",
                 params={"query": command},
                 total_ms=(time.time() - start) * 1000,
+                memory_decision=mem_decision,
+                memory_context=memory_context,
             )
 
-        # ── Step 3: Check complexity ─────────────────────────
+        # ── Step 4: Check complexity ─────────────────────────
         is_complex = _is_complex(command)
 
-        # ── Step 4: Route based on confidence + complexity ───
+        # ── Step 5: Route based on confidence + complexity ───
         if conf.tier == ConfidenceTier.HIGH and not is_complex:
             # High confidence, simple command → fast execute
             result = BrainResult(
@@ -167,6 +222,8 @@ class ManagerBrain:
                 action=intent_action,
                 params=params,
                 total_ms=(time.time() - start) * 1000,
+                memory_decision=mem_decision,
+                memory_context=memory_context,
             )
 
         elif conf.tier == ConfidenceTier.HIGH and is_complex:
@@ -177,6 +234,8 @@ class ManagerBrain:
                 action=intent_action,
                 params=params,
                 total_ms=(time.time() - start) * 1000,
+                memory_decision=mem_decision,
+                memory_context=memory_context,
             )
 
         elif conf.tier == ConfidenceTier.MEDIUM:
@@ -188,6 +247,8 @@ class ManagerBrain:
                     action=intent_action,
                     params=params,
                     total_ms=(time.time() - start) * 1000,
+                    memory_decision=mem_decision,
+                    memory_context=memory_context,
                 )
             else:
                 # Medium + simple → fast execute (but confirm)
@@ -197,6 +258,8 @@ class ManagerBrain:
                     action=intent_action,
                     params=params,
                     total_ms=(time.time() - start) * 1000,
+                    memory_decision=mem_decision,
+                    memory_context=memory_context,
                 )
 
         else:
@@ -207,24 +270,31 @@ class ManagerBrain:
                 action=intent_action,
                 params=params,
                 total_ms=(time.time() - start) * 1000,
+                memory_decision=mem_decision,
+                memory_context=memory_context,
             )
 
         # Log the decision
         self._log_decision(command, result)
+        self._publish_decision(command, result, conf)
 
-        # Publish event
+        return result
+
+    def _publish_decision(self, command: str, result: "BrainResult", conf: ConfidenceResult) -> None:
+        """Publish brain_decision event to EventBus."""
         try:
             bus = get_event_bus()
-            bus.publish("brain_decision", {
+            event_data = {
                 "command":    command,
                 "decision":   result.decision.value,
                 "confidence": conf.score,
-                "action":     intent_action,
-            }, source="brain")
+                "action":     result.action,
+            }
+            if result.memory_decision and result.memory_decision.source != "default":
+                event_data["memory_source"] = result.memory_decision.source
+            bus.publish("brain_decision", event_data, source="brain")
         except Exception:
             pass
-
-        return result
 
     def handle_failure(
         self,

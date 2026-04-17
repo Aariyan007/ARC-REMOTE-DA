@@ -388,6 +388,39 @@ def main():
     _brain = get_brain(manager_agent=_manager_agent, actions=ACTIONS)
     print("\U0001f9e0 ManagerBrain ready")
 
+    # ── Initialize Cognitive Memory Layer ─────────────────────
+    # Continuous Memory (long-term structured memory)
+    try:
+        from core.continuous_memory import get_continuous_memory
+        _continuous_mem = get_continuous_memory()
+        print(f"[M] Continuous memory ready ({_continuous_mem.count} memories)")
+    except Exception as e:
+        print(f"\u26a0\ufe0f  Continuous memory skipped: {e}")
+
+    # Working Memory (short-term execution journal)
+    try:
+        from core.working_memory import get_working_memory
+        _working_mem = get_working_memory()
+        print("[M] Working memory ready")
+    except Exception as e:
+        print(f"\u26a0\ufe0f  Working memory skipped: {e}")
+
+    # Error Correction Store (learned corrections)
+    try:
+        from core.error_correction import get_error_correction_store
+        _error_corrections = get_error_correction_store()
+        print(f"[M] Error corrections ready ({_error_corrections.count} corrections)")
+    except Exception as e:
+        print(f"\u26a0\ufe0f  Error corrections skipped: {e}")
+
+    # Memory Integrator (pre-action orchestrator)
+    try:
+        from core.memory_integrator import get_memory_integrator
+        _memory_integrator = get_memory_integrator()
+        print("[M] Memory integrator ready")
+    except Exception as e:
+        print(f"\u26a0\ufe0f  Memory integrator skipped: {e}")
+
     # ── Initialize Vector Memory ─────────────────────────────
     try:
         from core.vector_memory import get_vector_memory

@@ -38,6 +38,8 @@ from core.thinking_ui import update_thinking
 from core.interrupt_manager import is_interrupt, get_interrupt_manager
 from core.confidence import evaluate_confidence
 from core.brain import get_brain, BrainDecision
+from core.working_memory import get_working_memory
+from core.continuous_memory import get_continuous_memory
 
 # ── Format Keywords → Extensions ───────────────────────────────
 FORMAT_MAP = {
@@ -638,6 +640,30 @@ def route(command: str, actions: dict) -> bool:
         if not result.startswith("Error"):
             boost_confidence(cleaned, intent.action)
 
+        # ── Working Memory: record action ─────────────────────
+        try:
+            wm = get_working_memory()
+            is_success = not result.startswith("Error")
+            wm.record_action(
+                action=intent.action,
+                params=params,
+                reason=f"User said '{command}'",
+                outcome="success" if is_success else "failed",
+                confidence=intent.confidence,
+                error=result if not is_success else "",
+                command=command,
+                intent_source=intent.source,
+            )
+        except Exception:
+            pass
+
+        # ── Continuous Memory: extract preferences from command ─
+        try:
+            cm = get_continuous_memory()
+            cm.extract_and_store(command)
+        except Exception:
+            pass
+
         if should_enhance(intent.action, result):
             generate_followup(
                 action=intent.action,
@@ -676,6 +702,21 @@ def route(command: str, actions: dict) -> bool:
                 normalized_text=cleaned, params=params,
             )
             save_exchange(command, response_text)
+
+            # ── Working Memory: record confirmed action ───────
+            try:
+                wm = get_working_memory()
+                wm.record_action(
+                    action=intent.action,
+                    params=params,
+                    reason=f"User confirmed '{command}'",
+                    outcome="success",
+                    confidence=intent.confidence,
+                    command=command,
+                    intent_source=intent.source,
+                )
+            except Exception:
+                pass
         else:
             latency_ms = (time.time() - start_time) * 1000
             log_interaction(
@@ -925,6 +966,29 @@ def _gemini_fallback(
             params=params,
         )
         save_exchange(raw_command, response_text)
+
+        # ── Working Memory: record Gemini action ──────────────
+        try:
+            wm = get_working_memory()
+            wm.record_action(
+                action=action,
+                params=params,
+                reason=f"Gemini resolved '{raw_command}'",
+                outcome="success",
+                confidence=1.0,
+                command=raw_command,
+                intent_source="gemini",
+            )
+        except Exception:
+            pass
+
+        # ── Continuous Memory: extract from command ───────────
+        try:
+            cm = get_continuous_memory()
+            cm.extract_and_store(raw_command)
+        except Exception:
+            pass
+
         return True
 
     speak("I understood but can't do that yet.")
