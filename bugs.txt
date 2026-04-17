@@ -1,0 +1,35 @@
+# Bugs Identified during Evolution Phase (2026-04-17)
+
+1. **Rigid Confirmation Loops (The "Cancellation Bug")**
+   - *Issue*: Jarvis cancels multi-step operations (like email) if the user asks for clarification or says anything other than a direct "yes/no".
+   - *Example*: "Should I open the email?" -> "What was the subject?" -> "Alright, email cancelled."
+
+2. **False Intent Mapping (Over-Confidence Boosting)**
+   - *Issue*: Intent similarity scores are artificially boosted by 100% parameter completion scores for actions that require no parameters or are missing from the requirement registry.
+   - *Example*: "geek for geeks" -> `show_desktop` (0.36 intent boosted to 0.61).
+   - *Example*: "do you remember my past" -> `save_note` (0.34 intent boosted to 0.60).
+
+3. **Interactive Extraction Noise**
+   - *Issue*: Jarvis takes interactive voice responses literally without stripping conversational filler.
+   - *Example*: "What should I name it?" -> "name it as batman or something" -> Filename: "name it as batman or something.txt".
+
+4. **Aggressive Normalization (Action Verb Stripping)**
+   - *Issue*: Critical action and spatial verbs are incorrectly listed in `FILLER_WORDS`, causing them to be stripped before intent matching.
+   - *Example*: "write" was a filler word, causing "write in file" -> "in file" -> `read_file`.
+   - *Example*: "right" was a filler word, causing "tile to the right" to lose its spatial marker.
+
+5. **Resentment & Correction Handling**
+   - *Issue*: Rejection/Negation in user speech is ignored, and Jarvis simply tries to repeat the failing command.
+   - *Example*: "no you didn't switch me to chrome" -> matches `switch_to_app(chrome)` again instead of diagnosing the failure.
+
+6. **Conversational "What do you mean?" Loops**
+   - *Issue*: Simple context words like "this" or "it" in casual chat trigger the safety layer's "Ambiguous context" check, trapping the user in a clarification loop.
+   - *Example*: "this is just a fun business" -> "What do you mean by that? Can you be more specific?"
+
+7. **Keyword Tunnel Vision**
+   - *Issue*: High-feature nouns (like "screenshot") override actual action verbs (like "find").
+   - *Example*: "find me my screenshot" -> `take_screenshot`.
+8. **Web Research Misclassification (Geeks for Geeks)**
+   - *Issue*: A complex request for information was routed to a simple GUI command due to keyword collision and over-boosting.
+   - *Example*: "gather me all the details regarding the website geek for geeks" -> `show_desktop`.
+   - *Result*: Instead of researching the site, Jarvis just showed the desktop.
