@@ -24,6 +24,7 @@ warnings.filterwarnings("ignore", message=".*FFmpeg.*")
 
 # Lazy load to avoid slow import at startup
 _model = None
+_cross_encoder = None             # Cross-encoder for precision reranking
 _intent_embeddings = None   # { action: np.array of shape (N, dim) }
 _intent_examples   = None   # { action: [example1, example2, ...] }
 
@@ -121,6 +122,14 @@ INTENT_REGISTRY = {
     "take_screenshot": [
         "take screenshot", "screenshot", "capture screen",
         "screen capture", "take a snap", "snapshot",
+        "what is on my screen", "what's on my screen",
+        "tell me what's on my screen", "what am i seeing",
+        "what am i looking at", "describe my screen",
+        "what is there on my screen", "show me what's on screen",
+        "what do you see on my screen", "what can you see on screen",
+        "can you tell me what's on my screen",
+        "what is on the screen right now",
+        "what am i seeing on my screen right now",
     ],
     "get_battery": [
         "battery", "battery level", "how much battery",
@@ -260,6 +269,13 @@ INTENT_REGISTRY = {
         "what's the capital of france", "who invented the internet",
         "what is the meaning of life", "how far is the moon",
         "what is the population of india",
+        "tell me all the details about", "give me all details about",
+        "tell me everything about", "give me details regarding",
+        "what do you know about", "find out about",
+        "what all do you know about", "research about",
+        "what is the website", "find out what is",
+        "let me know all about", "tell me all about",
+        "details about", "details regarding",
     ],
 
     # ── Casual Chat / Greetings ──────────────────────────────
@@ -276,6 +292,11 @@ INTENT_REGISTRY = {
         "what can you do", "help me", "i need help",
         "good evening", "good afternoon",
         "you're smart", "you're the best",
+        "what have we talked about", "what all conversations did we have",
+        "what did we discuss", "our previous conversations",
+        "what were we talking about", "recall our conversation",
+        "how are we doing", "how are you feeling",
+        "let's do something", "i'm bored let's do something",
     ],
 
     # ── File Operations ──────────────────────────────────────
@@ -421,7 +442,77 @@ INTENT_REGISTRY = {
         "search my knowledge base", "look up in my brain",
         "check my notes for", "what do my notes say about",
     ],
+
+    # ── Window Management ────────────────────────────────────
+    "move_window": [
+        "move this to the left", "move this to the right",
+        "move vscode to the left", "move chrome to the right",
+        "snap this window to the right", "snap to the left",
+        "put this on the left half", "this app to the left",
+        "move this app to the right side", "put this on the right",
+        "move this window left", "move this window right",
+        "move this to the center", "center this window",
+        "tile this to the left", "tile this to the right",
+    ],
+    "resize_window": [
+        "resize this to 50%", "make this half the screen",
+        "this app by 50%", "make this window smaller",
+        "resize to fullscreen", "make it take half the screen",
+        "make this window bigger", "resize this app",
+        "make this 75%", "make this quarter of the screen",
+        "resize this window to half", "make this take up the whole screen",
+    ],
+    "tile_windows": [
+        "tile vscode and chrome", "put these side by side",
+        "tile these windows", "split screen with",
+        "side by side layout", "tile two windows",
+    ],
 }
+
+# ─── Negative Examples (anti-match patterns) ────────────────
+# These penalize specific (action, text) pairs during reranking
+NEGATIVE_EXAMPLES = {
+    "brightness_up": [
+        "what is on my screen", "what's on my screen",
+        "tell me what's on my screen", "what am i seeing",
+        "what am i looking at", "describe my screen",
+    ],
+    "brightness_down": [
+        "what is on my screen", "what's on my screen",
+        "what am i seeing on my screen",
+    ],
+    "open_app": [
+        "tell me about", "tell me all the details about",
+        "what do you know about", "tell me everything about",
+        "give me details about", "research about",
+        "what is the website", "find out about",
+    ],
+    "morning_briefing": [
+        "what all conversations did we have",
+        "what did we discuss", "what were we talking about",
+    ],
+    "switch_to_app": [
+        "move this to the left", "move this to the right",
+        "resize this", "this app by 50%",
+        "make this half the screen",
+    ],
+}
+
+
+
+def _get_cross_encoder():
+    """Lazy-load the cross-encoder model for reranking."""
+    global _cross_encoder
+    if _cross_encoder is None:
+        try:
+            from sentence_transformers import CrossEncoder
+            print("Loading cross-encoder for reranking...")
+            _cross_encoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+            print("Cross-encoder ready")
+        except Exception as e:
+            print(f"Warning: Cross-encoder not available: {e}")
+            _cross_encoder = False  # Sentinel: tried but failed
+    return _cross_encoder if _cross_encoder is not False else None
 
 
 def _get_model():
@@ -435,24 +526,76 @@ def _get_model():
     return _model
 
 
+def _load_intent_patches() -> dict:
+    """
+    Load auto-generated intent patches from retrospective learning.
+    Returns { action: [example1, ...] } for merging into registry.
+    """
+    patches_path = os.path.join(
+        os.path.dirname(__file__), '..', 'data', 'intent_patches.json'
+    )
+    if not os.path.exists(patches_path):
+        return {}
+
+    try:
+        with open(patches_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        patch_examples = {}
+        for patch in data.get("patches", []):
+            action = patch.get("action", "")
+            examples = patch.get("add_examples", [])
+            if action and examples:
+                if action not in patch_examples:
+                    patch_examples[action] = []
+                patch_examples[action].extend(examples)
+
+        if patch_examples:
+            total = sum(len(e) for e in patch_examples.values())
+            print(f"[R] Loaded {total} retrospective patches across "
+                  f"{len(patch_examples)} intents")
+
+        return patch_examples
+    except Exception as e:
+        print(f"Warning: Could not load intent patches: {e}")
+        return {}
+
+
 def _build_embeddings(extra_examples: dict = None):
     """
     Pre-compute embeddings for all intent examples.
     Called once on startup and when learned intents change.
+
+    Merge order: built-in registry -> retrospective patches -> learned intents
     """
     global _intent_embeddings, _intent_examples
 
     model = _get_model()
 
-    # Merge built-in + learned examples
+    # Merge built-in + patches + learned examples
     all_examples = {}
     for action, examples in INTENT_REGISTRY.items():
         all_examples[action] = list(examples)  # copy
 
+    # Auto-load retrospective patches
+    patches = _load_intent_patches()
+    for action, patched in patches.items():
+        if action in all_examples:
+            existing = set(all_examples[action])
+            all_examples[action].extend(
+                [e for e in patched if e not in existing]
+            )
+        else:
+            all_examples[action] = patched
+
+    # Learned intents from Gemini fallback
     if extra_examples:
         for action, learned in extra_examples.items():
             if action in all_examples:
-                all_examples[action].extend(learned)
+                existing = set(all_examples[action])
+                all_examples[action].extend(
+                    [e for e in learned if e not in existing]
+                )
             else:
                 all_examples[action] = learned
 
@@ -488,7 +631,10 @@ def reload_learned(learned_examples: dict):
 def classify(text: str) -> IntentResult:
     """
     Classify a normalized command text into an intent.
-    Uses cosine similarity against all pre-computed embeddings.
+
+    Pipeline:
+        1. Bi-encoder: cosine similarity → Top-5 candidates (fast)
+        2. Cross-encoder: rerank Top-5 for precision (accurate)
 
     Args:
         text: Normalized command text
@@ -504,37 +650,73 @@ def classify(text: str) -> IntentResult:
 
     model = _get_model()
 
-    # Embed the input
+    # ── Step 1: Bi-encoder fast retrieval (Top-5) ────────────
     input_embedding = model.encode([text], convert_to_numpy=True, normalize_embeddings=True)[0]
 
-    best_action     = ""
-    best_confidence = 0.0
-    best_example    = ""
-    best_source     = "builtin"
+    # Collect ALL candidates with scores
+    all_candidates = []  # [(action, score, example, source), ...]
 
     for action, embeddings in _intent_embeddings.items():
-        # Cosine similarity (embeddings are already normalized)
         similarities = np.dot(embeddings, input_embedding)
-        max_idx      = np.argmax(similarities)
+        max_idx      = int(np.argmax(similarities))
         max_sim      = float(similarities[max_idx])
 
-        if max_sim > best_confidence:
-            best_confidence = max_sim
-            best_action     = action
-            best_example    = _intent_examples[action][max_idx]
+        builtin_count = len(INTENT_REGISTRY.get(action, []))
+        source = "learned" if max_idx >= builtin_count else "builtin"
+        example = _intent_examples[action][max_idx]
 
-            # Determine source
-            builtin_count = len(INTENT_REGISTRY.get(action, []))
-            if max_idx >= builtin_count:
-                best_source = "learned"
-            else:
-                best_source = "builtin"
+        all_candidates.append((action, max_sim, example, source))
 
+    # Sort by score descending, take Top-5
+    all_candidates.sort(key=lambda x: x[1], reverse=True)
+    top5 = all_candidates[:5]
+
+    if not top5:
+        return IntentResult(action="", confidence=0.0, source="none")
+
+    # ── Step 2: Cross-encoder reranking ──────────────────────
+    cross_enc = _get_cross_encoder()
+
+    if cross_enc and len(top5) > 1:
+        # Build (input, example) pairs for cross-encoder
+        pairs = [(text, c[2]) for c in top5]
+
+        try:
+            scores = cross_enc.predict(pairs)
+
+            # Apply negative example penalties
+            for i, (action, _, example, _) in enumerate(top5):
+                neg_list = NEGATIVE_EXAMPLES.get(action, [])
+                for neg in neg_list:
+                    if neg.lower() in text.lower() or text.lower() in neg.lower():
+                        scores[i] -= 2.0  # Heavy penalty
+                        break
+
+            best_idx = int(np.argmax(scores))
+            best = top5[best_idx]
+
+            # Normalize cross-encoder score to 0-1 range
+            # ms-marco scores are typically -10 to +10
+            raw_score = float(scores[best_idx])
+            norm_conf = 1.0 / (1.0 + np.exp(-raw_score))  # sigmoid
+
+            return IntentResult(
+                action=best[0],
+                confidence=norm_conf,
+                source=best[3],
+                matched_example=best[2],
+            )
+        except Exception as e:
+            print(f"Warning: Cross-encoder rerank failed: {e}")
+            # Fall through to bi-encoder result
+
+    # ── Fallback: use bi-encoder top result ───────────────────
+    best = top5[0]
     return IntentResult(
-        action=best_action,
-        confidence=best_confidence,
-        source=best_source,
-        matched_example=best_example
+        action=best[0],
+        confidence=best[1],
+        source=best[3],
+        matched_example=best[2],
     )
 
 

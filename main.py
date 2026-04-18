@@ -265,6 +265,7 @@ def _initialize_agents():
     print("🤖 Initializing multi-agent system...")
 
     # Create specialized agents with access to their relevant actions
+    # Create specialized agents with access to their relevant actions
     from core.agents.knowledge_agent import KnowledgeAgent
     fs_agent        = FileSystemAgent(actions_map=ACTIONS)
     sys_agent       = SystemControlAgent(actions_map=ACTIONS)
@@ -272,17 +273,26 @@ def _initialize_agents():
     companion_agent = CompanionAgent()
     research_agent  = ResearchAgent()
     knowledge_agent = KnowledgeAgent()
+    
+    agents_dict = {
+        "filesystem": fs_agent,
+        "system":     sys_agent,
+        "music":      music_agent,
+        "companion":  companion_agent,
+        "research":   research_agent,
+        "knowledge":  knowledge_agent,
+    }
+
+    # Add Window Agent (Mac only for now)
+    try:
+        from core.agents.window_agent import WindowAgent
+        agents_dict["window"] = WindowAgent()
+    except ImportError:
+        pass
 
     # Create the ManagerAgent (orchestrator)
     _manager_agent = ManagerAgent(
-        agents={
-            "filesystem": fs_agent,
-            "system":     sys_agent,
-            "music":      music_agent,
-            "companion":  companion_agent,
-            "research":   research_agent,
-            "knowledge":  knowledge_agent,
-        },
+        agents=agents_dict,
         actions=ACTIONS,
     )
 
@@ -456,6 +466,17 @@ def main():
             print(f"\U0001f4a1 Suggestions for now: {len(suggestions)}")
     except Exception as e:
         print(f"\u26a0\ufe0f  Habits engine skipped: {e}")
+
+    # ── Run Retrospective Learning (review yesterday) ─────────
+    try:
+        from core.retrospective import run_retrospective
+        retro = run_retrospective()  # Reviews yesterday's logs
+        if retro.get("fixes", 0) > 0:
+            print(f"[R] Applied {retro['fixes']} self-corrections from yesterday")
+        elif retro.get("status") == "clean":
+            print("[R] Yesterday's session was clean -- no fixes needed")
+    except Exception as e:
+        print(f"Warning: Retrospective skipped: {e}")
 
     print("\nSay the wake word to activate Jarvis...\n")
 

@@ -36,6 +36,7 @@ load_dotenv()
 GEMINI_API_KEY = os.getenv("API_KEY")
 MODEL          = "gemini-3.1-flash-lite-preview"
 MAX_PLAN_STEPS = 8
+MAX_REPLANS    = 1             # Max self-healing retries per command
 # ─────────────────────────────────────────────────────────────
 
 client = genai.Client(api_key=GEMINI_API_KEY)
@@ -248,7 +249,7 @@ OTHER RULES:
                     return None
         return None
 
-    def _execute_single(self, command: str, plan: dict, start_time: float) -> str:
+    def _execute_single(self, command: str, plan: dict, start_time: float, replan_count: int = 0) -> str:
         """Executes a single-step plan by routing to the correct agent."""
         agent_name = plan.get("agent", "")
         action     = plan.get("action", "")
@@ -267,7 +268,7 @@ OTHER RULES:
         result = agent.execute(action, params)
 
         if result.success:
-            print(f"✅ Single action result: {result.result}")
+            print(f"Single action result: {result.result}")
             update_context(
                 action=action,
                 target=params.get("target", params.get("name", "")),
@@ -278,10 +279,65 @@ OTHER RULES:
             self._log(command, action, start_time, response=response)
             return result.result
         else:
-            print(f"❌ Single action failed: {result.error}")
+            print(f"Single action failed: {result.error}")
+
+            # Self-healing: try alternative action
+            if replan_count < MAX_REPLANS:
+                alt_plan = self._replan_on_failure(
+                    command, action, result.error
+                )
+                if alt_plan and alt_plan.get("type") != "give_up":
+                    print(f"[REPLAN] {action} -> {alt_plan.get('action', '?')}")
+                    speak_instant("Let me try a different approach.")
+                    return self._execute_single(
+                        command, alt_plan, start_time,
+                        replan_count=replan_count + 1
+                    )
+
             speak(f"That didn't work. {result.error}")
             self._log(command, f"{action}_failed", start_time, response=result.error)
             return f"Failed: {result.error}"
+
+    def _replan_on_failure(self, command: str, failed_action: str, error: str) -> Optional[dict]:
+        """
+        Self-healing: ask Gemini for an alternative action when the first fails.
+
+        Example: open_app("claw") failed -> web_search("OpenClaw app")
+        """
+        agent_desc = self._get_agent_descriptions()
+
+        prompt = f"""You are Jarvis's recovery brain. The action '{failed_action}' failed.
+
+Error: "{error}"
+Original user command: "{command}"
+
+Available agents and tools:
+{agent_desc}
+
+Suggest ONE alternative action that could fulfill the user's intent.
+Return ONLY JSON, no markdown:
+{{"type":"single","agent":"agent_name","action":"action_name","params":{{}},"response":"Short spoken message (max 8 words)"}}
+
+If no alternative makes sense, return:
+{{"type":"give_up"}}
+
+RULES:
+- Do NOT retry the same action that failed
+- Think creatively: if app not found, try web search; if file not found, try creating it
+- Keep the response SHORT and human"""
+
+        try:
+            response = client.models.generate_content(
+                model=MODEL,
+                contents=prompt,
+            )
+            text  = response.text.strip()
+            clean = text.replace("```json", "").replace("```", "").strip()
+            plan  = json.loads(clean)
+            return plan
+        except Exception as e:
+            print(f"Re-plan failed: {e}")
+            return None
 
     def _execute_graph(self, command: str, plan: dict, start_time: float) -> str:
         """Builds and executes a TaskGraph from the plan."""
