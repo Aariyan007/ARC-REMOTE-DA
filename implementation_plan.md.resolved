@@ -1,71 +1,66 @@
-# Master Implementation Plan: The Human OS Evolution (Final)
+# Master Implementation Plan: The Human OS Evolution (v4)
 
-This blueprint outlines the complete transformation of Jarvis into a state-of-the-art, human-like AI OS.
+This plan introduces high-precision **Semantic Reranking** to solve the intent confusion issues seen in the logs, while building the autonomous **Agentic Loop** (Claude-style).
 
-## 🎯 Project Goals
-1.  **High Stability**: Intelligent fallbacks (Gemini -> Grok) and robust error handling for low-level sensors and speech loops.
-2.  **Context Density**: Awareness of frontmost apps, visual state, and past conversation history.
-3.  **Human Personality**: Fillers, emotional prosody, and a self-healing reinforcement loop.
+## 🎯 Goal
+1.  **Precision Intent Routing**: Use local Cross-Encoders to distinguish between subtle commands (e.g., "look at screen" vs "screen brighter").
+2.  **Autonomous Healing**: Re-planning loop where Jarvis corrects his own errors (e.g., "App not found -> Web search").
+3.  **Zero-Latency Persona**: Fillers, prosody, and synchronized briefings.
 
 ---
 
 ## 🛠️ Proposed Changes
 
-### [Phase 1] Foundation & Stability (The "Zero-Bug" Path)
-
-#### [MODIFY] [main.py](file:///Users/lynux/Desktop/BackEnd/Startup/main.py)
- - **Greeting Sync**: Implement a `is_greeting_active` flag. Prevent the main `listen()` loop from starting until the background `daily_greeting` has completely finished. This fixes the startup "Didn't catch that" loop.
-
-#### [MODIFY] [llm_brain.py](file:///Users/lynux/Desktop/BackEnd/Startup/core/llm_brain.py)
- - **Grok Fallback**: Implement automatic switching to xAI Grok API on Gemini 429/503 errors.
- - **Frontmost Awareness**: Inject focused Mac application name into every LLM prompt.
-
-#### [MODIFY] [control/mac/briefing.py](file:///Users/lynux/Desktop/BackEnd/Startup/control/mac/briefing.py)
- - **Temperature Fix**: Filter out `0.0°C` dummy values. Add `sysctl` fallback to provide CPU info if sensors are locked.
-
-#### [MODIFY] [core/thinking_ui.py](file:///Users/lynux/Desktop/BackEnd/Startup/core/thinking_ui.py)
- - **UI Artifact Fix**: Set `overrideredirect(False)` then immediately `True` or use `attributes("-type", "panel")` to prevent it from stealing focus or creating a new workspace entry on macOS.
+### [Phase 1] Intelligence & Stability Lockdown (Immediate Priority)
 
 #### [MODIFY] [fast_intent.py](file:///Users/lynux/Desktop/BackEnd/Startup/core/fast_intent.py)
- - **Intent Disambiguation**: Differentiate "screen" (visual) from "screen" (brightness). Add visual keywords ("seeing", "looking", "on my screen") to `take_screenshot`.
+ - **Semantic Reranking**: Implement a local Cross-Encoder step. Retrieve Top-5 candidates via the current engine, then rerank them using `cross-encoder/ms-marco-MiniLM-L-6-v2`. This fixes the confusion bugs (Screen vs Brightness, Research vs OpenApp).
+ - **Negative Examples**: Manually inject "anti-match" patterns for common false positives.
 
-#### [MODIFY] [email_control.py](file:///Users/lynux/Desktop/BackEnd/Startup/control/email_control.py)
- - **Auth Recovery**: Implement `invalid_grant` detection to auto-reset OAuth tokens.
+#### [MODIFY] [main.py](file:///Users/lynux/Desktop/BackEnd/Startup/main.py)
+ - **Interaction Sync**: Implement a synchronization lock between background briefings and the main command listener. 
+ - **Recursive Re-planning**: Allow the loop to pass agent errors back to the `ManagerAgent` for autonomous correction.
 
-### [Phase 2] The Human Persona (The Soul)
-
-#### [MODIFY] [llm_brain.py](file:///Users/lynux/Desktop/BackEnd/Startup/core/llm_brain.py)
- - **The Filler Engine**: Mandate natural fillers (`hmm`, `uh`, `...`) and emotional markers in responses.
-
-#### [MODIFY] [memory.py](file:///Users/lynux/Desktop/BackEnd/Startup/core/memory.py)
- - **SemanticLogSearch**: Index and retrieve past interactions from `logs/` for long-term recall.
-
-#### [MODIFY] [voice_response.py](file:///Users/lynux/Desktop/BackEnd/Startup/core/voice_response.py)
- - **Dynamic Prosody**: Link ElevenLabs "Stability" and "Style" settings to the current mood/sentiment.
-
-### [Phase 3] Advanced OS Agents (The Muscles)
-
-#### [NEW] [browser_agent.py](file:///Users/lynux/Desktop/BackEnd/Startup/core/agents/browser_agent.py)
- - Control Safari/Chrome tabs and navigation via AppleScript.
+#### [MODIFY] [control/mac/briefing.py](file:///Users/lynux/Desktop/BackEnd/Startup/control/mac/briefing.py)
+ - **Temp Sensor Fix**: Implement `sysctl` fallback and hide `0.0` readings.
 
 #### [NEW] [window_agent.py](file:///Users/lynux/Desktop/BackEnd/Startup/core/agents/window_agent.py)
- - Native Mac window layouts (Tiling, Resizing, Grid).
+ - **Window Tiling**: Native Mac window controls for "Move to left/right" (Fixes the VS Code bug).
 
-#### [MODIFY] [system_agent.py](file:///Users/lynux/Desktop/BackEnd/Startup/core/agents/system_agent.py)
- - Add `psutil`-based system diagnostics (CPU, RAM, Net) and OS toggles.
+### [Phase 2] The Agentic Loop & Persona (The Soul)
 
-### [Phase 4] The Intelligence Loop (The Evolution)
+#### [MODIFY] [core/agents/manager_agent.py](file:///Users/lynux/Desktop/BackEnd/Startup/core/agents/manager_agent.py)
+ - **Self-Correction Logic**: When an agent fails, trigger a "Re-Plan" prompt to Gemini. Jarvis should say: "I couldn't find X, let me try Y instead."
+
+#### [NEW] [vision_watchdog.py](file:///Users/lynux/Desktop/BackEnd/Startup/core/vision_watchdog.py)
+ - **Vision Context**: Silent background screenshots triggered only on low-confidence commands to provide visual context to Gemini.
+
+#### [MODIFY] [voice_response.py](file:///Users/lynux/Desktop/BackEnd/Startup/core/voice_response.py)
+ - **Silent Fallback**: Completely suppress ElevenLabs 401/429 errors; switch to Mac `say` seamlessly.
+ - **Human Fillers**: Mandate natural fillers (`hmm`, `uh`) in personality prompts.
+
+### [Phase 3] The Brain Evolution
 
 #### [NEW] [supervisor.py](file:///Users/lynux/Desktop/BackEnd/Startup/core/supervisor.py)
- - **Background Watchdog**: Asynchronously verify intents against Gemini 1.5 Pro to identify misalignments.
-
-#### [MODIFY] [reinforcement.py](file:///Users/lynux/Desktop/BackEnd/Startup/core/reinforcement.py)
- - **Silent Learning**: Auto-inject "Negative Examples" from Supervisor audits to heal the routing engine.
+ - **Self-Learning Supervisor**: Background Gemini auditor that identifies misalignments and pushes "Negative Learning" to `reinforcement.py` automatically.
 
 ---
 
+## 🏗️ Architecture: The Genius Loop
+
+```mermaid
+graph TD
+    User([Command]) --> Retriever[Bi-Encoder Fast Retrieval]
+    Retriever --> |Top 5| Reranker[Cross-Encoder Precise Rerank]
+    Reranker --> |High Confidence| Execute[Agent Execution]
+    Reranker --> |Low Confidence| Vision[Vision Watchdog / Screenshot]
+    Vision --> RePlanner[ManagerAgent Re-plan]
+    Execute --> |Error| RePlanner
+    RePlanner --> Execute
+    Execute --> Speak[Humanized Voice Response]
+```
+
 ## 🧪 Verification Plan
- 1. **Startup Loop**: Run `morning_briefing` and verify the listener stays idle until done.
- 2. **Intent Fix**: Say "tell me what's on my screen" and verify it triggers `take_screenshot` (not brightness).
- 3. **Grok Fallback**: Mock a rate-limit and verify failover.
- 4. **Memory**: Ask "What did I work on yesterday?"
+ 1. **Reranker Test**: "Tell me what's on my screen" -> Verify it scores `take_screenshot` higher than `brightness_up`.
+ 2. **Self-Correction**: "Open Claw" (App missing) -> Verify it falls back to Web Search for "Claw Mac app."
+ 3. **Sync Test**: Verify no "Didn't catch that" errors during startup briefings.
