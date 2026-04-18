@@ -135,5 +135,27 @@
     "created": "2026-04-17 01:52:01",
     "last_matched": "2026-04-17 01:52:01",
     "match_count": 1
+  },
+  {
+    "normalized_input": "no can you tell me what i'm what is there on my screen",
+    "action": "take_screenshot",
+    "params": {},
+    "confidence": 1.0,
+    "source": "gemini",
+    "created": "2026-04-18 22:41:32",
+    "last_matched": "2026-04-18 22:41:32",
+    "match_count": 1
+  },
+  {
+    "normalized_input": "this app by 50%",
+    "action": "volume_down",
+    "params": {
+      "amount": 50
+    },
+    "confidence": 1.0,
+    "source": "gemini",
+    "created": "2026-04-18 22:49:04",
+    "last_matched": "2026-04-18 22:49:04",
+    "match_count": 1
   }
 ]

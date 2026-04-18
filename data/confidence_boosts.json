@@ -12,7 +12,8 @@
     "make a folder called work on desktop create a file inside it and open vscode": 1,
     "make a folder called work on desktop and create a file inside it and open vscode": 1,
     "could you kind of play music": 1,
-    "play the music from spotify": 1
+    "play the music from spotify": 1,
+    "let me all the details regarding the open claw what is open claw": 1
   },
   "create_file": {
     "create a file named at superman.txt i also want you to add some contents in it": 1,
@@ -47,7 +48,8 @@
     "tell me a joke": 2,
     "now tell me a joke": 1,
     "i'm feeling bored man": 1,
-    "dude my girlfriend left me man i'm feeling very sad": 1
+    "dude my girlfriend left me man i'm feeling very sad": 1,
+    "you know i'm bored let's do something": 1
   },
   "play_mood_music": {
     "play some music according to my mood": 1,
@@ -59,7 +61,8 @@
   "morning_briefing": {
     "what is today's news man": 1,
     "what is today's news i want": 1,
-    "dude what is happening around the world": 1
+    "dude what is happening around the world": 1,
+    "what all conversations did we have till now": 1
   },
   "play_song": {
     "hear some good songs man": 1,
@@ -90,7 +93,9 @@
     "and also tile we google chrome to the": 1,
     "type google chrome to the man": 1,
     "also switch me to chrome really quick": 1,
-    "no you didn't switch me to the chrome what the fuck": 1
+    "no you didn't switch me to the chrome what the fuck": 1,
+    "chrome for a second": 1,
+    "move chrome vscode to the left": 1
   },
   "take_screenshot": {
     "find me my screenshot which i took yesterday there are a lot of screenshots which i took yesterday find me with": 1
@@ -100,5 +105,8 @@
   },
   "fullscreen": {
     "what screen am i looking at": 1
+  },
+  "brightness_up": {
+    "can you tell me what am i seeing on my screen": 1
   }
 }
