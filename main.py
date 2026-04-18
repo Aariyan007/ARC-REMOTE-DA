@@ -299,7 +299,7 @@ def assistant_loop():
     global _greeted_this_boot
 
     # Respond immediately so the user knows Jarvis is active
-    speak("Yes, I'm listening")
+    speak("Activated Sir")
     print("\n✅ Jarvis activated — listening for your command...")
 
     # ── Daily greeting runs in background (won't freeze the mic) ─
