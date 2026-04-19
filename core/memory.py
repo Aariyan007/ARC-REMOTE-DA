@@ -148,6 +148,14 @@ Your personality:
             context += f"Jarvis: {exchange['jarvis']}\n"
         context += "\n"
 
+    last_file = get_last_file()
+    if last_file:
+        context += "Active file context:\n"
+        context += f"- Most recent file: {last_file.get('filename')}\n"
+        if last_file.get("action"):
+            context += f"- Last file action: {last_file['action']}\n"
+        context += "\n"
+
     return context
 
 

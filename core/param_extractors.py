@@ -516,6 +516,33 @@ def is_compound_file_command(text: str) -> bool:
     return has_create and has_edit and has_join
 
 
+def extract_url(text: str) -> Optional[str]:
+    """
+    Pull an http(s) URL or bare domain from natural language.
+    Used by the Playwright-backed open_url intent.
+    """
+    t = (text or "").strip()
+    if not t:
+        return None
+    m = re.search(r'(https?://[^\s<>"\'\]]+)', t, re.I)
+    if m:
+        return m.group(1).rstrip(").,;]}\"'")
+    low = t.lower()
+    for phrase in ("go to ", "visit ", "navigate to ", "open "):
+        if phrase not in low:
+            continue
+        idx = low.index(phrase) + len(phrase)
+        rest = t[idx:].strip()
+        if not rest:
+            continue
+        token = rest.split()[0].strip(".,;!?)]}\"'")
+        if "." in token and re.match(r"^[\w./-]+$", token, re.I):
+            if not re.match(r"https?://", token, re.I):
+                return "https://" + token.lstrip("/")
+            return token
+    return None
+
+
 # ─── Quick test ──────────────────────────────────────────────
 if __name__ == "__main__":
     print("=" * 60)

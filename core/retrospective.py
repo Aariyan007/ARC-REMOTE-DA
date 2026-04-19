@@ -48,6 +48,7 @@ VALID_ACTIONS = {
     "take_screenshot", "get_battery",
     "tell_time", "tell_date", "tell_weather",
     "search_google", "web_search",
+    "open_url", "web_back", "web_refresh", "web_new_tab", "web_close_tab",
     "open_folder", "create_folder", "search_file",
     "read_emails", "search_emails", "send_email", "open_gmail",
     "minimise_all", "show_desktop", "close_window", "close_tab",

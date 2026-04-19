@@ -272,7 +272,7 @@ def delete_file(name: str, location: str = None) -> None:
         print(f"❌ Error: {e}")
 
 
-def rename_file(old_name: str, new_name: str, location: str = None) -> None:
+def rename_file(old_name: str, new_name: str, location: str = None) -> dict:
     """
     Renames a file.
     Example: rename_file("notes.txt", "ideas.txt")
@@ -282,7 +282,12 @@ def rename_file(old_name: str, new_name: str, location: str = None) -> None:
 
     if not path:
         speak(f"Couldn't find {old_name}.")
-        return
+        return {
+            "success": False,
+            "error": f"Couldn't find {old_name}.",
+            "old_name": old_name,
+            "new_name": new_name,
+        }
 
     # Keep same extension if new name has none
     if "." not in new_name and "." in old_name:
@@ -295,9 +300,21 @@ def rename_file(old_name: str, new_name: str, location: str = None) -> None:
         os.rename(path, new_path)
         speak(f"Renamed to {new_name}.")
         print(f"✏️  Renamed: {path} → {new_path}")
+        return {
+            "success": True,
+            "old_name": old_name,
+            "new_name": new_name,
+            "path": new_path,
+        }
     except Exception as e:
         speak("Couldn't rename that file.")
         print(f"❌ Error: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "old_name": old_name,
+            "new_name": new_name,
+        }
 
 
 def get_recent_files(count: int = 5) -> None:

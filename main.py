@@ -201,6 +201,22 @@ ACTIONS = {
     "copy_file":       copy_file,
 }
 
+# ── Playwright browser (DOM automation) ─────────────────────
+try:
+    from control.playwright_browser import (
+        action_web_back,
+        action_web_close_tab,
+        action_web_new_tab,
+        action_web_refresh,
+    )
+
+    ACTIONS["web_back"] = action_web_back
+    ACTIONS["web_refresh"] = action_web_refresh
+    ACTIONS["web_new_tab"] = action_web_new_tab
+    ACTIONS["web_close_tab"] = action_web_close_tab
+except ImportError as e:
+    print(f"⚠️  Playwright not available — install: pip install playwright && playwright install chromium ({e})")
+
 # ── Add Windows-specific terminal actions ─────────────────────
 import sys as _sys_check
 if _sys_check.platform == "win32":
