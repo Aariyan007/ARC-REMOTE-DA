@@ -147,15 +147,13 @@
     "match_count": 1
   },
   {
-    "normalized_input": "this app by 50%",
-    "action": "volume_down",
-    "params": {
-      "amount": 50
-    },
+    "normalized_input": "no can you tell me what i'm what is there on my screen right now",
+    "action": "take_screenshot",
+    "params": {},
     "confidence": 1.0,
     "source": "gemini",
-    "created": "2026-04-18 22:49:04",
-    "last_matched": "2026-04-18 22:49:04",
+    "created": "2026-04-18 22:42:42",
+    "last_matched": "2026-04-18 22:42:42",
     "match_count": 1
   }
 ]

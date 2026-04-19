@@ -273,14 +273,27 @@ class FileSystemAgent(BaseAgent):
             )
 
         if "rename_file" in self._actions:
-            self._actions["rename_file"](old, new, location)
+            rename_result = self._actions["rename_file"](old, new, location)
+            if rename_result is False:
+                return AgentResult(
+                    success=False, action="rename_file",
+                    error=f"Couldn't rename {old} to {new}",
+                )
+            if isinstance(rename_result, dict) and not rename_result.get("success"):
+                return AgentResult(
+                    success=False, action="rename_file",
+                    error=rename_result.get("error", f"Couldn't rename {old} to {new}"),
+                )
+
+            final_name = rename_result.get("new_name", new) if isinstance(rename_result, dict) else new
+            final_path = rename_result.get("path") if isinstance(rename_result, dict) else None
             # Track the new name as the current active file
-            update_file_context(new, action="rename_file")
-            update_context(action="rename_file", target=new, result=f"Renamed {old} to {new}")
+            update_file_context(final_name, path=final_path, action="rename_file")
+            update_context(action="rename_file", target=final_name, result=f"Renamed {old} to {final_name}")
             return AgentResult(
                 success=True, action="rename_file",
-                result=f"Renamed {old} to {new}",
-                data={"old_name": old, "new_name": new},
+                result=f"Renamed {old} to {final_name}",
+                data={"old_name": old, "new_name": final_name, "path": final_path},
             )
         return AgentResult(
             success=False, action="rename_file",

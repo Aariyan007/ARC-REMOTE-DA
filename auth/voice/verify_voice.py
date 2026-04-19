@@ -3,7 +3,9 @@ import sounddevice as sd
 import torch
 from scipy.io.wavfile import write, read
 import os
-os.environ["HF_HOME"] = r"C:\hf_cache"
+
+if "HF_HOME" not in os.environ:
+    os.environ["HF_HOME"] = os.path.join(os.path.expanduser("~"), ".cache", "huggingface")
 
 # ── Compatibility shim ──────────────────────────────────────
 # speechbrain 0.5.x used `speechbrain.pretrained`

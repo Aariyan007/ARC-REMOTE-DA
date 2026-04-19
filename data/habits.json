@@ -6,7 +6,7 @@
     "weekday": -1,
     "occurrences": 4,
     "confidence": 1.0,
-    "last_seen": "2026-04-18 22:41:32",
+    "last_seen": "2026-04-19 23:40:13",
     "description": "play_song usually at 12:00 (4 times, 100% confidence)"
   },
   {
@@ -16,7 +16,7 @@
     "weekday": -1,
     "occurrences": 4,
     "confidence": 0.667,
-    "last_seen": "2026-04-18 22:41:32",
+    "last_seen": "2026-04-19 23:40:13",
     "description": "minimise_all usually at 22:00 (4 times, 67% confidence)"
   },
   {
@@ -26,21 +26,8 @@
     "weekday": -1,
     "occurrences": 2,
     "confidence": 0.667,
-    "last_seen": "2026-04-18 22:41:32",
+    "last_seen": "2026-04-19 23:40:13",
     "description": "lock_screen usually at 23:00 (2 times, 67% confidence)"
-  },
-  {
-    "action": "open_app",
-    "params": {
-      "name": "vscode",
-      "target": "vscode"
-    },
-    "hour": 11,
-    "weekday": -1,
-    "occurrences": 2,
-    "confidence": 0.667,
-    "last_seen": "2026-04-13 18:04:49",
-    "description": "open_app usually at 11:00 (2 times, 67% confidence)"
   },
   {
     "action": "create_and_edit_file",
@@ -49,7 +36,7 @@
     "weekday": -1,
     "occurrences": 4,
     "confidence": 0.667,
-    "last_seen": "2026-04-18 22:41:32",
+    "last_seen": "2026-04-19 23:40:13",
     "description": "create_and_edit_file usually at 17:00 (4 times, 67% confidence)"
   },
   {
@@ -59,7 +46,7 @@
     "weekday": -1,
     "occurrences": 2,
     "confidence": 0.667,
-    "last_seen": "2026-04-18 22:41:32",
+    "last_seen": "2026-04-19 23:40:13",
     "description": "delete_file_cancelled usually at 23:00 (2 times, 67% confidence)"
   },
   {
@@ -75,16 +62,16 @@
     "description": "search_google usually at 8:00 (5 times, 62% confidence)"
   },
   {
-    "action": "switch_to_app",
+    "action": "rename_file",
     "params": {
-      "name": "vscode",
-      "target": "vscode"
+      "filename": "another",
+      "location": null
     },
-    "hour": 16,
+    "hour": 2,
     "weekday": -1,
-    "occurrences": 5,
-    "confidence": 0.625,
-    "last_seen": "2026-04-13 19:23:02",
-    "description": "switch_to_app usually at 16:00 (5 times, 62% confidence)"
+    "occurrences": 3,
+    "confidence": 0.6,
+    "last_seen": "2026-04-14 17:34:24",
+    "description": "rename_file usually at 2:00 (3 times, 60% confidence)"
   }
 ]

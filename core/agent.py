@@ -196,7 +196,14 @@ def _execute_action(action: str, params: dict, actions: dict) -> str:
             new_name = params.get("new_name", "")
             location = params.get("location")
             if old_name and new_name and "rename_file" in actions:
-                actions["rename_file"](old_name, new_name, location)
+                rename_result = actions["rename_file"](old_name, new_name, location)
+                if rename_result is False:
+                    return f"Error: Couldn't rename {old_name} to {new_name}"
+                if isinstance(rename_result, dict):
+                    if not rename_result.get("success"):
+                        error_text = rename_result.get("error") or f"Couldn't rename {old_name} to {new_name}"
+                        return f"Error: {error_text}"
+                    return f"Renamed {old_name} to {rename_result.get('new_name', new_name)}"
                 return f"Renamed {old_name} to {new_name}"
             return f"Couldn't rename — need both old and new names"
 

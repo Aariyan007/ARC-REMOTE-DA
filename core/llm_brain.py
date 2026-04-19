@@ -135,6 +135,11 @@ Triggers:
   When content is clear, include it: {{"type":"action","action":"edit_file","target":null,"query":null,"filename":"notes.txt","content":"hello world","location":null,"response":"Writing it down."}}
   When content is vague ("add some stuff"): {{"type":"action","action":"edit_file","target":null,"query":null,"filename":"notes.txt","content":null,"location":null,"response":"What should I write?"}}
 
+File context rules:
+- If the user says "it", "that file", "this file", or similar, use the most recent file from context.
+- Never output placeholder filenames like "unknown", "unknown file", or "it" for file actions.
+- If a filename truly cannot be inferred, use null instead of a fake placeholder.
+
 12. COMPOUND FILE OPERATIONS (create + write in one command):
 {{"type":"action","action":"create_and_edit_file","target":null,"query":null,"filename":"name.txt","content":"actual content here","location":"desktop","response":"natural response"}}
 Triggers: "create a file called X and write Y in it", "make a file named X then add Y"

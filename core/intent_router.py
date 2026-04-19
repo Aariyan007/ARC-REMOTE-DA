@@ -20,6 +20,7 @@ from core.param_extractors import (
     extract_filename, extract_email_params, extract_folder_target,
     extract_file_edit_params, is_compound_file_command,
     extract_compound_file_params,
+    extract_url,
 )
 from core.instant_responses import get_instant_response, get_confirmation_prompt
 from core.safety import check_safety, SafetyDecision, ask_voice_confirmation, DESTRUCTIVE_ACTIONS
@@ -91,6 +92,63 @@ def _resolve_format(spoken_format: str) -> str:
     return ".txt"
 
 
+def _is_missing_param_value(value) -> bool:
+    """Treat empty or placeholder values as missing."""
+    if value is None:
+        return True
+    if not isinstance(value, str):
+        return False
+    return value.strip().lower() in {"", "unknown", "unknown file", "null", "none", "n/a"}
+
+
+def _is_filename_placeholder(value) -> bool:
+    """File references like 'it' should fall back to local context."""
+    if _is_missing_param_value(value):
+        return True
+    if not isinstance(value, str):
+        return False
+    return value.strip().lower() in {"it", "that", "this", "that file", "this file", "the file"}
+
+
+def _merge_gemini_params(result: dict, fallback_params: dict | None = None) -> dict:
+    """
+    Merge Gemini params with locally resolved params.
+    Local context wins when Gemini returns placeholders like 'unknown' or 'it'.
+    """
+    params = dict(fallback_params or {})
+
+    target = result.get("target")
+    if not _is_missing_param_value(target):
+        params["target"] = target
+        params["name"] = target
+
+    query = result.get("query")
+    if not _is_missing_param_value(query):
+        params["query"] = query
+
+    for key in ("filename", "location", "new_name", "to", "subject", "body", "amount", "content"):
+        value = result.get(key)
+
+        if key == "filename":
+            if not _is_filename_placeholder(value):
+                params["filename"] = value
+            elif _is_filename_placeholder(params.get("filename")):
+                last_file = get_last_file()
+                if last_file.get("filename"):
+                    params["filename"] = last_file["filename"]
+            continue
+
+        if not _is_missing_param_value(value):
+            params[key] = value
+
+    if _is_filename_placeholder(params.get("filename")):
+        last_file = get_last_file()
+        if last_file.get("filename"):
+            params["filename"] = last_file["filename"]
+
+    return params
+
+
 
 def _extract_params(action: str, text: str) -> dict:
     """
@@ -112,6 +170,11 @@ def _extract_params(action: str, text: str) -> dict:
         query = extract_query(text)
         if query:
             params["query"] = query
+
+    elif action == "open_url":
+        url = extract_url(text)
+        if url:
+            params["url"] = url
 
     elif action in ("open_folder", "create_folder"):
         target = extract_folder_target(text)
@@ -261,6 +324,20 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "") ->
                 actions["search_google"](query)
                 return f"Searched for {query}"
 
+        if action == "open_url":
+            url = params.get("url") or extract_url(text)
+            if not url:
+                speak("What URL or website should I open?")
+                return "No URL extracted"
+            try:
+                from control.playwright_browser import navigate
+
+                final = navigate(url)
+                return f"Opened {final}"
+            except Exception as e:
+                speak("I couldn't open that in the browser.")
+                return f"open_url error: {e}"
+
         # ── Folders ─────────────────────────────────────────
         if action == "open_folder":
             target = params.get("target", "")
@@ -384,7 +461,16 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "") ->
             new_name = params.get("new_name", "")
             location = params.get("location")
             if filename and new_name and "rename_file" in actions:
-                actions["rename_file"](filename, new_name, location)
+                rename_result = actions["rename_file"](filename, new_name, location)
+                if rename_result is False:
+                    return f"Error: Couldn't rename {filename} to {new_name}"
+                if isinstance(rename_result, dict):
+                    if not rename_result.get("success"):
+                        error_text = rename_result.get("error") or f"Couldn't rename {filename} to {new_name}"
+                        return f"Error: {error_text}"
+                    final_name = rename_result.get("new_name", new_name)
+                    update_file_context(final_name, path=rename_result.get("path"), action="rename_file")
+                    return f"Renamed {filename} to {final_name}"
                 update_file_context(new_name, action="rename_file")
                 return f"Renamed {filename} to {new_name}"
             return f"Couldn't rename — need both old and new names"
@@ -855,7 +941,7 @@ def route(command: str, actions: dict) -> bool:
     # ── DECISION: GEMINI FALLBACK ────────────────────────────
     elif safety.decision == SafetyDecision.GEMINI:
         print(f"🤖 Falling back to Gemini (confidence={intent.confidence:.2f})")
-        return _gemini_fallback(command, cleaned, actions, start_time, mood)
+        return _gemini_fallback(command, cleaned, actions, start_time, mood, params)
 
     return True
 
@@ -988,6 +1074,7 @@ def _gemini_fallback(
     actions: dict,
     start_time: float,
     mood: str,
+    fallback_params: dict | None = None,
 ) -> bool:
     """
     Gemini fallback path. Called when fast engine confidence is too low.
@@ -996,8 +1083,6 @@ def _gemini_fallback(
     result = ask_gemini(raw_command)
     response_text = result.get("response", "On it.")
     action        = result.get("action")
-    target        = result.get("target")
-    query         = result.get("query")
 
     print(f"🤖 Gemini understood: {result}")
 
@@ -1040,24 +1125,17 @@ def _gemini_fallback(
                 )
                 return True
 
-        speak_instant(response_text)
+        instant_response = get_instant_response(action, mood)
+        speak_instant(instant_response)
 
-        params = {}
-        if target:
-            params["target"] = target
-            params["name"]   = target
-        if query:
-            params["query"] = query
-        for key in ("filename", "location", "new_name", "to", "subject", "body", "amount", "content"):
-            if key in result:
-                params[key] = result[key]
+        params = _merge_gemini_params(result, fallback_params)
 
         exec_result = _execute_action(action, params, actions, text=raw_command)
         print(f"✅ Gemini action result: {exec_result}")
 
         update_context(
             action=action,
-            target=target or query or "",
+            target=params.get("target", params.get("name", params.get("filename", params.get("query", "")))),
             result=exec_result,
             command=normalized_command,
         )

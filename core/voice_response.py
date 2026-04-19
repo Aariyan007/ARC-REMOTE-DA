@@ -190,11 +190,11 @@ def _speak_windows(text: str) -> bool:
         return True  # Return True anyway — don't block on TTS failure
 
 
-def _listen_for_interrupt(threshold_multiplier: float = 6.0) -> bool:
+def _listen_for_interrupt(threshold_multiplier: float = 12.0) -> bool:
     """Listens for user interruption while Jarvis speaks."""
     CHUNK            = 1024
     SAMPLE_RATE      = 16000
-    CALIBRATE_CHUNKS = 15
+    CALIBRATE_CHUNKS = 20
 
     audio  = pyaudio.PyAudio()
     stream = audio.open(
@@ -206,7 +206,7 @@ def _listen_for_interrupt(threshold_multiplier: float = 6.0) -> bool:
     )
 
     # Wait for speaker to start — calibrate WITH Jarvis voice as background
-    time.sleep(0.3)
+    time.sleep(0.4)
 
     calibration = []
     for _ in range(CALIBRATE_CHUNKS):

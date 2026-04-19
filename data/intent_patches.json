@@ -1,0 +1,113 @@
+{
+  "generated": "2026-04-19",
+  "patches": [
+    {
+      "action": "take_screenshot",
+      "add_examples": [
+        "can you tell me what am i seeing on my screen right now",
+        "tell me what am i seeing on my screen",
+        "tell me what am seeing"
+      ],
+      "source": "retrospective",
+      "from_command": "can you tell me what am i seeing on my screen right now",
+      "was_misrouted_as": "brightness_up"
+    },
+    {
+      "action": "search_vault",
+      "add_examples": [
+        "what all conversations did we have till now",
+        "what all conversations did we"
+      ],
+      "source": "retrospective",
+      "from_command": "what all conversations did we have till now",
+      "was_misrouted_as": "morning_briefing"
+    },
+    {
+      "action": "general_chat",
+      "add_examples": [
+        "what all conversations did we have till now",
+        "what all conversations did we"
+      ],
+      "source": "retrospective",
+      "from_command": "what all conversations did we have till now",
+      "was_misrouted_as": "morning_briefing"
+    }
+  ],
+  "negative_examples": [
+    {
+      "action": "brightness_up",
+      "text": "can you tell me what am i seeing on my screen right now",
+      "correct_action": "take_screenshot"
+    },
+    {
+      "action": "brightness_up",
+      "text": "can you tell me what am i seeing on my screen right now",
+      "correct_action": "take_screenshot"
+    },
+    {
+      "action": "morning_briefing",
+      "text": "what all conversations did we have till now",
+      "correct_action": "search_vault"
+    },
+    {
+      "action": "brightness_up",
+      "text": "can you tell me what am i seeing on my screen right now",
+      "correct_action": "take_screenshot"
+    },
+    {
+      "action": "morning_briefing",
+      "text": "what all conversations did we have till now",
+      "correct_action": "search_vault"
+    },
+    {
+      "action": "brightness_up",
+      "text": "can you tell me what am i seeing on my screen right now",
+      "correct_action": "take_screenshot"
+    },
+    {
+      "action": "morning_briefing",
+      "text": "what all conversations did we have till now",
+      "correct_action": "search_vault"
+    },
+    {
+      "action": "brightness_up",
+      "text": "can you tell me what am i seeing on my screen right now",
+      "correct_action": "take_screenshot"
+    },
+    {
+      "action": "morning_briefing",
+      "text": "what all conversations did we have till now",
+      "correct_action": "general_chat"
+    },
+    {
+      "action": "brightness_up",
+      "text": "can you tell me what am i seeing on my screen right now",
+      "correct_action": "take_screenshot"
+    },
+    {
+      "action": "morning_briefing",
+      "text": "what all conversations did we have till now",
+      "correct_action": "search_vault"
+    },
+    {
+      "action": "brightness_up",
+      "text": "can you tell me what am i seeing on my screen right now",
+      "correct_action": "take_screenshot"
+    },
+    {
+      "action": "morning_briefing",
+      "text": "what all conversations did we have till now",
+      "correct_action": "search_vault"
+    },
+    {
+      "action": "brightness_up",
+      "text": "can you tell me what am i seeing on my screen right now",
+      "correct_action": "take_screenshot"
+    },
+    {
+      "action": "morning_briefing",
+      "text": "what all conversations did we have till now",
+      "correct_action": "search_vault"
+    }
+  ]
+}

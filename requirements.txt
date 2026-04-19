@@ -13,3 +13,6 @@ setuptools
 pvporcupine
 python-dotenv
 sentence-transformers
+playwright>=1.49.0
+Pillow>=10.0.0
+pytesseract>=0.3.10

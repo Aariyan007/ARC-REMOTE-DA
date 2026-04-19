@@ -160,6 +160,30 @@ INTENT_REGISTRY = {
         "search online", "browse for", "find online",
     ],
 
+    # ── Playwright browser (DOM-first; distinct from OS new_tab) ─
+    "open_url": [
+        "open https://", "go to https://", "visit https://",
+        "navigate to https://", "open http://",
+        "go to github.com", "visit reddit.com", "open example.com",
+        "navigate to news.ycombinator.com", "browse to stackoverflow.com",
+    ],
+    "web_back": [
+        "browser go back", "web page back", "go back in the browser",
+        "previous web page", "browser back button",
+    ],
+    "web_refresh": [
+        "reload web page", "refresh this webpage", "reload the browser page",
+        "refresh browser page", "reload the site",
+    ],
+    "web_new_tab": [
+        "jarvis new browser tab", "automation browser new tab",
+        "controlled browser new tab", "new tab in the automation browser",
+    ],
+    "web_close_tab": [
+        "close automation browser tab", "close jarvis browser tab",
+        "close the automation tab", "close controlled browser tab",
+    ],
+
     # ── Folders ──────────────────────────────────────────────
     "open_folder": [
         "open downloads", "open desktop", "open documents",
