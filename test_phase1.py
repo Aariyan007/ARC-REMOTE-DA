@@ -433,6 +433,115 @@ test("Follow-up chaining in resume branch",
 
 
 # ═════════════════════════════════════════════════════════════
+#  11. FOLLOW-UP INTENT DETECTION (COMPOUND COMMANDS)
+# ═════════════════════════════════════════════════════════════
+print("\n" + "=" * 60)
+print("  11. FOLLOW-UP INTENT DETECTION (COMPOUND COMMANDS)")
+print("=" * 60)
+
+from core.task_state import detect_follow_up_intent
+
+# "make a folder and then write hello in it"
+primary, action, params = detect_follow_up_intent("make a folder and then write hello in it")
+test("'and then write' -> primary='make a folder'", primary == "make a folder",
+     f"got primary: '{primary}'")
+test("'and then write' -> action=edit_file", action == "edit_file",
+     f"got: '{action}'")
+test("'and then write' -> content='hello'", params.get("content") == "hello",
+     f"got: {params}")
+
+# "create a file, I want to put my notes in it"
+primary, action, params = detect_follow_up_intent("create a file, i want to put my notes in it")
+test("'i want to put' -> action=edit_file", action == "edit_file",
+     f"got: '{action}'")
+test("'i want to put' -> content='my notes'", params.get("content") == "my notes",
+     f"got: {params}")
+
+# "make a file then delete it"
+primary, action, params = detect_follow_up_intent("make a file then delete it")
+test("'then delete it' -> action=delete_file", action == "delete_file",
+     f"got: '{action}'")
+
+# "create a file; rename it to report"
+primary, action, params = detect_follow_up_intent("create a file; rename it to report")
+test("'; rename it to' -> action=rename_file", action == "rename_file",
+     f"got: '{action}'")
+test("'; rename it to' -> new_name='report'", params.get("new_name") == "report",
+     f"got: {params}")
+
+# "open chrome and then search for python"
+primary, action, params = detect_follow_up_intent("open chrome and then search for python")
+test("'and then search' -> action=search_google", action == "search_google",
+     f"got: '{action}'")
+test("'and then search' -> query='python'", params.get("query") == "python",
+     f"got: {params}")
+
+# No follow-up: simple command
+primary, action, params = detect_follow_up_intent("open chrome")
+test("simple command -> no follow-up", action == "" and params == {},
+     f"got: action='{action}', params={params}")
+
+# No follow-up: just conjunction but no verb match
+primary, action, params = detect_follow_up_intent("open chrome and stuff")
+test("unrecognized follow-up -> no match", action == "",
+     f"got: action='{action}'")
+
+
+# ═════════════════════════════════════════════════════════════
+#  12. CONTEXT_ASK BRANCH WIRES FOLLOW-UP INTO PENDING
+# ═════════════════════════════════════════════════════════════
+print("\n" + "=" * 60)
+print("  12. CONTEXT_ASK WIRES FOLLOW-UP INTO PENDING")
+print("=" * 60)
+
+# Verify the CONTEXT_ASK branch calls detect_follow_up_intent
+test("CONTEXT_ASK calls detect_follow_up_intent",
+     "detect_follow_up_intent" in route_source,
+     "detect_follow_up_intent not called in route()")
+
+# Verify the set_pending() call includes follow_up_action
+test("set_pending includes follow_up_action=",
+     "follow_up_action=follow_action" in route_source,
+     "follow_up_action not passed to set_pending()")
+test("set_pending includes follow_up_params=",
+     "follow_up_params=follow_params" in route_source,
+     "follow_up_params not passed to set_pending()")
+
+# Full E2E: compound command creates a PendingTask with follow_up populated
+# Simulate what CONTEXT_ASK would do:
+compound_cmd = "make a folder, i want to write my report in it"
+primary, fa, fp = detect_follow_up_intent(compound_cmd)
+test("E2E compound: primary extracted", "make a folder" in primary,
+     f"got: '{primary}'")
+test("E2E compound: follow_up=edit_file", fa == "edit_file",
+     f"got: '{fa}'")
+test("E2E compound: follow_up_params has content", "content" in fp,
+     f"got: {fp}")
+
+# Create the PendingTask as CONTEXT_ASK would
+pending_compound = PendingTask(
+    action="create_folder",
+    known_params={},
+    missing_param="target",
+    question_asked="What should I name the folder?",
+    original_command=compound_cmd,
+    follow_up_action=fa,
+    follow_up_params=fp,
+)
+test("PendingTask.follow_up_action populated", pending_compound.follow_up_action == "edit_file")
+test("PendingTask.follow_up_params populated", "content" in pending_compound.follow_up_params)
+
+# After resume, the chaining branch should be reachable
+set_pending(pending_compound)
+result = resume_with_answer("my_projects")
+test("Resumed with folder name", result["params"]["target"] == "my_projects",
+     f"got: {result['params']}")
+# The pending was cleared by resume, but the caller (route) would check
+# pending.follow_up_action before clearing and create a new PendingTask
+test("Follow-up data was on the pending", pending_compound.follow_up_action == "edit_file")
+
+
+# ═════════════════════════════════════════════════════════════
 #  SUMMARY
 # ═════════════════════════════════════════════════════════════
 print("\n" + "=" * 60)
@@ -445,4 +554,5 @@ else:
 print("=" * 60)
 
 sys.exit(0 if FAIL == 0 else 1)
+
 

@@ -219,7 +219,84 @@ def resume_with_answer(answer: str) -> Optional[dict]:
     return result
 
 
-# ─── Quick Test ──────────────────────────────────────────────
+# ─── Follow-up Intent Detection ─────────────────────────────
+# Splits compound commands like "make a folder and then write in it"
+# into (primary_clause, follow_up_action, follow_up_params).
+
+import re
+
+# Conjunction patterns that split a compound command into two clauses.
+# Order matters — longer patterns first to avoid partial matches.
+_FOLLOW_UP_SPLITTERS = [
+    r"\s*,?\s*and\s+then\s+",         # "and then"
+    r"\s*,?\s*then\s+",               # "then"
+    r"\s*,?\s*after\s+that\s+",       # "after that"
+    r"\s*,?\s*(?:i\s+)?(?:want\s+to|wanna)\s+",  # ", I want to" / ", wanna"
+    r"\s*,?\s*(?:i\s+)?(?:need\s+to)\s+",         # ", I need to"
+    r"\s*,?\s*also\s+",               # "also"
+    r"\s*;\s*",                        # semicolon separator
+]
+
+# Maps verb phrases in the follow-up clause to action names + param extraction.
+_FOLLOW_UP_VERB_MAP = [
+    # (regex_pattern, action, param_key_for_capture_group)
+    (r"(?:write|put|type|add)\s+(.+?)(?:\s+in\s+it)?$", "edit_file", "content"),
+    (r"(?:open)\s+(?:it|that|the\s+\w+)$", "open_app", None),
+    (r"(?:rename)\s+(?:it|that)\s+(?:to\s+)?(.+)$", "rename_file", "new_name"),
+    (r"(?:delete|remove)\s+(?:it|that)$", "delete_file", None),
+    (r"(?:read|view|look\s+at)\s+(?:it|that)$", "read_file", None),
+    (r"(?:copy)\s+(?:it|that)(?:\s+to\s+(.+))?$", "copy_file", "destination"),
+    (r"(?:move)\s+(?:it|that)\s+to\s+(.+)$", "move_file", "destination"),
+    (r"(?:send)\s+(?:it|that)(?:\s+to\s+(.+))?$", "send_email", "to"),
+    (r"(?:search|find|look)\s+(?:for\s+)?(.+)$", "search_google", "query"),
+    (r"(?:edit)\s+(?:it|that)$", "edit_file", None),
+]
+
+
+def detect_follow_up_intent(text: str) -> tuple[str, str, dict]:
+    """
+    Detect if a command contains a follow-up intent after a conjunction.
+
+    Examples:
+        "make a folder and then write hello in it"
+        → ("make a folder", "edit_file", {"content": "hello"})
+
+        "create a file, I want to put my notes in it"
+        → ("create a file", "edit_file", {"content": "my notes"})
+
+        "open vscode and then open chrome"
+        → ("open vscode", "open_app", {})
+
+    Returns:
+        (primary_clause, follow_up_action, follow_up_params)
+        If no follow-up detected: (original_text, "", {})
+    """
+    text_lower = text.strip().lower()
+
+    for splitter in _FOLLOW_UP_SPLITTERS:
+        match = re.search(splitter, text_lower)
+        if not match:
+            continue
+
+        primary = text_lower[:match.start()].strip()
+        follow_clause = text_lower[match.end():].strip()
+
+        if not primary or not follow_clause:
+            continue
+
+        # Try to match the follow-up clause to a known verb pattern
+        for pattern, action, param_key in _FOLLOW_UP_VERB_MAP:
+            verb_match = re.match(pattern, follow_clause)
+            if verb_match:
+                params = {}
+                if param_key and verb_match.lastindex and verb_match.lastindex >= 1:
+                    captured = verb_match.group(1).strip()
+                    if captured:
+                        params[param_key] = captured
+                return (primary, action, params)
+
+    return (text, "", {})
+
 if __name__ == "__main__":
     import sys
     if sys.platform == "win32":

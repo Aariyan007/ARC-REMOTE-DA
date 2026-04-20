@@ -53,6 +53,7 @@ from core.perception_engine import get_perception_engine
 from core.task_state import (
     get_pending, set_pending, clear_pending, has_pending,
     is_pending_answer, resume_with_answer, PendingTask,
+    detect_follow_up_intent,
 )
 from core.ambiguity_resolver import build_single_slot_question
 # Keep old import for backward compat in _execute_action
@@ -1269,6 +1270,13 @@ def route(command: str, actions: dict) -> bool:
             missing_param = missing_params[0] if missing_params else "target"
 
         # Store pending task for resumption
+        # Phase 1 fix: Detect follow-up intent from the original command
+        # e.g., "make a folder, I want to write something in it"
+        # → follow_up_action="edit_file", follow_up_params={"content": "something"}
+        primary_clause, follow_action, follow_params = detect_follow_up_intent(command)
+        if follow_action:
+            print(f"🔗 Follow-up detected: {follow_action} (params={follow_params})")
+
         set_pending(PendingTask(
             action=intent.action,
             known_params=dict(params),
@@ -1278,6 +1286,8 @@ def route(command: str, actions: dict) -> bool:
             normalized_command=cleaned,
             intent_source=intent.source,
             confidence=intent.confidence,
+            follow_up_action=follow_action,
+            follow_up_params=follow_params,
         ))
 
         speak_result(question)
