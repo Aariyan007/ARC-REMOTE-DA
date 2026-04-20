@@ -19,16 +19,20 @@ import json
 import os
 import time
 from typing import Optional
-from google import genai
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    def load_dotenv():
+        return None
 
-from core.agents.base_agent import AgentResult
 from core.graph.task_graph import TaskGraph, GraphExecutor, NodeStatus
 from core.network.connectivity import require_online
-from core.voice_response import speak, speak_instant
+from core.voice_response import speak_ack, speak_result, speak_chat
 from core.memory import get_context_for_gemini, save_exchange, update_context, get_last_file, get_last_context
 from mood.mood_engine import get_mood_for_prompt
 from core.logger import log_interaction
+from core.response_policy import get_ack, get_result as get_result_text, get_failure as get_failure_text
+from core.action_result import ActionResult
 
 load_dotenv()
 
@@ -39,7 +43,16 @@ MAX_PLAN_STEPS = 8
 MAX_REPLANS    = 1             # Max self-healing retries per command
 # ─────────────────────────────────────────────────────────────
 
-client = genai.Client(api_key=GEMINI_API_KEY)
+
+def _get_client():
+    """Create the Gemini client lazily so startup doesn't require the SDK."""
+    if not GEMINI_API_KEY:
+        return None
+    try:
+        from google import genai
+    except ImportError:
+        return None
+    return genai.Client(api_key=GEMINI_API_KEY)
 
 
 class ManagerAgent:
@@ -133,8 +146,7 @@ If the command needs MULTIPLE steps, return a task graph:
     "steps": [
         {{"id": "step_0", "agent": "agent_name", "action": "action_name", "params": {{}}, "depends_on": [], "description": "What this step does"}},
         {{"id": "step_1", "agent": "agent_name", "action": "action_name", "params": {{}}, "depends_on": ["step_0"], "description": "What this step does"}}
-    ],
-    "response": "Short spoken confirmation (max 8 words)"
+    ]
 }}
 
 If the command is a SINGLE action, route directly:
@@ -143,8 +155,7 @@ If the command is a SINGLE action, route directly:
     "thought": "Brief explanation of your reasoning and what you extracted from the command",
     "agent": "agent_name",
     "action": "action_name",
-    "params": {{}},
-    "response": "Short spoken confirmation (max 8 words)"
+    "params": {{}}
 }}
 
 If the command is a question or chat (no system action needed):
@@ -166,7 +177,7 @@ CRITICAL RULES FOR PARAMS:
 OTHER RULES:
 - Use the correct agent for each action
 - If a step depends on another step's output, add it to depends_on
-- Keep spoken responses SHORT (max 8 words). Sound human, not robotic.
+- For non-chat action plans, do NOT invent spoken confirmation text. The system handles user-facing wording.
 - For questions, answer directly and conversationally
 - NEVER make up actions that don't exist in the agent descriptions
 - Use contractions (don't, can't, won't). Talk like a friend.
@@ -184,13 +195,13 @@ OTHER RULES:
         print(f"\n🤖 ManagerAgent: Planning for '{command}'")
 
         # Check connectivity for Gemini
-        if not require_online(speak):
+        if not require_online(speak_result):
             return "Offline — cannot plan"
 
         # Get the plan from Gemini
         plan = self._get_plan(command)
         if not plan:
-            speak("Had trouble understanding that. Try again?")
+            speak_result("Had trouble understanding that. Try again?")
             return "Planning failed"
 
         print(f"📋 Plan type: {plan.get('type', 'unknown')}")
@@ -205,9 +216,9 @@ OTHER RULES:
         # ── Chat response (no action) ────────────────────────
         if plan["type"] == "chat":
             response = plan.get("response", "I'm not sure about that.")
-            speak(response)
+            speak_chat(response)
             save_exchange(command, response)
-            self._log(command, "chat_response", start_time, response=response)
+            self._log(command, "chat_response", start_time, response=response, spoken_text=response)
             return f"Chat: {response[:50]}"
 
         # ── Single action ────────────────────────────────────
@@ -218,12 +229,15 @@ OTHER RULES:
         if plan["type"] == "graph":
             return self._execute_graph(command, plan, start_time)
 
-        speak("I understood but I'm not sure how to handle that.")
+        speak_result("I understood but I'm not sure how to handle that.")
         return "Unknown plan type"
 
     def _get_plan(self, command: str) -> Optional[dict]:
         """Calls Gemini to generate an execution plan."""
         prompt = self._build_plan_prompt(command)
+        client = _get_client()
+        if client is None:
+            return None
 
         for attempt in range(3):
             try:
@@ -254,29 +268,33 @@ OTHER RULES:
         agent_name = plan.get("agent", "")
         action     = plan.get("action", "")
         params     = plan.get("params", {})
-        response   = plan.get("response", "On it.")
 
         if agent_name not in self._agents:
-            speak("I know what you want but I don't have the right agent for it.")
+            speak_result("I know what you want but I don't have the right agent for it.")
             return f"Unknown agent: {agent_name}"
 
-        # Speak the instant response
-        speak_instant(response)
+        ack_text = get_ack(action)
+        if ack_text:
+            speak_ack(ack_text)
 
         # Execute
         agent = self._agents[agent_name]
         result = agent.execute(action, params)
+        action_result = ActionResult.from_agent_result(result)
 
         if result.success:
             print(f"Single action result: {result.result}")
+            spoken_text = get_result_text(action_result)
+            speak_result(spoken_text)
             update_context(
                 action=action,
                 target=params.get("target", params.get("name", "")),
                 result=result.result,
                 command=command,
             )
-            save_exchange(command, response)
-            self._log(command, action, start_time, response=response)
+            full_spoken = f"{ack_text} {spoken_text}".strip() if ack_text else spoken_text
+            save_exchange(command, full_spoken)
+            self._log(command, action, start_time, response=full_spoken, spoken_text=full_spoken)
             return result.result
         else:
             print(f"Single action failed: {result.error}")
@@ -288,14 +306,15 @@ OTHER RULES:
                 )
                 if alt_plan and alt_plan.get("type") != "give_up":
                     print(f"[REPLAN] {action} -> {alt_plan.get('action', '?')}")
-                    speak_instant("Let me try a different approach.")
+                    speak_ack("Let me try a different approach.")
                     return self._execute_single(
                         command, alt_plan, start_time,
                         replan_count=replan_count + 1
                     )
 
-            speak(f"That didn't work. {result.error}")
-            self._log(command, f"{action}_failed", start_time, response=result.error)
+            spoken_text = get_failure_text(action_result)
+            speak_result(spoken_text)
+            self._log(command, f"{action}_failed", start_time, response=result.error, spoken_text=spoken_text)
             return f"Failed: {result.error}"
 
     def _replan_on_failure(self, command: str, failed_action: str, error: str) -> Optional[dict]:
@@ -316,7 +335,7 @@ Available agents and tools:
 
 Suggest ONE alternative action that could fulfill the user's intent.
 Return ONLY JSON, no markdown:
-{{"type":"single","agent":"agent_name","action":"action_name","params":{{}},"response":"Short spoken message (max 8 words)"}}
+{{"type":"single","agent":"agent_name","action":"action_name","params":{{}}}}
 
 If no alternative makes sense, return:
 {{"type":"give_up"}}
@@ -324,9 +343,12 @@ If no alternative makes sense, return:
 RULES:
 - Do NOT retry the same action that failed
 - Think creatively: if app not found, try web search; if file not found, try creating it
-- Keep the response SHORT and human"""
+- Do not add spoken response text; the system handles user wording."""
 
         try:
+            client = _get_client()
+            if client is None:
+                return None
             response = client.models.generate_content(
                 model=MODEL,
                 contents=prompt,
@@ -343,14 +365,15 @@ RULES:
         """Builds and executes a TaskGraph from the plan."""
         graph_name = plan.get("name", "multi_step_task")
         steps      = plan.get("steps", [])
-        response   = plan.get("response", "Working on it.")
 
         if not steps:
-            speak("I built a plan but it was empty. Try again?")
+            speak_result("I built a plan but it was empty. Try again?")
             return "Empty graph"
 
-        # Speak instant ack
-        speak_instant(response)
+        first_action = steps[0].get("action", "") if steps else ""
+        ack_text = get_ack(first_action)
+        if ack_text:
+            speak_ack(ack_text)
 
         # Build the graph
         graph = TaskGraph(name=graph_name)
@@ -380,8 +403,9 @@ RULES:
 
         if result_graph.has_failures:
             failed = [t for t in trace if t["status"] == "failed"]
-            speak(f"Had trouble with one of the steps. {failed[0].get('error', '')}")
-            self._log(command, "graph_partial_fail", start_time, response=str(trace))
+            spoken_text = f"Had trouble with one of the steps. {failed[0].get('error', '')}".strip()
+            speak_result(spoken_text)
+            self._log(command, "graph_partial_fail", start_time, response=str(trace), spoken_text=spoken_text)
             return f"Graph partially failed: {trace}"
         else:
             # Get the last step's result for speaking
@@ -394,11 +418,14 @@ RULES:
                 result=last_result,
                 command=command,
             )
-            save_exchange(command, response)
-            self._log(command, f"graph_{graph_name}", start_time, response=last_result)
+            spoken_text = last_result or "Done."
+            speak_result(spoken_text)
+            full_spoken = f"{ack_text} {spoken_text}".strip() if ack_text else spoken_text
+            save_exchange(command, full_spoken)
+            self._log(command, f"graph_{graph_name}", start_time, response=last_result, spoken_text=full_spoken)
             return f"Graph complete: {last_result}"
 
-    def _log(self, command: str, action: str, start_time: float, response: str = ""):
+    def _log(self, command: str, action: str, start_time: float, response: str = "", spoken_text: str = ""):
         """Logs the interaction."""
         latency_ms = (time.time() - start_time) * 1000
         log_interaction(
@@ -409,6 +436,7 @@ RULES:
             latency_ms=latency_ms,
             gemini_response=response,
             sent_to_gemini=True,
+            spoken_text=spoken_text,
         )
 
     def get_agent(self, name: str):

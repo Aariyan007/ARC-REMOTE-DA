@@ -38,20 +38,12 @@ def generate_response(
     extra_info: str = None
 ) -> str:
     """
-    Generates a dynamic natural response for any Jarvis action.
-
-    Args:
-        action:     What Jarvis is doing. e.g. "open_safari"
-        user_said:  What the user said. e.g. "yo open my browser"
-        extra_info: Optional extra context e.g. search query, time value
-
-    Returns:
-        A natural, mood-aware response string ready to speak.
+    Archived legacy dynamic responder.
+    Replaced in the live pipeline by core.response_policy.
     """
     action_desc = ACTION_CONTEXT.get(action, f"Jarvis is performing: {action}")
     mood_context = get_mood_for_prompt()
 
-    # Build extra info string
     extra = f"\nExtra context: {extra_info}" if extra_info else ""
 
     prompt = f"""
@@ -83,8 +75,7 @@ Just give the response text. Nothing else.
         )
         return response.text.strip().strip('"')
 
-    except Exception as e:
-        # Fallback responses if Gemini fails
+    except Exception:
         fallbacks = {
             "open_vscode":   "Opening VS Code.",
             "open_safari":   "Opening Safari.",
@@ -100,9 +91,8 @@ Just give the response text. Nothing else.
         return fallbacks.get(action, "On it.")
 
 
-# ─── Quick test ──────────────────────────────────────────────
 if __name__ == "__main__":
-    print("Testing dynamic responses...\n")
+    print("Archived responder smoke test...\n")
 
     tests = [
         ("open_safari",   "yo open my browser",           None),

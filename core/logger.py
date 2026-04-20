@@ -45,6 +45,7 @@ def log_interaction(
     retry_count: int = 0,
     normalized_text: str = None,
     params: dict = None,
+    spoken_text: str = None,      # NEW: what Jarvis actually said via TTS
 ):
     """
     Logs a single Jarvis interaction to today's JSON file.
@@ -62,6 +63,7 @@ def log_interaction(
         retry_count:     How many retries were needed
         normalized_text: The cleaned/normalized version of you_said
         params:          Resolved parameters for the action
+        spoken_text:     What Jarvis actually said via TTS (the real output)
     """
     entry = {
         "timestamp":       datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -72,6 +74,7 @@ def log_interaction(
         "was_understood":  was_understood,
         "sent_to_gemini":  sent_to_gemini,
         "gemini_response": gemini_response,
+        "spoken_text":     spoken_text,
         "latency_ms":      round(latency_ms, 1) if latency_ms is not None else None,
         "intent_source":   intent_source,
         "confidence":      round(confidence, 3) if confidence is not None else None,

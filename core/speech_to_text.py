@@ -1,5 +1,3 @@
-
-import pyaudio
 import numpy as np
 import wave
 import tempfile
@@ -51,6 +49,15 @@ GARBAGE_WORDS = {
 # ────────────────────────────────────────────────────────────
 
 model = None
+
+
+def _get_pyaudio():
+    """Import PyAudio lazily so non-audio code can still import this module."""
+    try:
+        import pyaudio
+        return pyaudio
+    except ImportError as e:
+        raise RuntimeError("PyAudio is required for microphone input.") from e
 
 def _get_model():
     global model
@@ -121,6 +128,7 @@ def listen() -> str:
     transcribes with Whisper, returns lowercased text.
     Ignores all audio while Jarvis is speaking to prevent feedback loop.
     """
+    pyaudio = _get_pyaudio()
     audio_interface = pyaudio.PyAudio()
 
     stream = audio_interface.open(
@@ -213,6 +221,7 @@ def listen_long(max_seconds: int = 30, silence_seconds: float = 2.5) -> str:
     Uses a longer silence threshold and recording limit to avoid
     cutting the user off mid-sentence.
     """
+    pyaudio = _get_pyaudio()
     audio_interface = pyaudio.PyAudio()
 
     stream = audio_interface.open(
