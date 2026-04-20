@@ -181,10 +181,20 @@ def _build_interpreter_context():
     """Collect current machine state for the structured interpreter."""
     last_file = get_last_file().get("filename")
     recent_actions: list[str] = []
+    browser_url: str | None = None
+    browser_title: str | None = None
 
     try:
         wm = get_working_memory()
         recent_actions = [entry.action for entry in wm.get_recent_actions(5)]
+        # Phase 1 fix [P2]: Pull browser grounding from WorkingMemory
+        grounding = wm.get_grounding_context()
+        browser_url = grounding.get("last_browser_url")
+        browser_title = grounding.get("last_browser_title")
+        # If WorkingMemory has a more recent last_file, prefer it
+        wm_file = grounding.get("last_file")
+        if wm_file and not last_file:
+            last_file = wm_file
     except Exception:
         recent_actions = []
 
@@ -200,6 +210,8 @@ def _build_interpreter_context():
         _capture_perception_state(),
         last_file=last_file,
         recent_actions=recent_actions,
+        browser_url=browser_url,
+        browser_title=browser_title,
     )
 
 
@@ -815,58 +827,108 @@ def route(command: str, actions: dict) -> bool:
             print(f"🔄 Resuming pending task: {pending.action} (filling: {pending.missing_param})")
             resumed = resume_with_answer(command)
             if resumed:
-                # Execute the now-complete command
                 action = resumed["action"]
                 params = resumed["params"]
                 update_thinking(command=command, intent=action, stage="Resumed")
 
-                ack_text = get_ack(action)
-                if ack_text:
-                    speak_ack(ack_text)
-
-                before_state = _capture_perception_state()
-                result = _execute_action(action, params, actions, text=command)
-                result = _verify_action_result(action, params, result, before_state)
-                spoken_text = get_result_text(result)
-                speak_result(spoken_text)
-
-                # Update context + memory
-                update_context(
-                    action=action,
-                    target=params.get("target", params.get("name", params.get("query", ""))),
-                    result=result.summary,
-                    command=resumed.get("original_command", command),
+                # ── P1 FIX: Safety check on resumed tasks ────
+                # Destructive actions (delete_file, shutdown, etc.)
+                # MUST go through confirmation even when resumed.
+                safety = check_safety(
+                    action,
+                    resumed.get("confidence", 0.8),
+                    has_context_reference=False,
+                    word_count=len(command.split()),
                 )
+                if safety.decision == SafetyDecision.CONFIRM:
+                    prompt = get_confirmation(action, params)
+                    confirmed = ask_voice_confirmation(prompt)
+                    if not confirmed:
+                        latency_ms = (time.time() - start_time) * 1000
+                        log_interaction(
+                            you_said=command, action_taken=f"{action}_cancelled",
+                            was_understood=True, intent_source=resumed.get("intent_source", "pending"),
+                            confidence=resumed.get("confidence", 0.8), latency_ms=latency_ms,
+                            normalized_text=command,
+                            spoken_text="Alright, cancelled.",
+                        )
+                        return True
+                elif safety.decision == SafetyDecision.GEMINI:
+                    # Confidence too low even after resume — fall through
+                    # to the normal pipeline to let Gemini handle it.
+                    pass  # Will fall through to Step 1: Normalize below
+                # SafetyDecision.EXECUTE or confirmed CONFIRM → proceed
 
-                try:
-                    wm = get_working_memory()
-                    wm.record_action(
-                        action=action, params=params,
-                        reason=f"Resumed from pending: '{command}'",
-                        outcome="success" if result.success else "failed",
-                        confidence=resumed.get("confidence", 0.8),
-                        command=command,
-                        intent_source=resumed.get("intent_source", "pending"),
-                    )
-                    # Phase 1: Update grounding
-                    wm.update_grounding(
-                        last_action=action,
-                        last_file=params.get("filename"),
-                    )
-                except Exception:
-                    pass
+                if safety.decision != SafetyDecision.GEMINI:
+                    ack_text = get_ack(action)
+                    if ack_text:
+                        speak_ack(ack_text)
 
-                latency_ms = (time.time() - start_time) * 1000
-                full_spoken = f"{ack_text} {spoken_text}".strip() if ack_text else spoken_text
-                log_interaction(
-                    you_said=command, action_taken=action,
-                    was_understood=True, intent_source=resumed.get("intent_source", "pending"),
-                    confidence=resumed.get("confidence", 0.8), latency_ms=latency_ms,
-                    normalized_text=command, params=params,
-                    spoken_text=full_spoken,
-                )
-                save_exchange(command, full_spoken)
-                return True
+                    before_state = _capture_perception_state()
+                    result = _execute_action(action, params, actions, text=command)
+                    result = _verify_action_result(action, params, result, before_state)
+                    spoken_text = get_result_text(result)
+                    speak_result(spoken_text)
+
+                    update_context(
+                        action=action,
+                        target=params.get("target", params.get("name", params.get("query", ""))),
+                        result=result.summary,
+                        command=resumed.get("original_command", command),
+                    )
+
+                    try:
+                        wm = get_working_memory()
+                        wm.record_action(
+                            action=action, params=params,
+                            reason=f"Resumed from pending: '{command}'",
+                            outcome="success" if result.success else "failed",
+                            confidence=resumed.get("confidence", 0.8),
+                            command=command,
+                            intent_source=resumed.get("intent_source", "pending"),
+                        )
+                        wm.update_grounding(
+                            last_action=action,
+                            last_file=params.get("filename"),
+                        )
+                    except Exception:
+                        pass
+
+                    latency_ms = (time.time() - start_time) * 1000
+                    full_spoken = f"{ack_text} {spoken_text}".strip() if ack_text else spoken_text
+                    log_interaction(
+                        you_said=command, action_taken=action,
+                        was_understood=True, intent_source=resumed.get("intent_source", "pending"),
+                        confidence=resumed.get("confidence", 0.8), latency_ms=latency_ms,
+                        normalized_text=command, params=params,
+                        spoken_text=full_spoken,
+                    )
+                    save_exchange(command, full_spoken)
+
+                    # Phase 1 fix [P2]: Check for follow-up action
+                    if pending.follow_up_action:
+                        print(f"🔗 Chaining to follow-up: {pending.follow_up_action}")
+                        from core.ambiguity_resolver import build_single_slot_question
+                        from core.response_policy import get_missing_params as get_mp
+                        follow_missing = get_mp(pending.follow_up_action, pending.follow_up_params or {})
+                        if follow_missing:
+                            fq, fp = build_single_slot_question(
+                                pending.follow_up_action, pending.follow_up_params or {}, follow_missing
+                            )
+                            if fq and fp:
+                                set_pending(PendingTask(
+                                    action=pending.follow_up_action,
+                                    known_params=dict(pending.follow_up_params or {}),
+                                    missing_param=fp,
+                                    question_asked=fq,
+                                    original_command=resumed.get("original_command", command),
+                                    normalized_command=command,
+                                    intent_source=resumed.get("intent_source", "pending"),
+                                    confidence=resumed.get("confidence", 0.8),
+                                ))
+                                speak_result(fq)
+
+                    return True
 
     # ── Step 1: Normalize ────────────────────────────────────
     normalized = normalize(command)
@@ -938,9 +1000,34 @@ def route(command: str, actions: dict) -> bool:
         intent.confidence = interpreted.confidence
     if interpreted.source:
         intent.source = interpreted.source
+
+    # ── Phase 1 fix [P2]: target_type-based action correction ──
+    # If target_type inference disagrees with the fast-intent action,
+    # correct the action. e.g. fast_intent=open_app + target_type=website
+    # → should become search_google or open_url, not open_app.
+    _TARGET_TYPE_ACTION_CORRECTIONS = {
+        ("open_app", "website"): "open_url",
+        ("open_app", "browser_search"): "search_google",
+        ("open_app", "file"): "read_file",
+        ("open_app", "folder"): "open_folder",
+        ("open_app", "email"): "search_emails",
+        ("open_app", "tab"): "switch_to_app",
+    }
+    if interpreted.target_type and interpreted.target_type != "unknown":
+        correction_key = (intent.action, interpreted.target_type)
+        corrected_action = _TARGET_TYPE_ACTION_CORRECTIONS.get(correction_key)
+        if corrected_action:
+            print(f"🔀 Target-type correction: {intent.action} + {interpreted.target_type} → {corrected_action}")
+            intent.action = corrected_action
+            # Re-extract params for the corrected action
+            fresh_params = _extract_params(corrected_action, cleaned)
+            if fresh_params:
+                params.update(fresh_params)
+
     print(
         f"🧠 Structured command: action={intent.action} "
-        f"target={interpreted.target or '-'} ambiguities={interpreted.ambiguities or []}"
+        f"target={interpreted.target or '-'} target_type={interpreted.target_type or '-'} "
+        f"ambiguities={interpreted.ambiguities or []}"
     )
 
     # ── Step 5: Confidence evaluation ────────────────────────

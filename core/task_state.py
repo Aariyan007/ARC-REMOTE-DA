@@ -43,6 +43,9 @@ class PendingTask:
     timestamp: float = 0.0                   # when the pending task was created
     intent_source: str = ""                  # "builtin" | "learned" | "gemini"
     confidence: float = 0.0                  # intent confidence at time of pause
+    # Phase 1 fix [P2]: Multi-step continuity
+    follow_up_action: str = ""               # next action to chain after this one completes
+    follow_up_params: dict = field(default_factory=dict)  # params for the follow-up action
 
     def is_expired(self) -> bool:
         """Check if this pending task has timed out."""
