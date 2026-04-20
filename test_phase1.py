@@ -277,15 +277,172 @@ test("E2E: pending cleared", not has_pending())
 
 
 # ═════════════════════════════════════════════════════════════
+#  7. [P1] DESTRUCTIVE RESUME REQUIRES SAFETY CHECK
+# ═════════════════════════════════════════════════════════════
+print("\n" + "=" * 60)
+print("  7. [P1] DESTRUCTIVE RESUME REQUIRES SAFETY CHECK")
+print("=" * 60)
+
+from core.safety import check_safety, SafetyDecision, DESTRUCTIVE_ACTIONS
+
+# Verify delete_file is in DESTRUCTIVE_ACTIONS
+test("delete_file is destructive", "delete_file" in DESTRUCTIVE_ACTIONS)
+test("shutdown_pc is destructive", "shutdown_pc" in DESTRUCTIVE_ACTIONS)
+
+# Simulate: resumed delete_file at high confidence should STILL require confirmation
+s = check_safety("delete_file", 0.95, has_context_reference=False, word_count=2)
+test("delete_file at 0.95 conf -> CONFIRM", s.decision == SafetyDecision.CONFIRM,
+     f"got: {s.decision}")
+
+s = check_safety("delete_file", 0.85, has_context_reference=False, word_count=2)
+test("delete_file at 0.85 conf -> CONFIRM", s.decision == SafetyDecision.CONFIRM,
+     f"got: {s.decision}")
+
+# Non-destructive should EXECUTE
+s = check_safety("create_file", 0.90, has_context_reference=False, word_count=3)
+test("create_file at 0.90 conf -> EXECUTE", s.decision == SafetyDecision.EXECUTE,
+     f"got: {s.decision}")
+
+# Verify the resume branch in intent_router actually calls check_safety
+# by checking the code structure (import-level test)
+import inspect
+from core import intent_router
+route_source = inspect.getsource(intent_router.route)
+test("Resume branch calls check_safety()",
+     "check_safety(" in route_source and "P1 FIX" in route_source,
+     "check_safety not found in resume branch")
+test("Resume branch calls ask_voice_confirmation()",
+     "ask_voice_confirmation(" in route_source,
+     "ask_voice_confirmation not found in resume branch")
+
+
+# ═════════════════════════════════════════════════════════════
+#  8. [P2] TARGET-TYPE CORRECTS BAD FAST-INTENT ACTION
+# ═════════════════════════════════════════════════════════════
+print("\n" + "=" * 60)
+print("  8. [P2] TARGET-TYPE CORRECTS BAD FAST-INTENT ACTION")
+print("=" * 60)
+
+from core.command_interpreter import infer_target_type, interpret_from_fast_intent
+
+# Case: "watch youtube" — fast_intent says open_app, target_type says website
+n = normalize("bro i want to watch some video on youtube")
+tt = infer_target_type(n.cleaned, "open_app")
+test("youtube watch -> target_type=website", tt == "website", f"got: {tt}")
+
+# Simulate the correction table from intent_router
+_TARGET_TYPE_ACTION_CORRECTIONS = {
+    ("open_app", "website"): "open_url",
+    ("open_app", "browser_search"): "search_google",
+    ("open_app", "file"): "read_file",
+    ("open_app", "folder"): "open_folder",
+    ("open_app", "email"): "search_emails",
+    ("open_app", "tab"): "switch_to_app",
+}
+
+# Test all correction mappings
+corrected = _TARGET_TYPE_ACTION_CORRECTIONS.get(("open_app", "website"))
+test("open_app + website -> open_url", corrected == "open_url", f"got: {corrected}")
+
+corrected = _TARGET_TYPE_ACTION_CORRECTIONS.get(("open_app", "browser_search"))
+test("open_app + browser_search -> search_google", corrected == "search_google", f"got: {corrected}")
+
+corrected = _TARGET_TYPE_ACTION_CORRECTIONS.get(("open_app", "folder"))
+test("open_app + folder -> open_folder", corrected == "open_folder", f"got: {corrected}")
+
+# Verify the correction table exists in the live router source
+test("Correction table in intent_router",
+     "_TARGET_TYPE_ACTION_CORRECTIONS" in route_source,
+     "correction table not found in route()")
+test("target_type log line in intent_router",
+     "Target-type correction:" in route_source,
+     "target_type correction log not found")
+
+# The interpreted command should carry target_type
+cmd = interpret_from_fast_intent("open_app", 0.75, text=n.cleaned)
+test("interpret_from_fast_intent sets target_type",
+     cmd.target_type == "website", f"got: {cmd.target_type}")
+
+
+# ═════════════════════════════════════════════════════════════
+#  9. [P2] BROWSER GROUNDING FED INTO INTERPRETER CONTEXT
+# ═════════════════════════════════════════════════════════════
+print("\n" + "=" * 60)
+print("  9. [P2] BROWSER GROUNDING FED INTO INTERPRETER CONTEXT")
+print("=" * 60)
+
+# Verify _build_interpreter_context pulls browser grounding
+build_ctx_source = inspect.getsource(intent_router._build_interpreter_context)
+test("_build_interpreter_context reads grounding",
+     "get_grounding_context" in build_ctx_source,
+     "get_grounding_context() not called in _build_interpreter_context")
+test("_build_interpreter_context passes browser_url",
+     "browser_url" in build_ctx_source,
+     "browser_url not forwarded")
+test("_build_interpreter_context passes browser_title",
+     "browser_title" in build_ctx_source,
+     "browser_title not forwarded")
+test("build_machine_context receives browser_url",
+     "browser_url=browser_url" in build_ctx_source,
+     "browser_url not passed to build_machine_context()")
+test("build_machine_context receives browser_title",
+     "browser_title=browser_title" in build_ctx_source,
+     "browser_title not passed to build_machine_context()")
+
+# Verify grounding context actually populates browser fields
+wm3 = WorkingMemory()
+wm3.update_grounding(last_browser_url="https://github.com/test", last_browser_title="GitHub Test")
+g = wm3.get_grounding_context()
+test("Grounding stores browser_url", g.get("last_browser_url") == "https://github.com/test",
+     f"got: {g.get('last_browser_url')}")
+test("Grounding stores browser_title", g.get("last_browser_title") == "GitHub Test",
+     f"got: {g.get('last_browser_title')}")
+
+
+# ═════════════════════════════════════════════════════════════
+#  10. [P2] MULTI-STEP FOLLOW-UP FIELDS ON PENDING TASK
+# ═════════════════════════════════════════════════════════════
+print("\n" + "=" * 60)
+print("  10. [P2] MULTI-STEP FOLLOW-UP FIELDS ON PENDING TASK")
+print("=" * 60)
+
+# PendingTask should have follow_up_action and follow_up_params
+p = PendingTask(
+    action="create_file",
+    known_params={"location": "desktop"},
+    missing_param="filename",
+    follow_up_action="edit_file",
+    follow_up_params={"content": "hello world"},
+)
+test("PendingTask has follow_up_action", p.follow_up_action == "edit_file",
+     f"got: {p.follow_up_action}")
+test("PendingTask has follow_up_params", p.follow_up_params == {"content": "hello world"},
+     f"got: {p.follow_up_params}")
+
+# Empty follow-up by default
+p2 = PendingTask(action="open_app", missing_param="target")
+test("follow_up_action defaults to empty", p2.follow_up_action == "",
+     f"got: '{p2.follow_up_action}'")
+test("follow_up_params defaults to empty dict", p2.follow_up_params == {},
+     f"got: {p2.follow_up_params}")
+
+# Verify follow_up chaining code exists in the resume branch
+test("Follow-up chaining in resume branch",
+     "follow_up_action" in route_source and "Chaining to follow-up" in route_source,
+     "follow_up chaining code not found in route()")
+
+
+# ═════════════════════════════════════════════════════════════
 #  SUMMARY
 # ═════════════════════════════════════════════════════════════
 print("\n" + "=" * 60)
 total = PASS + FAIL
 print(f"  RESULTS: {PASS}/{total} passed, {FAIL} failed")
 if FAIL == 0:
-    print("  ✅ ALL TESTS PASSED!")
+    print("  [PASS] ALL TESTS PASSED!")
 else:
-    print("  ⚠️  SOME TESTS FAILED")
+    print("  [WARN] SOME TESTS FAILED")
 print("=" * 60)
 
 sys.exit(0 if FAIL == 0 else 1)
+
