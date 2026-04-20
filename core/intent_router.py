@@ -3,8 +3,8 @@ Intent Router — the core speed-first pipeline.
 
 Pipeline:
     listen() → normalize() → resolve_context() → fast_intent()
-    → safety_check() → execute + instant_response
-                                    ↓ (background)
+    → safety_check() → ack → execute → verify → grounded result
+                                    ↓ (background, gated)
                               gemini_enhance()
 
 If fast engine fails → Gemini fallback → learn from result.
@@ -22,16 +22,20 @@ from core.param_extractors import (
     extract_compound_file_params,
     extract_url,
 )
-from core.instant_responses import get_instant_response, get_confirmation_prompt
+from core.response_policy import (
+    get_ack, get_clarification, get_confirmation, get_result as get_result_text,
+    get_failure as get_failure_text, get_missing_params,
+)
+from core.action_result import ActionResult
 from core.safety import check_safety, SafetyDecision, ask_voice_confirmation, DESTRUCTIVE_ACTIONS
 from core.learned_intents import learn, find_exact_match
 from core.background_gemini import generate_followup, should_enhance
 from core.memory import (
     has_context_reference, resolve_context, update_context, save_exchange,
-    update_file_context, get_last_file,
+    update_file_context, get_last_file, get_last_context,
 )
 from core.logger import log_interaction
-from core.voice_response import speak, speak_instant
+from core.voice_response import speak, speak_instant, speak_ack, speak_result, speak_chat
 from core.speech_to_text import listen as stt_listen
 from core.llm_brain import ask_gemini
 from mood.mood_engine import get_current_mood
@@ -42,6 +46,11 @@ from core.confidence import evaluate_confidence
 from core.brain import get_brain, BrainDecision
 from core.working_memory import get_working_memory
 from core.continuous_memory import get_continuous_memory
+from core.command_interpreter import build_machine_context, interpret_command
+from core.action_verifier import ExpectedDelta, verify_perception_delta
+from core.perception_engine import get_perception_engine
+# Keep old import for backward compat in _execute_action
+from core.instant_responses import get_instant_response, get_confirmation_prompt
 
 # ── Format Keywords → Extensions ───────────────────────────────
 FORMAT_MAP = {
@@ -147,6 +156,104 @@ def _merge_gemini_params(result: dict, fallback_params: dict | None = None) -> d
             params["filename"] = last_file["filename"]
 
     return params
+
+
+def _capture_perception_state():
+    """Returns a fresh perception snapshot when available."""
+    try:
+        engine = get_perception_engine()
+        try:
+            engine._update_state()
+        except Exception:
+            pass
+        return engine.get_state()
+    except Exception:
+        return None
+
+
+def _build_interpreter_context():
+    """Collect current machine state for the structured interpreter."""
+    last_file = get_last_file().get("filename")
+    recent_actions: list[str] = []
+
+    try:
+        wm = get_working_memory()
+        recent_actions = [entry.action for entry in wm.get_recent_actions(5)]
+    except Exception:
+        recent_actions = []
+
+    try:
+        last_ctx = get_last_context()
+        last_action = last_ctx.get("action")
+        if last_action and last_action not in recent_actions:
+            recent_actions.append(last_action)
+    except Exception:
+        pass
+
+    return build_machine_context(
+        _capture_perception_state(),
+        last_file=last_file,
+        recent_actions=recent_actions,
+    )
+
+
+def _pick_interpreter_target(params: dict) -> str | None:
+    """Best-effort target passed into the structured fast path."""
+    for key in ("target", "name", "filename", "url", "query", "title"):
+        value = params.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _expected_delta_for_action(action: str, params: dict, result: ActionResult, before_state):
+    """Map actions to a coarse foreground/window verification expectation."""
+    target = (
+        result.data.get("target")
+        or params.get("target")
+        or params.get("name")
+        or ""
+    )
+
+    if action in {"open_app", "switch_to_app"} and target:
+        return ExpectedDelta(active_app_contains=target)
+
+    if action == "open_folder":
+        return ExpectedDelta(active_app_contains="finder")
+
+    if action in {"close_app", "minimise_app"} and target and before_state:
+        before_app = (getattr(before_state, "active_app", "") or "").lower()
+        if target.lower() in before_app:
+            return ExpectedDelta(active_app_not_equals=target)
+
+    return None
+
+
+def _verify_action_result(action: str, params: dict, result: ActionResult, before_state) -> ActionResult:
+    """Run lightweight perception-based verification after successful actions."""
+    if not result.success:
+        return result
+
+    expected = _expected_delta_for_action(action, params, result, before_state)
+    if expected is None or before_state is None:
+        return result
+
+    after_state = _capture_perception_state()
+    if after_state is None:
+        return result
+
+    verification = verify_perception_delta(before_state, after_state, expected)
+    result.data.setdefault("verification", verification.details)
+    result.verified = verification.ok
+
+    if verification.ok:
+        return result
+
+    result.success = False
+    result.error = verification.message
+    if not result.user_message:
+        result.user_message = "I tried, but I couldn't confirm that it actually changed."
+    return result
 
 
 
@@ -260,10 +367,10 @@ def _auto_play_focus_music():
         print(f"⚠️  Auto-play failed: {e}")
 
 
-def _execute_action(action: str, params: dict, actions: dict, text: str = "") -> str:
+def _execute_action(action: str, params: dict, actions: dict, text: str = "") -> ActionResult:
     """
     Executes an action with extracted params.
-    Returns result string for logging and context.
+    Returns ActionResult — structured, never a loose string.
     """
     try:
         # ── Open app ────────────────────────────────────────
@@ -281,88 +388,85 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "") ->
             if target and target.lower() in PRODUCTIVE_APPS:
                 threading.Thread(target=_auto_play_focus_music, daemon=True).start()
 
-            return f"Opened {target}"
+            return ActionResult.ok(action, f"Opened {target}", data={"target": target})
 
         # ── Close app ───────────────────────────────────────
         if action == "close_app":
             target = params.get("target", params.get("name", ""))
             if "close_app" in actions and target:
                 actions["close_app"](target)
-                return f"Closed {target}"
+                return ActionResult.ok(action, f"Closed {target}", data={"target": target})
 
         # ── Switch app ──────────────────────────────────────
         if action == "switch_to_app":
             target = params.get("target", params.get("name", ""))
             if "switch_to_app" in actions and target:
                 actions["switch_to_app"](target)
-                return f"Switched to {target}"
+                return ActionResult.ok(action, f"Switched to {target}", data={"target": target})
 
         # ── Minimize app ────────────────────────────────────
         if action == "minimise_app":
             target = params.get("target", params.get("name", ""))
             if "minimise_app" in actions and target:
                 actions["minimise_app"](target)
-                return f"Minimized {target}"
+                return ActionResult.ok(action, f"Minimized {target}", data={"target": target})
 
         # ── Volume ──────────────────────────────────────────
         if action == "volume_up":
             amount = params.get("amount", 10)
             if "volume_up" in actions:
                 actions["volume_up"](amount)
-                return f"Volume up by {amount}"
+                return ActionResult.ok(action, f"Volume up by {amount}", data={"amount": amount})
 
         if action == "volume_down":
             amount = params.get("amount", 10)
             if "volume_down" in actions:
                 actions["volume_down"](amount)
-                return f"Volume down by {amount}"
+                return ActionResult.ok(action, f"Volume down by {amount}", data={"amount": amount})
 
         # ── Search Google ───────────────────────────────────
         if action == "search_google":
             query = params.get("query", "")
             if query and "search_google" in actions:
                 actions["search_google"](query)
-                return f"Searched for {query}"
+                return ActionResult.ok(action, f"Searched for {query}", data={"query": query})
 
         if action == "open_url":
             url = params.get("url") or extract_url(text)
             if not url:
-                speak("What URL or website should I open?")
-                return "No URL extracted"
+                return ActionResult.fail(action, "No URL provided", user_message="What URL or website should I open?")
             try:
                 from control.playwright_browser import navigate
-
                 final = navigate(url)
-                return f"Opened {final}"
+                return ActionResult.ok(action, f"Opened {final}", data={"url": final})
             except Exception as e:
-                speak("I couldn't open that in the browser.")
-                return f"open_url error: {e}"
+                return ActionResult.fail(action, str(e), user_message="I couldn't open that in the browser.")
 
         # ── Folders ─────────────────────────────────────────
         if action == "open_folder":
             target = params.get("target", "")
             if target and "open_folder" in actions:
                 actions["open_folder"](target)
-                return f"Opened {target}"
+                return ActionResult.ok(action, f"Opened {target}", data={"target": target})
 
         if action == "create_folder":
             target = params.get("target", "")
             if target and "create_folder" in actions:
                 actions["create_folder"](target)
-                return f"Created folder {target}"
+                return ActionResult.ok(action, f"Created folder {target}", data={"target": target})
 
         if action == "search_file":
             query = params.get("query", "")
             if query and "search_file" in actions:
                 actions["search_file"](query)
-                return f"Searched for file {query}"
+                return ActionResult.ok(action, f"Searched for file {query}", data={"query": query})
 
         # ── Email ───────────────────────────────────────────
         if action == "search_emails":
             query = params.get("query", "")
             if query and "search_emails" in actions:
                 actions["search_emails"](query)
-                return f"Searched emails for {query}"
+                return ActionResult.ok(action, f"Searched emails for {query}", data={"query": query})
 
         if action == "send_email":
             if "send_email" in actions:
@@ -371,7 +475,7 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "") ->
                     params.get("subject", ""),
                     params.get("body", "")
                 )
-                return "Email composed"
+                return ActionResult.ok(action, "Email composed")
 
         # ── File operations ─────────────────────────────────
         if action == "read_file":
@@ -380,51 +484,43 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "") ->
             if filename and "read_file" in actions:
                 actions["read_file"](filename, location)
                 update_file_context(filename, action="read_file")
-                return f"Read {filename}"
-            return f"Couldn't read — no filename extracted"
+                return ActionResult.ok(action, f"Read {filename}", data={"filename": filename})
+            return ActionResult.fail(action, "No filename extracted", data={"filename": ""})
 
         if action == "create_file":
             filename = params.get("filename", "")
             location = params.get("location") or "desktop"
 
-            # ── Smart format detection ────────────────────────
-            # If filename is completely missing, ask the user
             if not filename:
-                speak("What should I name the file?")
+                speak_result("What should I name the file?")
                 name_resp = stt_listen()
                 if name_resp and name_resp.strip():
                     filename = name_resp.strip()
                     print(f"📄 User provided filename: {filename}")
                 else:
-                    return "Couldn't create — no filename provided"
+                    return ActionResult.fail(action, "No filename provided")
 
-            # If filename has no extension, ask the user or infer
             if filename and "." not in filename:
                 detected_fmt = _detect_format_from_context(text)
                 if detected_fmt:
                     filename = filename + detected_fmt
                     print(f"📄 Auto-detected format: {detected_fmt}")
                 else:
-                    # Ask the user what format they want
-
-                    speak(f"What format should {filename} be? Like text, document, python, or something else?")
+                    speak_result(f"What format should {filename} be? Like text, document, python, or something else?")
                     fmt_response = stt_listen()
                     if fmt_response:
                         ext = _resolve_format(fmt_response)
                         filename = filename + ext
-                        print(f"📄 User chose format: {text}")
                     else:
                         filename = filename + ".txt"
-                        print(f"📄 No response — defaulting to .txt")
                 params["filename"] = filename
 
             if filename and "create_file" in actions:
                 actions["create_file"](filename, location)
                 update_file_context(filename, action="create_file")
-                return f"Created {filename}"
-            return f"Couldn't create — no filename extracted"
+                return ActionResult.ok(action, f"Created {filename}", data={"filename": filename})
+            return ActionResult.fail(action, "No filename extracted")
 
-        # ── edit_file — asks for content when missing, then listens ──t
         if action == "edit_file":
             filename = params.get("filename", "")
             content  = params.get("content", "")
@@ -432,20 +528,17 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "") ->
             if filename and content and "edit_file" in actions:
                 actions["edit_file"](filename, content, location)
                 update_file_context(filename, action="edit_file")
-                return f"Appended text to {filename}"
+                return ActionResult.ok(action, f"Wrote to {filename}", data={"filename": filename})
             elif filename and not content:
-                # Ask for content and actually LISTEN for the answer
-
-                speak("What do you want me to write in that file?")
+                speak_result("What do you want me to write in that file?")
                 content_response = stt_listen()
                 if content_response and content_response.strip():
                     actions["edit_file"](filename, content_response.strip(), location)
                     update_file_context(filename, action="edit_file")
-                    return f"Appended text to {filename}"
+                    return ActionResult.ok(action, f"Wrote to {filename}", data={"filename": filename})
                 else:
-                    speak("I didn't catch that. Try telling me again.")
-                    return "No content provided after asking"
-            return "Couldn't edit — missing filename or content"
+                    return ActionResult.fail(action, "No content provided")
+            return ActionResult.fail(action, "Missing filename or content")
 
         if action == "delete_file":
             filename = params.get("filename", "")
@@ -453,8 +546,8 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "") ->
             if filename and "delete_file" in actions:
                 actions["delete_file"](filename, location)
                 update_file_context(filename, action="delete_file")
-                return f"Deleted {filename}"
-            return f"Couldn't delete — no filename extracted"
+                return ActionResult.ok(action, f"Deleted {filename}", data={"filename": filename})
+            return ActionResult.fail(action, "No filename extracted", data={"filename": ""})
 
         if action == "rename_file":
             filename = params.get("filename", "")
@@ -463,30 +556,32 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "") ->
             if filename and new_name and "rename_file" in actions:
                 rename_result = actions["rename_file"](filename, new_name, location)
                 if rename_result is False:
-                    return f"Error: Couldn't rename {filename} to {new_name}"
+                    return ActionResult.fail(action, f"Couldn't rename {filename} to {new_name}", data={"filename": filename})
                 if isinstance(rename_result, dict):
                     if not rename_result.get("success"):
                         error_text = rename_result.get("error") or f"Couldn't rename {filename} to {new_name}"
-                        return f"Error: {error_text}"
+                        return ActionResult.fail(action, error_text, data={"filename": filename})
                     final_name = rename_result.get("new_name", new_name)
                     update_file_context(final_name, path=rename_result.get("path"), action="rename_file")
-                    return f"Renamed {filename} to {final_name}"
+                    return ActionResult.ok(action, f"Renamed {filename} to {final_name}",
+                                           data={"filename": filename, "old_name": filename, "new_name": final_name})
                 update_file_context(new_name, action="rename_file")
-                return f"Renamed {filename} to {new_name}"
-            return f"Couldn't rename — need both old and new names"
+                return ActionResult.ok(action, f"Renamed {filename} to {new_name}",
+                                       data={"filename": filename, "old_name": filename, "new_name": new_name})
+            return ActionResult.fail(action, "Need both old and new names", data={"filename": filename})
 
         if action == "copy_file":
             filename = params.get("filename", "")
             location = params.get("location") or "desktop"
             if filename and "copy_file" in actions:
                 actions["copy_file"](filename, location)
-                return f"Copied {filename}"
-            return f"Couldn't copy — no filename extracted"
+                return ActionResult.ok(action, f"Copied {filename}", data={"filename": filename})
+            return ActionResult.fail(action, "No filename extracted")
 
         if action == "get_recent_files":
             if "get_recent_files" in actions:
                 actions["get_recent_files"]()
-                return "Showed recent files"
+                return ActionResult.ok(action, "Showed recent files")
 
         # ── Compound create + edit (from Gemini fallback) ────
         if action == "create_and_edit_file":
@@ -500,17 +595,16 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "") ->
                 if content and "edit_file" in actions:
                     actions["edit_file"](filename, content, location)
                     update_file_context(filename, action="edit_file")
-                    return f"Created {filename} and wrote content"
+                    return ActionResult.ok(action, f"Created {filename} and wrote content", data={"filename": filename})
                 elif not content:
-
-                    speak("What do you want me to write in it?")
+                    speak_result("What do you want me to write in it?")
                     content_response = stt_listen()
                     if content_response and content_response.strip():
                         actions["edit_file"](filename, content_response.strip(), location)
                         update_file_context(filename, action="edit_file")
-                        return f"Created {filename} and wrote content"
-                    return f"Created {filename} (no content specified)"
-            return "Couldn't create — no filename"
+                        return ActionResult.ok(action, f"Created {filename} and wrote content", data={"filename": filename})
+                    return ActionResult.ok("create_file", f"Created {filename} (no content)", data={"filename": filename})
+            return ActionResult.fail(action, "No filename")
 
         # ── Knowledge Base ───────────────────────────────────
         if action in ("save_note", "append_note", "search_vault", "read_note_vault"):
@@ -520,72 +614,70 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "") ->
                     title = params.get("title", params.get("target", ""))
                     content = params.get("content", text)
                     if not title:
-                        speak("What should I title this note?")
+                        speak_result("What should I title this note?")
                         title_res = stt_listen()
                         title = title_res.strip() if title_res else text[:20].strip()
                     res = agent.execute("save_note", {"title": title, "content": content})
-                    return res.result if res.success else f"Error: {res.error}"
+                    return ActionResult.from_agent_result(res)
 
                 elif action == "append_note":
                     res = agent.execute("append_note", params)
-                    return res.result if res.success else f"Error: {res.error}"
+                    return ActionResult.from_agent_result(res)
 
                 elif action == "search_vault":
                     query = params.get("query", extract_query(text) or "")
                     res = agent.execute("search_vault", {"query": query})
                     if res.success and res.data.get("matches"):
                         matches = res.data["matches"]
-                        speak(f"I found {len(matches)} notes. The first one is from {matches[0]['title']}.")
-                        return res.result
+                        msg = f"Found {len(matches)} notes. First one is from {matches[0]['title']}."
+                        return ActionResult.ok(action, res.result, data=res.data, user_message=msg)
                     else:
-                        speak("I couldn't find anything about that in my brain.")
-                        return res.result if res.success else f"Error: {res.error}"
+                        return ActionResult.ok(action, res.result if res.success else "",
+                                               user_message="Couldn't find anything about that in my brain.")
 
                 elif action == "read_note_vault":
                     res = agent.execute("read_note", {"title": params.get("title", "")})
-                    return res.result if res.success else f"Error: {res.error}"
-            return "Knowledge agent not available"
+                    return ActionResult.from_agent_result(res)
+            return ActionResult.fail(action, "Knowledge agent not available")
 
         # ── Music: play_song ─────────────────────────────────
         if action == "play_song":
             agent = _get_music_agent()
             if agent:
-                # Extract song name from query
                 song_query = params.get("query", "")
                 if not song_query:
-                	song_query = extract_query(text) or ""
+                    song_query = extract_query(text) or ""
                 result = agent.execute("play_song", {"query": song_query})
-                return result.result if result.success else f"Error: {result.error}"
-            return "Music agent not available"
+                return ActionResult.from_agent_result(result)
+            return ActionResult.fail(action, "Music agent not available")
 
         # ── Music: play_mood_music ───────────────────────────
         if action == "play_mood_music":
             agent = _get_music_agent()
             if agent:
                 result = agent.execute("play_mood_music", params)
-                return result.result if result.success else f"Error: {result.error}"
-            return "Music agent not available"
+                return ActionResult.from_agent_result(result)
+            return ActionResult.fail(action, "Music agent not available")
 
-        # ── Generic action ──────────────────────────────────
         # ── Conversational intents → Gemini for answer ─────────
         if action in ("answer_question", "general_chat"):
             try:
                 result = ask_gemini(text)
                 response_text = result.get("response", "I'm not sure about that.")
-                speak(response_text)
-                return f"Chat: {response_text[:50]}"
+                return ActionResult.ok(action, response_text, user_message=response_text)
             except Exception as e:
-                speak("I'd answer that but my brain is a bit slow right now.")
-                return f"Chat error: {e}"
+                return ActionResult.fail(action, str(e), user_message="My brain is a bit slow right now.")
 
+        # ── Generic action ──────────────────────────────────
         if action in actions:
             result = actions[action]()
-            return f"Executed {action}" + (f": {result}" if result else "")
+            summary = f"Executed {action}" + (f": {result}" if result else "")
+            return ActionResult.ok(action, summary)
 
-        return f"Unknown action: {action}"
+        return ActionResult.fail(action, f"Unknown action: {action}")
 
     except Exception as e:
-        return f"Error: {str(e)}"
+        return ActionResult.fail(action, str(e))
 
 
 def _handle_terminal_preroute(command: str, actions: dict, start_time: float) -> bool:
@@ -755,6 +847,33 @@ def route(command: str, actions: dict) -> bool:
                 params.update(fresh_params)
             print(f"🔗 Context resolved → '{cleaned}' keeping intent={intent.action} (conf={intent.confidence:.2f})")
 
+    # ── Step 4.5: Structured interpretation + live context ──
+    machine_context = _build_interpreter_context()
+    missing_params = get_missing_params(intent.action, params)
+    interpreted = interpret_command(
+        cleaned,
+        machine_context,
+        fast_action=intent.action,
+        fast_confidence=intent.confidence,
+        fast_target=_pick_interpreter_target(params),
+        fast_params=params,
+        ambiguities=[f"missing:{name}" for name in missing_params],
+    )
+    if interpreted.params:
+        params = dict(interpreted.params)
+    if interpreted.target and "target" not in params:
+        params["target"] = interpreted.target
+    if interpreted.action:
+        intent.action = interpreted.action
+    if interpreted.confidence:
+        intent.confidence = interpreted.confidence
+    if interpreted.source:
+        intent.source = interpreted.source
+    print(
+        f"🧠 Structured command: action={intent.action} "
+        f"target={interpreted.target or '-'} ambiguities={interpreted.ambiguities or []}"
+    )
+
     # ── Step 5: Confidence evaluation ────────────────────────
     conf_result = evaluate_confidence(
         action=intent.action,
@@ -796,61 +915,90 @@ def route(command: str, actions: dict) -> bool:
 
     # ── Step 6: Safety check ─────────────────────────────────
     safety = check_safety(intent.action, conf_result.score, has_ctx, word_count=len(cleaned.split()))
+    missing_params = get_missing_params(intent.action, params)
+    if missing_params and safety.decision in {SafetyDecision.EXECUTE, SafetyDecision.CONFIRM}:
+        safety = SafetyDecision(
+            SafetyDecision.CONTEXT_ASK,
+            f"Missing required params: {', '.join(missing_params)}",
+            intent.action,
+            conf_result.score,
+        )
     print(f"🛡️  Safety: {safety.decision} — {safety.reason}")
 
-    mood = get_current_mood().get("name", "casual")
     latency_ms = (time.time() - start_time) * 1000
 
     # ── DECISION: EXECUTE ────────────────────────────────────
+    # New flow: ack → execute → grounded result → log spoken text
     if safety.decision == SafetyDecision.EXECUTE:
-        response_text = get_instant_response(intent.action, mood)
-        completed = speak_instant(response_text)
+        # 1. Instant ack (Mac say, truly fast)
+        ack_text = get_ack(intent.action)
+        if ack_text:
+            completed = speak_ack(ack_text)
+            if not completed:
+                log_interaction(
+                    you_said=command, action_taken=intent.action,
+                    was_understood=True, intent_source=intent.source,
+                    confidence=intent.confidence, latency_ms=latency_ms,
+                    normalized_text=cleaned, spoken_text=ack_text,
+                )
+                return False
 
-        if not completed:
-            log_interaction(
-                you_said=command, action_taken=intent.action,
-                was_understood=True, intent_source=intent.source,
-                confidence=intent.confidence, latency_ms=latency_ms,
-                normalized_text=cleaned,
-            )
-            return False
-
+        # 2. Execute action → get structured result
+        before_state = _capture_perception_state()
         result = _execute_action(intent.action, params, actions, text=command)
-        print(f"✅ Result: {result}")
+        result = _verify_action_result(intent.action, params, result, before_state)
+        print(f"✅ Result: {result.summary if result.success else result.error}")
 
+        # 3. Generate grounded spoken text from result
+        spoken_text = get_result_text(result)
+
+        # 4. Speak the actual outcome (skip for actions where ack IS the result)
+        _SKIP_RESULT_SPEECH = {
+            "volume_up", "volume_down", "mute", "unmute",
+            "brightness_up", "brightness_down", "lock_screen",
+            "close_tab", "new_tab", "fullscreen", "mission_control",
+            "minimise_all", "show_desktop", "close_window",
+            "pause_music", "next_track", "previous_track",
+        }
+        if intent.action not in _SKIP_RESULT_SPEECH:
+            speak_result(spoken_text)
+
+        # 5. Update context
         update_context(
             action=intent.action,
             target=params.get("target", params.get("name", params.get("query", ""))),
-            result=result,
+            result=result.summary,
             command=cleaned,
         )
 
+        # 6. Log with actual spoken text
         latency_ms = (time.time() - start_time) * 1000
+        full_spoken = f"{ack_text} {spoken_text}".strip() if ack_text else spoken_text
         log_interaction(
             you_said=command, action_taken=intent.action,
             was_understood=True, intent_source=intent.source,
             confidence=intent.confidence, latency_ms=latency_ms,
             normalized_text=cleaned, params=params,
+            spoken_text=full_spoken,
         )
 
-        save_exchange(command, response_text)
+        save_exchange(command, full_spoken)
 
         # ── Reinforcement: track + boost successful action ───
         track_action(cleaned, intent.action, intent.confidence, params, intent.source)
-        if not result.startswith("Error"):
+        if result.success:
             boost_confidence(cleaned, intent.action)
 
         # ── Working Memory: record action ─────────────────────
         try:
             wm = get_working_memory()
-            is_success = not result.startswith("Error")
             wm.record_action(
                 action=intent.action,
                 params=params,
                 reason=f"User said '{command}'",
-                outcome="success" if is_success else "failed",
+                outcome="success" if result.success else "failed",
                 confidence=intent.confidence,
-                error=result if not is_success else "",
+                error=result.error if not result.success else "",
                 command=command,
                 intent_source=intent.source,
             )
@@ -864,53 +1012,62 @@ def route(command: str, actions: dict) -> bool:
         except Exception:
             pass
 
-        if should_enhance(intent.action, result):
+        # ── Background Gemini: gated, only for interesting successes ─
+        result_str = result.summary if result.success else f"Error: {result.error}"
+        if should_enhance(intent.action, result_str):
             generate_followup(
                 action=intent.action,
                 command=command,
-                action_result=result,
-                instant_response=response_text,
-                speak_func=speak,
-                use_elevenlabs=True,
+                action_result=result_str,
+                instant_response=ack_text or spoken_text,
+                speak_func=speak_result,
             )
 
         return True
 
     # ── DECISION: CONFIRM (destructive action) ───────────────
     elif safety.decision == SafetyDecision.CONFIRM:
-        prompt = get_confirmation_prompt(intent.action, mood)
+        # Use response_policy for confirmation prompt
+        prompt = get_confirmation(intent.action, params)
         confirmed = ask_voice_confirmation(prompt)
 
         if confirmed:
-            response_text = get_instant_response(intent.action, mood)
-            speak_instant(response_text)
+            ack_text = get_ack(intent.action)
+            if ack_text:
+                speak_ack(ack_text)
+
+            before_state = _capture_perception_state()
             result = _execute_action(intent.action, params, actions, text=cleaned)
-            print(f"✅ Confirmed & executed: {result}")
+            result = _verify_action_result(intent.action, params, result, before_state)
+            spoken_text = get_result_text(result)
+            speak_result(spoken_text)
+            print(f"✅ Confirmed & executed: {result.summary}")
 
             update_context(
                 action=intent.action,
                 target=params.get("target", params.get("name", "")),
-                result=result,
+                result=result.summary,
                 command=cleaned,
             )
 
             latency_ms = (time.time() - start_time) * 1000
+            full_spoken = f"{ack_text} {spoken_text}".strip() if ack_text else spoken_text
             log_interaction(
                 you_said=command, action_taken=intent.action,
                 was_understood=True, intent_source=intent.source,
                 confidence=intent.confidence, latency_ms=latency_ms,
                 normalized_text=cleaned, params=params,
+                spoken_text=full_spoken,
             )
-            save_exchange(command, response_text)
+            save_exchange(command, full_spoken)
 
-            # ── Working Memory: record confirmed action ───────
             try:
                 wm = get_working_memory()
                 wm.record_action(
                     action=intent.action,
                     params=params,
                     reason=f"User confirmed '{command}'",
-                    outcome="success",
+                    outcome="success" if result.success else "failed",
                     confidence=intent.confidence,
                     command=command,
                     intent_source=intent.source,
@@ -924,24 +1081,28 @@ def route(command: str, actions: dict) -> bool:
                 was_understood=True, intent_source=intent.source,
                 confidence=intent.confidence, latency_ms=latency_ms,
                 normalized_text=cleaned,
+                spoken_text="Alright, cancelled.",
             )
         return True
 
     # ── DECISION: CONTEXT_ASK ────────────────────────────────
+    # Smart clarification: context-aware, never generic
     elif safety.decision == SafetyDecision.CONTEXT_ASK:
-        speak("What do you mean by that? Can you be more specific?")
+        clarify_text = get_clarification(intent.action, params)
+        speak_result(clarify_text)
         log_interaction(
             you_said=command, action_taken="context_ask",
             was_understood=False, intent_source=intent.source,
             confidence=intent.confidence, latency_ms=latency_ms,
             normalized_text=cleaned,
+            spoken_text=clarify_text,
         )
         return True
 
     # ── DECISION: GEMINI FALLBACK ────────────────────────────
     elif safety.decision == SafetyDecision.GEMINI:
         print(f"🤖 Falling back to Gemini (confidence={intent.confidence:.2f})")
-        return _gemini_fallback(command, cleaned, actions, start_time, mood, params)
+        return _gemini_fallback(command, cleaned, actions, start_time, params)
 
     return True
 
@@ -964,7 +1125,7 @@ def _handle_compound_file(
     content  = params.get("content")
 
     if not filename:
-        speak("What do you want me to name the file?")
+        speak_result("What do you want me to name the file?")
         name_response = stt_listen()
         if name_response and name_response.strip():
             # Use param extractor to clean up user's response like "name it hello"
@@ -975,7 +1136,7 @@ def _handle_compound_file(
             else:
                 filename = name_response.strip().split()[-1]
         else:
-            speak("I didn't catch a name. Let's try again later.")
+            speak_result("I didn't catch a name. Let's try again later.")
             return True
 
     # Handle format if no extension
@@ -985,7 +1146,7 @@ def _handle_compound_file(
             filename = filename + detected_fmt
             print(f"📄 Auto-detected format: {detected_fmt}")
         else:
-            speak(f"What format should {filename} be? Like text, document, python?")
+            speak_result(f"What format should {filename} be? Like text, document, python?")
             fmt_response = stt_listen()
             if fmt_response:
                 ext = _resolve_format(fmt_response)
@@ -994,7 +1155,7 @@ def _handle_compound_file(
                 filename = filename + ".txt"
 
     # Step 1: Create the file
-    speak_instant("Creating and writing.")
+    speak_ack("Creating and writing.")
     if "create_file" in actions:
         actions["create_file"](filename, location)
         update_file_context(filename, action="create_file")
@@ -1002,7 +1163,7 @@ def _handle_compound_file(
 
     # Step 2: Write content (or ask for it)
     if not content:
-        speak("What do you want me to write in it?")
+        speak_result("What do you want me to write in it?")
         content_response = stt_listen()
         if content_response and content_response.strip():
             # Check if user is rejecting / correcting
@@ -1010,13 +1171,13 @@ def _handle_compound_file(
             rejection_words = {"no", "nothing", "never mind", "nevermind", "cancel",
                                "stop", "forget it", "don't", "not", "skip", "nope"}
             if any(w in response_lower for w in rejection_words):
-                speak("Alright, file created without content. Tell me if you need anything.")
+                speak_result("Alright, file created without content.")
                 track_action(normalized_command, "create_file", 1.0,
                            {"filename": filename}, "compound")
                 return True
             content = content_response.strip()
         else:
-            speak("I didn't catch that. You can tell me later.")
+            speak_result("I didn't catch that. You can tell me later.")
             track_action(normalized_command, "create_file", 1.0,
                        {"filename": filename}, "compound")
             latency_ms = (time.time() - start_time) * 1000
@@ -1025,6 +1186,7 @@ def _handle_compound_file(
                 was_understood=True, intent_source="compound",
                 confidence=1.0, latency_ms=latency_ms,
                 normalized_text=normalized_command,
+                spoken_text=f"Created {filename}.",
             )
             return True
 
@@ -1033,11 +1195,14 @@ def _handle_compound_file(
         update_file_context(filename, action="edit_file")
         print(f"✏️  Wrote to: {filename}")
 
-    result = f"Created {filename} and wrote content"
+    result_summary = f"Created {filename} and wrote content"
+    spoken_text = f"Created {filename} and wrote the content."
+    speak_result(spoken_text)
+
     update_context(
         action="create_and_edit_file",
         target=filename,
-        result=result,
+        result=result_summary,
         command=normalized_command,
     )
 
@@ -1052,17 +1217,17 @@ def _handle_compound_file(
         was_understood=True, intent_source="compound",
         confidence=1.0, latency_ms=latency_ms,
         normalized_text=normalized_command,
+        spoken_text=spoken_text,
     )
-    save_exchange(raw_command, f"Created {filename} and wrote content")
+    save_exchange(raw_command, spoken_text)
 
-    if should_enhance("create_file", result):
+    if should_enhance("create_file", result_summary):
         generate_followup(
             action="create_file",
             command=raw_command,
-            action_result=result,
+            action_result=result_summary,
             instant_response="Creating and writing.",
-            speak_func=speak,
-            use_elevenlabs=True,
+            speak_func=speak_result,
         )
 
     return True
@@ -1073,7 +1238,6 @@ def _gemini_fallback(
     normalized_command: str,
     actions: dict,
     start_time: float,
-    mood: str,
     fallback_params: dict | None = None,
 ) -> bool:
     """
@@ -1088,13 +1252,14 @@ def _gemini_fallback(
 
     # ── Chat response (no action) ────────────────────────────
     if result["type"] == "chat":
-        completed = speak(response_text)
+        completed = speak_chat(response_text)
         latency_ms = (time.time() - start_time) * 1000
         log_interaction(
             you_said=raw_command, action_taken="chat_response",
             was_understood=True, sent_to_gemini=True,
             gemini_response=response_text, intent_source="gemini",
             latency_ms=latency_ms, normalized_text=normalized_command,
+            spoken_text=response_text,
         )
         return completed
 
@@ -1102,18 +1267,19 @@ def _gemini_fallback(
     if result["type"] == "action" and action:
 
         if action == "answer_question":
-            completed = speak(response_text)
+            completed = speak_chat(response_text)
             latency_ms = (time.time() - start_time) * 1000
             log_interaction(
                 you_said=raw_command, action_taken="answer_question",
                 was_understood=True, sent_to_gemini=True,
                 gemini_response=response_text, intent_source="gemini",
                 latency_ms=latency_ms, normalized_text=normalized_command,
+                spoken_text=response_text,
             )
             return completed
 
         if action in DESTRUCTIVE_ACTIONS:
-            prompt = get_confirmation_prompt(action, mood)
+            prompt = get_confirmation(action, fallback_params)
             confirmed = ask_voice_confirmation(prompt)
             if not confirmed:
                 latency_ms = (time.time() - start_time) * 1000
@@ -1122,21 +1288,37 @@ def _gemini_fallback(
                     was_understood=True, sent_to_gemini=True,
                     intent_source="gemini", latency_ms=latency_ms,
                     normalized_text=normalized_command,
+                    spoken_text="Alright, cancelled.",
                 )
                 return True
 
-        instant_response = get_instant_response(action, mood)
-        speak_instant(instant_response)
+        # 1. Ack via response_policy (not Gemini wording)
+        ack_text = get_ack(action)
+        if ack_text:
+            speak_ack(ack_text)
 
+        # 2. Execute
         params = _merge_gemini_params(result, fallback_params)
-
+        before_state = _capture_perception_state()
         exec_result = _execute_action(action, params, actions, text=raw_command)
-        print(f"✅ Gemini action result: {exec_result}")
+        exec_result = _verify_action_result(action, params, exec_result, before_state)
+        print(f"✅ Gemini action result: {exec_result.summary if exec_result.success else exec_result.error}")
+
+        # 3. Grounded result
+        spoken_text = get_result_text(exec_result)
+        _SKIP_RESULT_SPEECH = {
+            "volume_up", "volume_down", "mute", "unmute",
+            "brightness_up", "brightness_down", "lock_screen",
+            "close_tab", "new_tab", "fullscreen", "mission_control",
+            "minimise_all", "show_desktop", "close_window",
+        }
+        if action not in _SKIP_RESULT_SPEECH:
+            speak_result(spoken_text)
 
         update_context(
             action=action,
             target=params.get("target", params.get("name", params.get("filename", params.get("query", "")))),
-            result=exec_result,
+            result=exec_result.summary,
             command=normalized_command,
         )
 
@@ -1150,14 +1332,16 @@ def _gemini_fallback(
             )
 
         latency_ms = (time.time() - start_time) * 1000
+        full_spoken = f"{ack_text} {spoken_text}".strip() if ack_text else spoken_text
         log_interaction(
             you_said=raw_command, action_taken=action,
             was_understood=True, sent_to_gemini=True,
             gemini_response=response_text, intent_source="gemini",
             latency_ms=latency_ms, normalized_text=normalized_command,
             params=params,
+            spoken_text=full_spoken,
         )
-        save_exchange(raw_command, response_text)
+        save_exchange(raw_command, full_spoken)
 
         # ── Working Memory: record Gemini action ──────────────
         try:
@@ -1166,7 +1350,7 @@ def _gemini_fallback(
                 action=action,
                 params=params,
                 reason=f"Gemini resolved '{raw_command}'",
-                outcome="success",
+                outcome="success" if exec_result.success else "failed",
                 confidence=1.0,
                 command=raw_command,
                 intent_source="gemini",
@@ -1183,12 +1367,14 @@ def _gemini_fallback(
 
         return True
 
-    speak("I understood but can't do that yet.")
+    fallback_msg = "I understood but can't do that yet."
+    speak_result(fallback_msg)
     latency_ms = (time.time() - start_time) * 1000
     log_interaction(
         you_said=raw_command, action_taken="unknown",
         was_understood=False, sent_to_gemini=True,
         gemini_response=str(result), intent_source="gemini",
         latency_ms=latency_ms, normalized_text=normalized_command,
+        spoken_text=fallback_msg,
     )
     return True

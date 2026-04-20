@@ -57,7 +57,6 @@ except Exception:
     pass
 # ─────────────────────────────────────────────────────────────
 
-from google import genai
 import warnings
 os.environ["TORCHCODEC_DISABLE_LOAD"] = "1"
 # Ensure homebrew binaries (ffmpeg, etc.) are in PATH (Mac only)
@@ -75,12 +74,13 @@ from core.memory import clear_conversation
 from core.agent import run_agent
 import core.agent as agent_module
 
-import dotenv
+try:
+    import dotenv
+except ImportError:
+    dotenv = None
 
-
-dotenv.load_dotenv()
-
-client = genai.Client(api_key=os.getenv("API_KEY"))
+if dotenv is not None:
+    dotenv.load_dotenv()
 
 try:
     import pkg_resources
@@ -94,149 +94,16 @@ except ImportError:
     sys.modules['pkg_resources'] = _MockPkgResources()
 
 # ── Core modules ─────────────────────────────────────────────
-from core.listener import start_listener
 from core.speech_to_text import listen
 from core.intent_router import route
 
-# ── Control modules (platform-aware via control/__init__.py) ─
-from control import (
-    open_vscode, open_safari, open_terminal, open_any_app,
-    search_google, tell_time, tell_date,
-    lock_screen, shutdown_pc, restart_pc, sleep_mac,
-    morning_briefing, tell_weather,
-    open_folder, create_folder, search_file,
-    read_emails, search_emails, send_email, open_gmail,
-    summarise_latest_pdf,
-    volume_up, volume_down, mute, unmute, get_volume,
-    brightness_up, brightness_down, take_screenshot,
-    minimise_all, minimise_app, show_desktop, close_window,
-    get_battery, start_work_day, end_work_day,
-    close_app, switch_to_app, fullscreen, mission_control,
-    close_tab, new_tab,
-    read_file, create_file, delete_file,
-    rename_file, get_recent_files, copy_file, edit_file,
-)
-from core.daily_greeting import read_news
-
-# ── Action map ───────────────────────────────────────────────
-ACTIONS = {
-    # Apps
-    "open_vscode":       open_vscode,
-    "open_safari":       open_safari,
-    "open_terminal":     open_terminal,
-
-    # Web
-    "search_google":     search_google,
-
-    # Time
-    "tell_time":         tell_time,
-    "tell_date":         tell_date,
-
-    # System
-    "lock_screen":       lock_screen,
-    "shutdown_pc":       shutdown_pc,
-    "restart_pc":        restart_pc,
-    "sleep_mac":         sleep_mac,
-
-    # Info
-    "morning_briefing":  morning_briefing,
-    "tell_weather":      tell_weather,
-    "read_news":         read_news,
-
-    # Folders
-    "open_folder":       open_folder,
-    "create_folder":     create_folder,
-    "search_file":       search_file,
-
-    # Email
-    "read_emails":       read_emails,
-    "search_emails":     search_emails,
-    "send_email":        send_email,
-    "open_gmail":        open_gmail,
-
-    # PDF
-    "summarise_pdf":     summarise_latest_pdf,
-
-    # Volume
-    "volume_up":         volume_up,
-    "volume_down":       volume_down,
-    "mute":              mute,
-    "unmute":            unmute,
-    "get_volume":        get_volume,
-
-    # Brightness
-    "brightness_up":     brightness_up,
-    "brightness_down":   brightness_down,
-
-    # Screenshot
-    "take_screenshot":   take_screenshot,
-
-    # Windows
-    "minimise_all":      minimise_all,
-    "minimise_app":      minimise_app,
-    "show_desktop":      show_desktop,
-    "close_window":      close_window,
-    "close_tab":         close_tab,
-    "new_tab":           new_tab,
-    "fullscreen":        fullscreen,
-    "mission_control":   mission_control,
-
-    # App control
-    "close_app":         close_app,
-    "switch_to_app":     switch_to_app,
-
-    # Battery
-    "get_battery":       get_battery,
-
-    # Routines
-    "start_work_day":    start_work_day,
-    "end_work_day":      end_work_day,
-    
-    "read_file":       read_file,
-    "create_file":     create_file,
-    "edit_file":       edit_file,
-    "delete_file":     delete_file,
-    "rename_file":     rename_file,
-    "get_recent_files": get_recent_files,
-    "copy_file":       copy_file,
-}
-
-# ── Playwright browser (DOM automation) ─────────────────────
-try:
-    from control.playwright_browser import (
-        action_web_back,
-        action_web_close_tab,
-        action_web_new_tab,
-        action_web_refresh,
-    )
-
-    ACTIONS["web_back"] = action_web_back
-    ACTIONS["web_refresh"] = action_web_refresh
-    ACTIONS["web_new_tab"] = action_web_new_tab
-    ACTIONS["web_close_tab"] = action_web_close_tab
-except ImportError as e:
-    print(f"⚠️  Playwright not available — install: pip install playwright && playwright install chromium ({e})")
-
-# ── Add Windows-specific terminal actions ─────────────────────
-import sys as _sys_check
-if _sys_check.platform == "win32":
-    from control import open_cmd, open_powershell, open_windows_terminal
-    ACTIONS["open_cmd"]              = open_cmd
-    ACTIONS["open_powershell"]       = open_powershell
-    ACTIONS["open_windows_terminal"] = open_windows_terminal
+ACTIONS = {}
 
 
 # Correction handling now uses reinforcement learning
 from core.reinforcement import is_correction, handle_correction, track_action
 
 # ── Multi-Agent System ───────────────────────────────────────
-from core.agents.filesystem_agent import FileSystemAgent
-from core.agents.system_agent import SystemControlAgent
-from core.agents.manager_agent import ManagerAgent
-from core.agents.music_agent import MusicAgent
-from core.agents.companion_agent import CompanionAgent
-from core.agents.research_agent import ResearchAgent
-
 # Triggers that indicate multi-step / complex commands → ManagerAgent
 AGENT_TRIGGERS = [
     "search for", "look for", "check if",
@@ -251,6 +118,110 @@ AGENT_TRIGGERS = [
 _manager_agent = None
 
 
+def _initialize_actions():
+    """Load control layer lazily so importing main doesn't require full runtime deps."""
+    global ACTIONS
+
+    try:
+        from control import (
+            open_vscode, open_safari, open_terminal,
+            search_google, tell_time, tell_date,
+            lock_screen, shutdown_pc, restart_pc, sleep_mac,
+            morning_briefing, tell_weather,
+            open_folder, create_folder, search_file,
+            read_emails, search_emails, send_email, open_gmail,
+            summarise_latest_pdf,
+            volume_up, volume_down, mute, unmute, get_volume,
+            brightness_up, brightness_down, take_screenshot,
+            minimise_all, minimise_app, show_desktop, close_window,
+            get_battery, start_work_day, end_work_day,
+            close_app, switch_to_app, fullscreen, mission_control,
+            close_tab, new_tab,
+            read_file, create_file, delete_file,
+            rename_file, get_recent_files, copy_file, edit_file,
+        )
+        from core.daily_greeting import read_news
+    except ImportError as e:
+        print(f"⚠️  Control layer unavailable: {e}")
+        print("Install project dependencies first with: pip install -r requirements.txt")
+        return False
+
+    ACTIONS = {
+        "open_vscode": open_vscode,
+        "open_safari": open_safari,
+        "open_terminal": open_terminal,
+        "search_google": search_google,
+        "tell_time": tell_time,
+        "tell_date": tell_date,
+        "lock_screen": lock_screen,
+        "shutdown_pc": shutdown_pc,
+        "restart_pc": restart_pc,
+        "sleep_mac": sleep_mac,
+        "morning_briefing": morning_briefing,
+        "tell_weather": tell_weather,
+        "read_news": read_news,
+        "open_folder": open_folder,
+        "create_folder": create_folder,
+        "search_file": search_file,
+        "read_emails": read_emails,
+        "search_emails": search_emails,
+        "send_email": send_email,
+        "open_gmail": open_gmail,
+        "summarise_pdf": summarise_latest_pdf,
+        "volume_up": volume_up,
+        "volume_down": volume_down,
+        "mute": mute,
+        "unmute": unmute,
+        "get_volume": get_volume,
+        "brightness_up": brightness_up,
+        "brightness_down": brightness_down,
+        "take_screenshot": take_screenshot,
+        "minimise_all": minimise_all,
+        "minimise_app": minimise_app,
+        "show_desktop": show_desktop,
+        "close_window": close_window,
+        "close_tab": close_tab,
+        "new_tab": new_tab,
+        "fullscreen": fullscreen,
+        "mission_control": mission_control,
+        "close_app": close_app,
+        "switch_to_app": switch_to_app,
+        "get_battery": get_battery,
+        "start_work_day": start_work_day,
+        "end_work_day": end_work_day,
+        "read_file": read_file,
+        "create_file": create_file,
+        "edit_file": edit_file,
+        "delete_file": delete_file,
+        "rename_file": rename_file,
+        "get_recent_files": get_recent_files,
+        "copy_file": copy_file,
+    }
+
+    try:
+        from control.playwright_browser import (
+            action_web_back,
+            action_web_close_tab,
+            action_web_new_tab,
+            action_web_refresh,
+        )
+
+        ACTIONS["web_back"] = action_web_back
+        ACTIONS["web_refresh"] = action_web_refresh
+        ACTIONS["web_new_tab"] = action_web_new_tab
+        ACTIONS["web_close_tab"] = action_web_close_tab
+    except ImportError as e:
+        print(f"⚠️  Playwright not available — install: pip install playwright && playwright install chromium ({e})")
+
+    if sys.platform == "win32":
+        from control import open_cmd, open_powershell, open_windows_terminal
+        ACTIONS["open_cmd"] = open_cmd
+        ACTIONS["open_powershell"] = open_powershell
+        ACTIONS["open_windows_terminal"] = open_windows_terminal
+
+    return True
+
+
 def _initialize_fast_engine():
     """
     Initialize the fast intent engine on startup.
@@ -263,12 +234,20 @@ def _initialize_fast_engine():
 
     # Load learned examples and inject into intent engine
     learned = get_learned_examples()
-    initialize(learned)
+    try:
+        initialize(learned)
+    except ModuleNotFoundError as e:
+        if e.name == "sentence_transformers":
+            print("⚠️  Fast intent engine unavailable: sentence_transformers is not installed.")
+            print("Install project dependencies first with: pip install -r requirements.txt")
+            return False
+        raise
 
     stats = get_stats()
     if stats.get("total", 0) > 0:
         print(f"📚 Loaded {stats['total']} learned intents ({stats.get('unique_actions', 0)} unique actions)")
     print("✅ Fast intent engine ready\n")
+    return True
 
 
 def _initialize_agents():
@@ -279,6 +258,13 @@ def _initialize_agents():
     global _manager_agent
 
     print("🤖 Initializing multi-agent system...")
+
+    from core.agents.filesystem_agent import FileSystemAgent
+    from core.agents.system_agent import SystemControlAgent
+    from core.agents.manager_agent import ManagerAgent
+    from core.agents.music_agent import MusicAgent
+    from core.agents.companion_agent import CompanionAgent
+    from core.agents.research_agent import ResearchAgent
 
     # Create specialized agents with access to their relevant actions
     # Create specialized agents with access to their relevant actions
@@ -372,8 +358,12 @@ def main():
     print("  JARVIS STARTING UP")
     print("=" * 50)
 
+    if not _initialize_actions():
+        return
+
     # Initialize the fast intent engine (loads model + embeddings)
-    _initialize_fast_engine()
+    if not _initialize_fast_engine():
+        return
 
     # Pre-warm Whisper so it never loads mid-command
     from core.speech_to_text import preload_whisper
@@ -495,6 +485,13 @@ def main():
         print(f"Warning: Retrospective skipped: {e}")
 
     print("\nSay the wake word to activate Jarvis...\n")
+
+    try:
+        from core.listener import start_listener
+    except ImportError as e:
+        print(f"⚠️  Wake-word listener unavailable: {e}")
+        print("Install the missing audio/wake-word dependencies to run hotword mode.")
+        return
 
     try:
         while True:

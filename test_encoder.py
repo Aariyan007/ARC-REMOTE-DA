@@ -6,7 +6,14 @@ sys.path.insert(0, os.path.abspath('.'))
 from core.fast_intent import initialize, classify
 
 print('Initializing intent engine with cross-encoder...')
-initialize()
+try:
+    initialize()
+except ModuleNotFoundError as e:
+    if e.name == "sentence_transformers":
+        print("\nMissing dependency: sentence_transformers")
+        print("Install project dependencies first with: pip install -r requirements.txt")
+        raise SystemExit(1)
+    raise
 
 print('\n--- CRITICAL TESTS ---')
 tests = [

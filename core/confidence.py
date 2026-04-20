@@ -53,6 +53,7 @@ PARAM_REQUIREMENTS = {
     "close_app":       ["target"],
     "switch_to_app":   ["target"],
     "search_google":   ["query"],
+    "open_url":        ["url"],
     "open_folder":     ["target"],
     "create_folder":   ["target"],
     "search_file":     ["query"],

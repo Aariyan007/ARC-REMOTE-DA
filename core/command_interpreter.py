@@ -191,6 +191,9 @@ def interpret_command(
     *,
     fast_action: Optional[str] = None,
     fast_confidence: float = 0.0,
+    fast_target: Optional[str] = None,
+    fast_params: Optional[dict[str, Any]] = None,
+    ambiguities: Optional[list[str]] = None,
     use_llm: bool = False,
 ) -> InterpretedCommand:
     """
@@ -203,6 +206,9 @@ def interpret_command(
             fast_action,
             fast_confidence,
             source="fast_intent",
+            target=fast_target,
+            params=fast_params,
+            ambiguities=ambiguities,
         )
     return InterpretedCommand(
         action="unknown",

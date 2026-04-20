@@ -1,8 +1,11 @@
 import json
 import os
 from datetime import datetime
-from google import genai
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    def load_dotenv():
+        return None
 
 load_dotenv()
 
@@ -14,8 +17,18 @@ MODEL          = "gemini-3.1-flash-lite-preview"
 MAX_STEPS      = 5   # max actions before giving up
 # ─────────────────────────────────────────────────────────────
 
-client = genai.Client(api_key=GEMINI_API_KEY)
 LAST_AGENT_RESULT = {}
+
+
+def _get_client():
+    """Create the Gemini client lazily so startup doesn't require the SDK."""
+    if not GEMINI_API_KEY:
+        return None
+    try:
+        from google import genai
+    except ImportError:
+        return None
+    return genai.Client(api_key=GEMINI_API_KEY)
 
 # ── Available Tools Description ──────────────────────────────
 TOOLS_DESCRIPTION = """
@@ -374,6 +387,10 @@ def run_agent(command: str, actions: dict) -> None:
 
     for step in range(MAX_STEPS):
         print(f"\n── Step {step + 1} ──────────────────")
+        client = _get_client()
+        if client is None:
+            speak("My agent model isn't available right now.")
+            return
 
         # Build prompt
         prompt = _build_agent_prompt(
