@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-19",
+  "generated": "2026-04-20",
   "patches": [
     {
       "action": "take_screenshot",
@@ -31,6 +31,16 @@
       "source": "retrospective",
       "from_command": "what all conversations did we have till now",
       "was_misrouted_as": "morning_briefing"
+    },
+    {
+      "action": "create_file",
+      "add_examples": [
+        "i want to create a file dude",
+        "i want to create a file"
+      ],
+      "source": "retrospective",
+      "from_command": "i want to create a file dude",
+      "was_misrouted_as": "create_file"
     }
   ],
   "negative_examples": [
@@ -108,6 +118,11 @@
       "action": "morning_briefing",
       "text": "what all conversations did we have till now",
       "correct_action": "search_vault"
+    },
+    {
+      "action": "create_file",
+      "text": "i want to create a file dude",
+      "correct_action": "create_file"
     }
   ]
 }

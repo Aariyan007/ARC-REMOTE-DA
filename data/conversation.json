@@ -1,10 +1,5 @@
 [
   {
-    "timestamp": "2026-04-19 00:31:50",
-    "you": "top slot",
-    "jarvis": "What are you even talking about, Aariyan? Go get some sleep."
-  },
-  {
     "timestamp": "2026-04-19 00:32:41",
     "you": "make this anti-gravity",
     "jarvis": "I'm an AI, Aariyan, not a physicist. Maybe try drinking less coffee instead?"
@@ -98,5 +93,10 @@
     "timestamp": "2026-04-19 23:40:13",
     "you": "what all conversation did we have till now",
     "jarvis": ""
+  },
+  {
+    "timestamp": "2026-04-20 20:13:41",
+    "you": "i was planning on searching you know what is the website",
+    "jarvis": "Unless you mean searching for a personality, I'm pretty sure you just forgot what you were doing. Need me to open your browser so you can keep procrastinating?"
   }
 ]
