@@ -212,19 +212,30 @@ def build_single_slot_question(
     action: str,
     params: dict,
     missing_params: list,
+    grounding_context: dict | None = None,
 ) -> Tuple[Optional[str], Optional[str]]:
     """
     Build a single focused clarification question for the most critical
     missing parameter.
 
+    Args:
+        action:            The action to ask about
+        params:            Already-known params
+        missing_params:    List of param names that are missing
+        grounding_context: Optional dict with keys like 'parent_target',
+                           'parent_action' from a prior step in a task chain.
+                           Used to generate grounded questions like
+                           "What should I name the file inside my_projects?"
+
     Returns:
-        (question_text, param_name) — the question to ask and which param it fills.
+        (question_text, param_name) -- the question to ask and which param it fills.
         (None, None) if nothing is missing.
 
     This is the Phase 1 "one-question clarification policy":
     - Ask only the smallest next question
     - Never ask generic "what do you mean?"
     - Always ask about the most critical missing slot first
+    - When grounding_context is present, reference the prior result
     """
     param_name = get_most_critical_missing(action, params, missing_params)
     if param_name is None:
@@ -234,11 +245,29 @@ def build_single_slot_question(
     templates = CLARIFICATION_TEMPLATES.get(action, {})
     question = templates.get(param_name)
 
+    # If we have grounding context from a prior step, make the question
+    # reference it so the user knows what ARC is talking about.
+    if grounding_context and question:
+        parent_target = grounding_context.get("parent_target", "")
+        parent_action = grounding_context.get("parent_action", "")
+        if parent_target:
+            # Map parent action to a readable location descriptor
+            _LOCATION_WORDS = {
+                "create_folder": "inside",
+                "open_folder":   "in",
+                "create_file":   "for",
+            }
+            location_word = _LOCATION_WORDS.get(parent_action, "in")
+            question = f"{question.rstrip('?')} {location_word} {parent_target}?"
+
     if question:
         return question, param_name
 
     # Fallback: generate from param name (still specific, never generic)
     param_readable = param_name.replace("_", " ")
+    parent_target = (grounding_context or {}).get("parent_target", "")
+    if parent_target:
+        return f"What {param_readable} should I use for {parent_target}?", param_name
     return f"What {param_readable} should I use?", param_name
 
 

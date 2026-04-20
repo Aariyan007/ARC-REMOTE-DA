@@ -542,6 +542,107 @@ test("Follow-up data was on the pending", pending_compound.follow_up_action == "
 
 
 # ═════════════════════════════════════════════════════════════
+#  13. GROUNDED FOLLOW-UP CONTINUITY
+# ═════════════════════════════════════════════════════════════
+print("\n" + "=" * 60)
+print("  13. GROUNDED FOLLOW-UP CONTINUITY")
+print("=" * 60)
+
+# Simulate the exact flow the router does after step 1 completes:
+# User said: "make a folder, I want to write something in it"
+# Step 1: create_folder → ARC asks "What should I name the folder?"
+# User answers: "my_projects"
+# Step 1 executes. Now chain to step 2.
+# The chaining code should:
+#   1. Inject "my_projects" into follow_up_params as location
+#   2. Build a grounded question: "What should I write inside my_projects?"
+
+from core.response_policy import get_missing_params as gmp
+
+# Simulate step-1 answer
+step1_answer = "my_projects"
+step1_action = "create_folder"
+follow_action = "edit_file"
+follow_params_original = {"content": "something"}
+
+# Injection logic (mirrors the router)
+_STEP1_TO_FOLLOW_PARAM = {
+    "create_folder": "location",
+    "open_folder": "location",
+    "create_file": "filename",
+    "rename_file": "filename",
+}
+follow_params = dict(follow_params_original)
+inject_key = _STEP1_TO_FOLLOW_PARAM.get(step1_action)
+if inject_key:
+    follow_params[inject_key] = step1_answer
+    if "target" not in follow_params:
+        follow_params["target"] = step1_answer
+
+test("Step-1 target injected as 'location'",
+     follow_params.get("location") == "my_projects",
+     f"got: {follow_params}")
+test("Step-1 target also set as 'target'",
+     follow_params.get("target") == "my_projects",
+     f"got: {follow_params}")
+test("Original follow_up content preserved",
+     follow_params.get("content") == "something",
+     f"got: {follow_params}")
+
+# Build a grounded question
+follow_missing = gmp(follow_action, follow_params)
+grounding_ctx = {
+    "parent_target": step1_answer,
+    "parent_action": step1_action,
+}
+fq, fp = build_single_slot_question(
+    follow_action, follow_params, follow_missing,
+    grounding_context=grounding_ctx,
+)
+test("Grounded question references folder name",
+     "my_projects" in (fq or ""),
+     f"got question: '{fq}'")
+test("Grounded question is NOT the generic version",
+     fq is not None and fq != "Which file should I edit?",
+     f"got: '{fq}'")
+if fq:
+    test("Question contains location word 'inside'",
+         "inside" in fq.lower(),
+         f"got: '{fq}'")
+
+# Also test the grounding for create_file → edit_file chain
+step1_action2 = "create_file"
+follow_params2 = {"content": "hello"}
+inject_key2 = _STEP1_TO_FOLLOW_PARAM.get(step1_action2)
+if inject_key2:
+    follow_params2[inject_key2] = "notes.txt"
+test("create_file injects 'filename'",
+     follow_params2.get("filename") == "notes.txt",
+     f"got: {follow_params2}")
+
+grounding_ctx2 = {"parent_target": "notes.txt", "parent_action": "create_file"}
+fq2, fp2 = build_single_slot_question(
+    "edit_file", follow_params2, gmp("edit_file", follow_params2),
+    grounding_context=grounding_ctx2,
+)
+if fq2:
+    test("create_file chain question references notes.txt",
+         "notes.txt" in fq2,
+         f"got: '{fq2}'")
+
+# Verify router source has the injection logic
+test("Router has _STEP1_TO_FOLLOW_PARAM",
+     "_STEP1_TO_FOLLOW_PARAM" in route_source,
+     "_STEP1_TO_FOLLOW_PARAM not found in route()")
+test("Router has step1_target injection",
+     "step1_target" in route_source,
+     "step1_target not found in route()")
+test("Router passes grounding_context to build_single_slot_question",
+     "grounding_context=grounding_ctx" in route_source,
+     "grounding_context not passed")
+
+
+# ═════════════════════════════════════════════════════════════
 #  SUMMARY
 # ═════════════════════════════════════════════════════════════
 print("\n" + "=" * 60)

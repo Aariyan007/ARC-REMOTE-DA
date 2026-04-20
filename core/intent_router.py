@@ -878,6 +878,57 @@ def route(command: str, actions: dict) -> bool:
                         command=resumed.get("original_command", command),
                     )
 
+                    # Phase 1 fix: Check for follow-up action and ground it
+                    # with the result from step 1.
+                    if pending.follow_up_action:
+                        print(f"🔗 Chaining to follow-up: {pending.follow_up_action}")
+                        from core.ambiguity_resolver import build_single_slot_question
+                        from core.response_policy import get_missing_params as get_mp
+
+                        # ── Inject step-1 result into follow-up params ──
+                        # The user's answer (command) is the concrete target
+                        # produced by step 1 (e.g., folder name, filename).
+                        step1_target = command.strip()
+                        follow_params = dict(pending.follow_up_params or {})
+
+                        # Map step-1 action → which param to inject into step 2
+                        _STEP1_TO_FOLLOW_PARAM = {
+                            "create_folder": "location",
+                            "open_folder":   "location",
+                            "create_file":   "filename",
+                            "rename_file":   "filename",
+                        }
+                        inject_key = _STEP1_TO_FOLLOW_PARAM.get(action)
+                        if inject_key and step1_target:
+                            follow_params[inject_key] = step1_target
+                            # Also set target so grounding is consistent
+                            if "target" not in follow_params:
+                                follow_params["target"] = step1_target
+
+                        follow_missing = get_mp(pending.follow_up_action, follow_params)
+                        if follow_missing:
+                            # Build a grounded question referencing step 1
+                            grounding_ctx = {
+                                "parent_target": step1_target,
+                                "parent_action": action,
+                            }
+                            fq, fp = build_single_slot_question(
+                                pending.follow_up_action, follow_params,
+                                follow_missing, grounding_context=grounding_ctx,
+                            )
+                            if fq and fp:
+                                set_pending(PendingTask(
+                                    action=pending.follow_up_action,
+                                    known_params=follow_params,
+                                    missing_param=fp,
+                                    question_asked=fq,
+                                    original_command=resumed.get("original_command", command),
+                                    normalized_command=command,
+                                    intent_source=resumed.get("intent_source", "pending"),
+                                    confidence=resumed.get("confidence", 0.8),
+                                ))
+                                speak_result(fq)
+
                     try:
                         wm = get_working_memory()
                         wm.record_action(
@@ -905,29 +956,7 @@ def route(command: str, actions: dict) -> bool:
                         spoken_text=full_spoken,
                     )
                     save_exchange(command, full_spoken)
-
-                    # Phase 1 fix [P2]: Check for follow-up action
-                    if pending.follow_up_action:
-                        print(f"🔗 Chaining to follow-up: {pending.follow_up_action}")
-                        from core.ambiguity_resolver import build_single_slot_question
-                        from core.response_policy import get_missing_params as get_mp
-                        follow_missing = get_mp(pending.follow_up_action, pending.follow_up_params or {})
-                        if follow_missing:
-                            fq, fp = build_single_slot_question(
-                                pending.follow_up_action, pending.follow_up_params or {}, follow_missing
-                            )
-                            if fq and fp:
-                                set_pending(PendingTask(
-                                    action=pending.follow_up_action,
-                                    known_params=dict(pending.follow_up_params or {}),
-                                    missing_param=fp,
-                                    question_asked=fq,
-                                    original_command=resumed.get("original_command", command),
-                                    normalized_command=command,
-                                    intent_source=resumed.get("intent_source", "pending"),
-                                    confidence=resumed.get("confidence", 0.8),
-                                ))
-                                speak_result(fq)
+                    save_exchange(command, full_spoken)
 
                     return True
 
