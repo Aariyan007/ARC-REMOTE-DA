@@ -1,6 +1,6 @@
-torch==2.9.0
-torchaudio==2.9.0
-torchvision==0.18.0
+torch
+torchaudio
+torchvision
 speechbrain==0.5.16
 numpy
 scipy

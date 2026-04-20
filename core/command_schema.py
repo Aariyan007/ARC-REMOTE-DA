@@ -63,6 +63,7 @@ class InterpretedCommand:
     ambiguities: list[str] = field(default_factory=list)
     natural_response: Optional[str] = None
     source: str = "unknown"  # e.g. fast_intent | llm_structured | learned
+    target_type: Optional[str] = None  # Phase 1: app|file|folder|website|browser_search|tab|email|note|unknown
 
     def to_json(self) -> str:
         payload = asdict(self)

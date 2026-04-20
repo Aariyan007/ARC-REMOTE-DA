@@ -14,6 +14,108 @@ from typing import Any, List, Optional
 from core.command_schema import InterpretedCommand, MachineContext, RequiredState
 from core.perception_engine import PerceptionState
 
+# ── Phase 1: Target-Type Inference ───────────────────────────
+# Classifies what the user is referring to so the pipeline doesn't
+# misroute (e.g., "youtube" as app vs. browser search).
+
+# Known app names for target-type inference
+_APP_NAMES = {
+    "vscode", "chrome", "safari", "firefox", "terminal", "finder",
+    "spotify", "slack", "discord", "zoom", "notes", "music",
+    "edge", "brave", "sublime", "pycharm", "intellij", "xcode",
+    "cmd", "powershell", "word", "excel", "powerpoint",
+}
+
+# Website patterns — if these appear, the target is a website/browser action
+_WEBSITE_PATTERNS = [
+    r'\b(?:youtube|google|reddit|twitter|facebook|instagram|github|stackoverflow)\b',
+    r'\bhttps?://',
+    r'\b\w+\.(?:com|org|net|io|dev|co|app)\b',
+]
+
+# Keywords that indicate different target types
+_TARGET_TYPE_SIGNALS = {
+    "file": ["file", "document", "pdf", "txt", "docx", "csv", "json", "script", "readme"],
+    "folder": ["folder", "directory", "downloads", "desktop", "documents"],
+    "email": ["email", "mail", "inbox", "send to", "compose"],
+    "tab": ["tab", "browser tab", "this tab", "that tab", "current tab"],
+    "note": ["note", "vault", "obsidian", "brain", "remember"],
+    "website": ["website", "webpage", "web page", "site", "url", "browse to"],
+    "browser_search": ["search for", "look up", "google", "find online", "search online"],
+}
+
+# Verb+context patterns that override simple name matching
+_VIDEO_WATCH_PATTERNS = [
+    r'\bwatch\b.*\byoutube\b',
+    r'\byoutube\b.*\bvideo\b',
+    r'\bwatch\b.*\bvideo\b',
+    r'\bstream\b',
+    r'\bplay\b.*\bon\s+(?:youtube|twitch|netflix)\b',
+]
+
+
+def infer_target_type(text: str, action: str = "") -> str:
+    """
+    Infer what kind of target the user is referring to.
+
+    Returns one of: app, file, folder, website, browser_search, tab, email, note, unknown
+
+    Examples:
+        "open chrome"                    → app
+        "create a file called notes"     → file
+        "watch videos on youtube"        → website (not app!)
+        "search for python tutorials"    → browser_search
+        "send this to john"              → email
+        "that tab"                       → tab
+    """
+    text_lower = text.lower()
+
+    # 1. Check video/watch patterns first — these override app detection
+    for pattern in _VIDEO_WATCH_PATTERNS:
+        if re.search(pattern, text_lower):
+            return "website"
+
+    # 2. Action-based inference (if we already know the action)
+    action_type_map = {
+        "create_file": "file", "edit_file": "file", "read_file": "file",
+        "delete_file": "file", "rename_file": "file", "copy_file": "file",
+        "create_folder": "folder", "open_folder": "folder",
+        "search_google": "browser_search",
+        "open_url": "website",
+        "send_email": "email", "read_emails": "email", "search_emails": "email",
+        "save_note": "note", "search_vault": "note", "append_note": "note",
+        "open_app": "app", "close_app": "app", "switch_to_app": "app",
+        "close_tab": "tab", "new_tab": "tab",
+    }
+    if action in action_type_map:
+        return action_type_map[action]
+
+    # 3. Keyword-based inference from text
+    for target_type, keywords in _TARGET_TYPE_SIGNALS.items():
+        for kw in keywords:
+            if kw in text_lower:
+                return target_type
+
+    # 4. Website pattern matching
+    for pattern in _WEBSITE_PATTERNS:
+        if re.search(pattern, text_lower):
+            # But only if it's not clearly an app-open command
+            if not any(v in text_lower for v in ["open", "launch", "start"]):
+                return "website"
+            # "open youtube" could be app OR website — check context
+            for app in _APP_NAMES:
+                if app in text_lower:
+                    return "app"
+            return "website"
+
+    # 5. Check if it's a known app name
+    for app in _APP_NAMES:
+        if app in text_lower:
+            return "app"
+
+    return "unknown"
+
+
 def build_machine_context(
     perception: Optional[PerceptionState] = None,
     *,
@@ -82,8 +184,10 @@ def interpret_from_fast_intent(
     target: Optional[str] = None,
     params: Optional[dict[str, Any]] = None,
     ambiguities: Optional[list[str]] = None,
+    text: str = "",
 ) -> InterpretedCommand:
     """Map embedding / cross-encoder output into the shared schema."""
+    target_type = infer_target_type(text, action) if text else None
     return InterpretedCommand(
         action=action,
         target=target,
@@ -93,6 +197,7 @@ def interpret_from_fast_intent(
         ambiguities=list(ambiguities or []),
         natural_response=None,
         source=source,
+        target_type=target_type,
     )
 
 
@@ -209,6 +314,7 @@ def interpret_command(
             target=fast_target,
             params=fast_params,
             ambiguities=ambiguities,
+            text=normalized_text,
         )
     return InterpretedCommand(
         action="unknown",

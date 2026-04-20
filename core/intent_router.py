@@ -49,6 +49,12 @@ from core.continuous_memory import get_continuous_memory
 from core.command_interpreter import build_machine_context, interpret_command
 from core.action_verifier import ExpectedDelta, verify_perception_delta
 from core.perception_engine import get_perception_engine
+# Phase 1: Task continuity
+from core.task_state import (
+    get_pending, set_pending, clear_pending, has_pending,
+    is_pending_answer, resume_with_answer, PendingTask,
+)
+from core.ambiguity_resolver import build_single_slot_question
 # Keep old import for backward compat in _execute_action
 from core.instant_responses import get_instant_response, get_confirmation_prompt
 
@@ -799,6 +805,69 @@ def route(command: str, actions: dict) -> bool:
         if handled:
             return True
 
+    # ── Phase 1: Pending Task Resumption ─────────────────────
+    # If ARC previously asked a clarification question, check if
+    # the user's input is an answer (short reply) rather than a
+    # completely new command.
+    if has_pending() and is_pending_answer(command):
+        pending = get_pending()
+        if pending:
+            print(f"🔄 Resuming pending task: {pending.action} (filling: {pending.missing_param})")
+            resumed = resume_with_answer(command)
+            if resumed:
+                # Execute the now-complete command
+                action = resumed["action"]
+                params = resumed["params"]
+                update_thinking(command=command, intent=action, stage="Resumed")
+
+                ack_text = get_ack(action)
+                if ack_text:
+                    speak_ack(ack_text)
+
+                before_state = _capture_perception_state()
+                result = _execute_action(action, params, actions, text=command)
+                result = _verify_action_result(action, params, result, before_state)
+                spoken_text = get_result_text(result)
+                speak_result(spoken_text)
+
+                # Update context + memory
+                update_context(
+                    action=action,
+                    target=params.get("target", params.get("name", params.get("query", ""))),
+                    result=result.summary,
+                    command=resumed.get("original_command", command),
+                )
+
+                try:
+                    wm = get_working_memory()
+                    wm.record_action(
+                        action=action, params=params,
+                        reason=f"Resumed from pending: '{command}'",
+                        outcome="success" if result.success else "failed",
+                        confidence=resumed.get("confidence", 0.8),
+                        command=command,
+                        intent_source=resumed.get("intent_source", "pending"),
+                    )
+                    # Phase 1: Update grounding
+                    wm.update_grounding(
+                        last_action=action,
+                        last_file=params.get("filename"),
+                    )
+                except Exception:
+                    pass
+
+                latency_ms = (time.time() - start_time) * 1000
+                full_spoken = f"{ack_text} {spoken_text}".strip() if ack_text else spoken_text
+                log_interaction(
+                    you_said=command, action_taken=action,
+                    was_understood=True, intent_source=resumed.get("intent_source", "pending"),
+                    confidence=resumed.get("confidence", 0.8), latency_ms=latency_ms,
+                    normalized_text=command, params=params,
+                    spoken_text=full_spoken,
+                )
+                save_exchange(command, full_spoken)
+                return True
+
     # ── Step 1: Normalize ────────────────────────────────────
     normalized = normalize(command)
     cleaned    = normalized.cleaned
@@ -1002,8 +1071,17 @@ def route(command: str, actions: dict) -> bool:
                 command=command,
                 intent_source=intent.source,
             )
+            # Phase 1: Update grounding context
+            wm.update_grounding(
+                last_action=intent.action,
+                last_file=params.get("filename"),
+            )
         except Exception:
             pass
+
+        # Phase 1: Clear any stale pending task on successful execution
+        if has_pending():
+            clear_pending()
 
         # ── Continuous Memory: extract preferences from command ─
         try:
@@ -1086,16 +1164,42 @@ def route(command: str, actions: dict) -> bool:
         return True
 
     # ── DECISION: CONTEXT_ASK ────────────────────────────────
-    # Smart clarification: context-aware, never generic
+    # Phase 1: Smart clarification with pending task state.
+    # Instead of just speaking a question and forgetting, we now
+    # store a PendingTask so the user's next short answer resumes
+    # the original task.
     elif safety.decision == SafetyDecision.CONTEXT_ASK:
-        clarify_text = get_clarification(intent.action, params)
-        speak_result(clarify_text)
+        missing_params = get_missing_params(intent.action, params)
+
+        # Use Phase 1 single-slot question builder
+        question, missing_param = build_single_slot_question(
+            intent.action, params, missing_params
+        )
+
+        if not question:
+            # Fallback to old clarification if no missing param detected
+            question = get_clarification(intent.action, params)
+            missing_param = missing_params[0] if missing_params else "target"
+
+        # Store pending task for resumption
+        set_pending(PendingTask(
+            action=intent.action,
+            known_params=dict(params),
+            missing_param=missing_param or "target",
+            question_asked=question,
+            original_command=command,
+            normalized_command=cleaned,
+            intent_source=intent.source,
+            confidence=intent.confidence,
+        ))
+
+        speak_result(question)
         log_interaction(
-            you_said=command, action_taken="context_ask",
+            you_said=command, action_taken="context_ask_pending",
             was_understood=False, intent_source=intent.source,
             confidence=intent.confidence, latency_ms=latency_ms,
             normalized_text=cleaned,
-            spoken_text=clarify_text,
+            spoken_text=question,
         )
         return True
 
