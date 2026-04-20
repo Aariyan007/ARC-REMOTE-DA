@@ -58,6 +58,7 @@ class WorkingMemory:
     def __init__(self, max_entries: int = MAX_ENTRIES):
         self._entries: deque = deque(maxlen=max_entries)
         self._lock = threading.Lock()
+        self._grounding: dict = {}  # Phase 1: grounding context signals
 
     def record_action(
         self,
@@ -231,6 +232,89 @@ class WorkingMemory:
     def count(self) -> int:
         return len(self._entries)
 
+    # ── Phase 1: Grounding Context Layer ─────────────────────
+    # Accumulates contextual state beyond action entries for
+    # resolving "it", "that", "again", "this file", "that tab".
+
+    def update_grounding(
+        self,
+        *,
+        last_file: Optional[str] = None,
+        last_action: Optional[str] = None,
+        last_browser_url: Optional[str] = None,
+        last_browser_title: Optional[str] = None,
+    ) -> None:
+        """Update grounding signals after an action completes."""
+        with self._lock:
+            if last_file is not None:
+                self._grounding["last_file"] = last_file
+            if last_action is not None:
+                self._grounding["last_action"] = last_action
+            if last_browser_url is not None:
+                self._grounding["last_browser_url"] = last_browser_url
+            if last_browser_title is not None:
+                self._grounding["last_browser_title"] = last_browser_title
+
+    def get_grounding_context(self) -> dict:
+        """
+        Returns all grounding signals for context resolution.
+
+        Used by the intent router to resolve references like:
+        - "it" / "that" → last action target
+        - "this file" → last_file
+        - "that tab" → last_browser_title
+        - "again" → last action (for replay)
+        """
+        with self._lock:
+            ctx = dict(self._grounding)
+
+        # Also pull from the last action entry
+        last = self.get_last_action()
+        if last:
+            ctx.setdefault("last_action", last.action)
+            ctx.setdefault("last_action_target",
+                           last.params.get("target",
+                           last.params.get("name",
+                           last.params.get("filename",
+                           last.params.get("query", "")))))
+            ctx["last_action_command"] = last.command
+            ctx["last_action_params"] = last.params
+
+        return ctx
+
+    def resolve_reference(self, word: str) -> Optional[str]:
+        """
+        Resolve a context reference word to a concrete value.
+
+        Supports:
+            "it", "that"       → last action target
+            "this file"        → last_file
+            "that tab"         → last_browser_title
+            "again"            → last action command (for replay)
+
+        Returns the resolved value, or None if not grounded.
+        """
+        ctx = self.get_grounding_context()
+        word_lower = word.lower().strip()
+
+        # Pronouns → last action target
+        if word_lower in {"it", "that", "this", "them"}:
+            return ctx.get("last_action_target") or ctx.get("last_file")
+
+        # File references
+        if word_lower in {"this file", "that file", "the file"}:
+            return ctx.get("last_file")
+
+        # Tab references
+        if word_lower in {"this tab", "that tab", "the tab", "current tab"}:
+            return ctx.get("last_browser_title")
+
+        # Replay
+        if word_lower in {"again", "that again", "do that again", "repeat"}:
+            return ctx.get("last_action_command")
+
+        return None
+
 
 # ─── Singleton ───────────────────────────────────────────────
 _wm_instance: Optional[WorkingMemory] = None
@@ -307,6 +391,38 @@ if __name__ == "__main__":
         wm.record_action(f"action_{i}", {}, f"Test action {i}", "success")
     print(f"  Count: {wm.count} (should be 10)")
 
+    # ── Phase 1: Grounding Context Tests ─────────────────────
+    print("\n── Grounding Context ──")
+    wm2 = WorkingMemory()
+    wm2.record_action(
+        "create_file", {"filename": "notes.txt", "target": "notes.txt"},
+        "User said create file", "success", confidence=0.95,
+        command="create a file called notes", intent_source="builtin"
+    )
+    wm2.update_grounding(last_file="notes.txt", last_action="create_file")
+
+    ctx = wm2.get_grounding_context()
+    print(f"  last_file: {ctx.get('last_file')}")
+    print(f"  last_action: {ctx.get('last_action')}")
+    print(f"  last_action_target: {ctx.get('last_action_target')}")
+
+    resolved = wm2.resolve_reference("it")
+    print(f"  resolve 'it' → '{resolved}'")
+    assert resolved == "notes.txt", f"Expected 'notes.txt', got '{resolved}'"
+
+    resolved = wm2.resolve_reference("this file")
+    print(f"  resolve 'this file' → '{resolved}'")
+    assert resolved == "notes.txt"
+
+    # Browser grounding
+    wm2.update_grounding(last_browser_title="GitHub", last_browser_url="https://github.com")
+    resolved = wm2.resolve_reference("that tab")
+    print(f"  resolve 'that tab' → '{resolved}'")
+    assert resolved == "GitHub"
+
+    print("  ✅ Grounding context tests passed")
+
     wm.clear()
     print(f"  After clear: {wm.count}")
     print("\n✅ Working memory test passed!")
+
