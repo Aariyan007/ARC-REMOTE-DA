@@ -24,12 +24,30 @@ def capture_primary_display_to_file(path: Optional[str] = None) -> str:
 
     macOS: ``screencapture`` (requires screen-recording permission when sandboxed).
     Windows: PowerShell + .NET System.Drawing (best-effort; replace with DXGI/WGC later).
+
+    Raises:
+        PermissionError  — screen-recording permission not granted (macOS)
+        NotImplementedError — unsupported platform
+        RuntimeError     — capture failed for another reason
     """
     out = path or str(Path(tempfile.gettempdir()) / "startup_screen_capture.png")
 
     if is_mac():
-        subprocess.run(["screencapture", "-x", out], check=True, capture_output=True)
-        return out
+        try:
+            subprocess.run(["screencapture", "-x", out], check=True, capture_output=True)
+            return out
+        except subprocess.CalledProcessError as e:
+            stderr = (e.stderr or b"").decode(errors="replace").lower()
+            if "permission" in stderr or "not permitted" in stderr or e.returncode in (1, 255):
+                raise PermissionError(
+                    "Screen capture failed — Screen Recording permission may not be granted. "
+                    "Go to System Settings > Privacy & Security > Screen Recording and enable "
+                    "access for this application."
+                ) from e
+            raise RuntimeError(
+                f"screencapture exited with code {e.returncode}: "
+                f"{(e.stderr or b'').decode(errors='replace').strip()}"
+            ) from e
 
     if is_windows():
         path_lit = json.dumps(out)
@@ -42,12 +60,17 @@ $g.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
 $bmp.Save({path_lit}, [System.Drawing.Imaging.ImageFormat]::Png)
 $g.Dispose(); $bmp.Dispose()
 """
-        subprocess.run(
-            ["powershell", "-NoProfile", "-Command", ps],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
+        try:
+            subprocess.run(
+                ["powershell", "-NoProfile", "-Command", ps],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(
+                f"Windows screen capture failed (exit {e.returncode}): {e.stderr.strip()}"
+            ) from e
         return out
 
     raise NotImplementedError("Screen capture not implemented for this platform.")
@@ -57,14 +80,15 @@ def capture_focused_window_to_file(path: Optional[str] = None) -> str:
     """
     Capture only the frontmost window on macOS.
     Falls back to full display capture if window capture fails.
+
+    Raises:
+        PermissionError  — screen-recording permission not granted
+        RuntimeError     — capture failed for another reason
     """
     out = path or str(Path(tempfile.gettempdir()) / "startup_window_capture.png")
 
     if is_mac():
         try:
-            # -l <windowid> requires the window id; -w captures frontmost window interactively.
-            # Use -o to capture only the front window without shadow.
-            # screencapture -x -o -w does interactive pick, so instead we use:
             # Get the frontmost window ID via AppleScript, then capture by window ID.
             wid_result = subprocess.run(
                 ["osascript", "-e",
@@ -81,11 +105,15 @@ def capture_focused_window_to_file(path: Optional[str] = None) -> str:
                 )
                 if Path(out).is_file():
                     return out
+        except subprocess.CalledProcessError:
+            # Window capture failed (permission or no window) — fall through to full display
+            pass
         except Exception:
             pass
 
-        # Fallback: full display
+        # Fallback: full display — propagates PermissionError if also blocked
         return capture_primary_display_to_file(out)
 
     # Non-mac: full display
     return capture_primary_display_to_file(out)
+

@@ -50,33 +50,70 @@ class AXSnapshot:
 
 # ─── Low-level osascript helpers ─────────────────────────────
 
-def _run_osascript(script: str, timeout: float = 3.0) -> str:
-    """Run AppleScript and return stdout, or empty string on failure."""
+# Phrases in osascript stderr that indicate a permission problem
+_PERMISSION_PHRASES = (
+    "not allowed",
+    "not authorized",
+    "accessibility",
+    "assistive",
+    "permission",
+    "1743",        # OSStatus kAXErrorAPIDisabled
+    "-25211",      # AXUIElement error
+)
+
+
+def _run_osascript(script: str, timeout: float = 3.0) -> tuple[str, str]:
+    """
+    Run AppleScript and return (stdout, error).
+
+    Returns:
+        (output, "")           — success (output may be empty string if app returned nothing)
+        ("", error_message)    — failure (timeout, permission denied, osascript error)
+
+    Callers should check the error string to distinguish 'no data' from 'blocked'.
+    """
     if sys.platform != "darwin":
-        return ""
+        return "", "not_macos"
     try:
         result = subprocess.run(
             ["osascript", "-e", script],
             capture_output=True, text=True, timeout=timeout,
         )
-        return result.stdout.strip()
-    except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
-        return ""
+        stderr = result.stderr.strip().lower()
+        if result.returncode != 0:
+            # Surface permission errors distinctly
+            if any(p in stderr for p in _PERMISSION_PHRASES):
+                return "", f"permission_denied: {result.stderr.strip()}"
+            return "", f"osascript_error({result.returncode}): {result.stderr.strip()}"
+        return result.stdout.strip(), ""
+    except subprocess.TimeoutExpired:
+        return "", "timeout"
+    except FileNotFoundError:
+        return "", "osascript_not_found"
+    except Exception as e:
+        return "", f"exception: {e}"
 
 
 def _run_osascript_list(script: str, timeout: float = 4.0) -> List[str]:
     """Run AppleScript that returns a comma-separated list."""
-    raw = _run_osascript(script, timeout)
+    raw, _ = _run_osascript(script, timeout)
     if not raw:
         return []
     # AppleScript returns lists like: "item1, item2, item3"
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
+
+
 # ─── Individual AX queries ───────────────────────────────────
 
-def get_frontmost_app() -> str:
-    """Returns the name of the frontmost application."""
+def get_frontmost_app() -> tuple[str, str]:
+    """
+    Returns (app_name, error).
+    - ("Safari", "")        — success
+    - ("", "")              — no frontmost app (unusual but valid)
+    - ("", "permission_denied: ...")  — Accessibility not granted
+    """
     return _run_osascript(
         'tell application "System Events" to name of first process whose frontmost is true'
     )
@@ -84,13 +121,14 @@ def get_frontmost_app() -> str:
 
 def get_focused_window_title() -> str:
     """Returns the title of the focused window of the frontmost app."""
-    app = get_frontmost_app()
+    app, err = get_frontmost_app()
     if not app:
         return ""
-    return _run_osascript(
+    val, _ = _run_osascript(
         f'tell application "System Events" to tell process "{app}" '
         f'to name of front window'
     )
+    return val
 
 
 def get_focused_element_info() -> dict:
@@ -98,19 +136,19 @@ def get_focused_element_info() -> dict:
     Returns role, title, and value of the currently focused UI element.
     Uses System Events accessibility.
     """
-    app = get_frontmost_app()
+    app, _ = get_frontmost_app()
     if not app:
         return {"role": "", "title": "", "value": ""}
 
-    role = _run_osascript(
+    role, _ = _run_osascript(
         f'tell application "System Events" to tell process "{app}" '
         f'to role of focused UI element of front window'
     )
-    title = _run_osascript(
+    title, _ = _run_osascript(
         f'tell application "System Events" to tell process "{app}" '
         f'to description of focused UI element of front window'
     )
-    value = _run_osascript(
+    value, _ = _run_osascript(
         f'tell application "System Events" to tell process "{app}" '
         f'to value of focused UI element of front window'
     )
@@ -124,7 +162,7 @@ def get_focused_element_info() -> dict:
 
 def get_menu_bar_items() -> List[str]:
     """Returns names of the menu bar items of the frontmost app."""
-    app = get_frontmost_app()
+    app, _ = get_frontmost_app()
     if not app:
         return []
     return _run_osascript_list(
@@ -135,10 +173,10 @@ def get_menu_bar_items() -> List[str]:
 
 def get_window_buttons() -> List[str]:
     """Returns titles/names of visible buttons in the front window (shallow)."""
-    app = get_frontmost_app()
+    app, _ = get_frontmost_app()
     if not app:
         return []
-    raw = _run_osascript(
+    raw, _ = _run_osascript(
         f'tell application "System Events" to tell process "{app}" '
         f'to name of every button of front window',
         timeout=4.0,
@@ -150,10 +188,10 @@ def get_window_buttons() -> List[str]:
 
 def get_window_text_fields() -> List[str]:
     """Returns values of visible text fields in the front window (shallow)."""
-    app = get_frontmost_app()
+    app, _ = get_frontmost_app()
     if not app:
         return []
-    raw = _run_osascript(
+    raw, _ = _run_osascript(
         f'tell application "System Events" to tell process "{app}" '
         f'to value of every text field of front window',
         timeout=4.0,
@@ -165,9 +203,13 @@ def get_window_text_fields() -> List[str]:
 
 def is_app_running(app_name: str) -> bool:
     """Check if an app is currently running (by process name)."""
-    result = _run_osascript(
+    result, err = _run_osascript(
         f'tell application "System Events" to (name of every process) contains "{app_name}"'
     )
+    if err:
+        # Can't distinguish 'not running' from 'permission denied' — surface False
+        # but the caller can check is_app_running via get_ax_snapshot().error
+        return False
     return result.lower() == "true"
 
 
@@ -184,12 +226,23 @@ def get_ax_snapshot() -> AXSnapshot:
     """
     Collect a complete AX snapshot in one call.
     Gracefully handles failures — never crashes.
+
+    AXSnapshot.error is populated with a real error string when:
+    - Accessibility permission is not granted (permission_denied)
+    - osascript is not available
+    - Timeout occurred
+    An empty error string means AX queries succeeded (even if app info is empty).
     """
     if sys.platform != "darwin":
-        return AXSnapshot(error="Not macOS")
+        return AXSnapshot(error="not_macos")
 
     try:
-        app = get_frontmost_app()
+        app, app_err = get_frontmost_app()
+
+        # Propagate permission/availability errors immediately
+        if app_err:
+            return AXSnapshot(error=app_err)
+
         title = ""
         if app:
             title = get_focused_window_title()
@@ -221,6 +274,7 @@ def get_ax_snapshot() -> AXSnapshot:
             focused_value=focused.get("value", ""),
             visible_buttons=buttons,
             visible_text_fields=text_fields,
+            # error stays empty — queries succeeded
         )
 
     except Exception as e:

@@ -540,13 +540,67 @@ def _get_cross_encoder():
 
 
 def _get_model():
-    """Lazy-load the sentence transformer model."""
+    """
+    Lazy-load the sentence transformer model.
+
+    Resolution order:
+      1. SENTENCE_TRANSFORMERS_HOME env var → local directory (fully offline)
+      2. Default HuggingFace cache (~/.cache/huggingface/hub) if already cached
+      3. Network download as last resort
+
+    Raises RuntimeError with a clear message if the model cannot be loaded,
+    so callers can degrade gracefully instead of stalling.
+    """
     global _model
     if _model is None:
-        print("🧠 Loading sentence-transformer model...")
+        import os
         from sentence_transformers import SentenceTransformer
-        _model = SentenceTransformer("all-MiniLM-L6-v2")
-        print("✅ Model loaded")
+
+        MODEL_NAME = "all-MiniLM-L6-v2"
+
+        # 1. Check for an explicit local path override
+        local_path = os.environ.get("SENTENCE_TRANSFORMERS_HOME", "")
+        if local_path:
+            candidate = os.path.join(local_path, MODEL_NAME)
+            if os.path.isdir(candidate):
+                print(f"Loading sentence-transformer from local path: {candidate}")
+                try:
+                    _model = SentenceTransformer(candidate)
+                    print("Model loaded (offline).")
+                    return _model
+                except Exception as e:
+                    print(f"Warning: local model load failed ({e}), trying cache...")
+
+        # 2. Check default HuggingFace cache (no network call if already cached)
+        cache_dir = os.path.expanduser(
+            os.environ.get("HF_HOME",
+                os.path.join(os.path.expanduser("~"), ".cache", "huggingface", "hub"))
+        )
+        # HF hub stores models as "models--org--name"
+        hf_cache_name = f"models--sentence-transformers--{MODEL_NAME}"
+        if os.path.isdir(os.path.join(cache_dir, hf_cache_name)):
+            print(f"Loading sentence-transformer from HuggingFace cache...")
+            try:
+                _model = SentenceTransformer(MODEL_NAME, cache_folder=cache_dir)
+                print("Model loaded (cached).")
+                return _model
+            except Exception as e:
+                print(f"Warning: cached model load failed ({e}), attempting download...")
+
+        # 3. Network download — last resort
+        print(f"Downloading sentence-transformer model '{MODEL_NAME}' (first-time setup)...")
+        print("Tip: set SENTENCE_TRANSFORMERS_HOME to a local dir to avoid this.")
+        try:
+            _model = SentenceTransformer(MODEL_NAME)
+            print("Model loaded (downloaded).")
+        except Exception as e:
+            raise RuntimeError(
+                f"Could not load sentence-transformer model '{MODEL_NAME}'.\n"
+                f"Reason: {e}\n"
+                f"Fix: run `pip install sentence-transformers` and ensure network "
+                f"access on first run, or set SENTENCE_TRANSFORMERS_HOME to a "
+                f"directory containing a pre-downloaded '{MODEL_NAME}' folder."
+            ) from e
     return _model
 
 
