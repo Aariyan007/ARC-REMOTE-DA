@@ -298,12 +298,21 @@ class WorkingMemory:
         word_lower = word.lower().strip()
 
         # Pronouns → last action target
-        if word_lower in {"it", "that", "this", "them"}:
+        if word_lower in {"it", "that", "this", "them", "this one", "that one",
+                          "this thing", "that thing"}:
             return ctx.get("last_action_target") or ctx.get("last_file")
 
         # File references
         if word_lower in {"this file", "that file", "the file"}:
             return ctx.get("last_file")
+
+        # App references → still resolve to last file/target (best effort)
+        if word_lower in {"this app", "that app", "the app"}:
+            return ctx.get("last_action_target") or ctx.get("last_file")
+
+        # Folder references
+        if word_lower in {"this folder", "that folder", "the folder"}:
+            return ctx.get("last_action_target") or ctx.get("last_file")
 
         # Tab references
         if word_lower in {"this tab", "that tab", "the tab", "current tab"}:

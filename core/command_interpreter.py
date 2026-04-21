@@ -24,24 +24,31 @@ _APP_NAMES = {
     "spotify", "slack", "discord", "zoom", "notes", "music",
     "edge", "brave", "sublime", "pycharm", "intellij", "xcode",
     "cmd", "powershell", "word", "excel", "powerpoint",
+    "photoshop", "illustrator", "figma", "sketch", "gimp",
+    "calculator", "calendar", "preview", "pages", "numbers",
+    "keynote", "iterm", "warp", "obs", "vlc", "steam",
 }
 
 # Website patterns — if these appear, the target is a website/browser action
 _WEBSITE_PATTERNS = [
     r'\b(?:youtube|google|reddit|twitter|facebook|instagram|github|stackoverflow)\b',
+    r'\b(?:netflix|amazon|linkedin|pinterest|twitch|tiktok|wikipedia|medium)\b',
     r'\bhttps?://',
     r'\b\w+\.(?:com|org|net|io|dev|co|app)\b',
 ]
 
 # Keywords that indicate different target types
 _TARGET_TYPE_SIGNALS = {
-    "file": ["file", "document", "pdf", "txt", "docx", "csv", "json", "script", "readme"],
-    "folder": ["folder", "directory", "downloads", "desktop", "documents"],
-    "email": ["email", "mail", "inbox", "send to", "compose"],
+    "file": ["file", "pdf", "txt", "docx", "csv", "json", "script", "readme"],
+    "folder": ["folder", "directory", "downloads folder", "documents folder",
+              "desktop folder", "open downloads", "open documents", "open my"],
+    "email": ["email", "mail", "inbox", "send to", "compose", "reply to"],
     "tab": ["tab", "browser tab", "this tab", "that tab", "current tab"],
-    "note": ["note", "vault", "obsidian", "brain", "remember"],
-    "website": ["website", "webpage", "web page", "site", "url", "browse to"],
-    "browser_search": ["search for", "look up", "google", "find online", "search online"],
+    "note": ["note", "vault", "obsidian", "brain", "remember", "memo", "jot"],
+    "website": ["website", "webpage", "web page", "site", "url", "browse to",
+               "go to", "visit", "navigate to"],
+    "browser_search": ["search for", "look up", "google", "find online",
+                       "search online", "search how", "find "],
 }
 
 # Verb+context patterns that override simple name matching
@@ -51,6 +58,7 @@ _VIDEO_WATCH_PATTERNS = [
     r'\bwatch\b.*\bvideo\b',
     r'\bstream\b',
     r'\bplay\b.*\bon\s+(?:youtube|twitch|netflix)\b',
+    r'\bwatch\b.*\b(?:youtube|netflix|twitch|hulu)\b',
 ]
 
 
@@ -90,7 +98,12 @@ def infer_target_type(text: str, action: str = "") -> str:
     if action in action_type_map:
         return action_type_map[action]
 
-    # 3. Keyword-based inference from text
+    # 3. File extension check — if a filename with extension is present,
+    #    it's definitely a file operation (overrides keyword signals like "note")
+    if re.search(r'\b\w+\.(?:py|txt|md|json|js|ts|html|css|yaml|yml|xml|csv|sql|sh|bat|log|cfg|ini|toml|rs|go|java|c|h|cpp|rb)\b', text_lower):
+        return "file"
+
+    # 4. Keyword-based inference from text
     for target_type, keywords in _TARGET_TYPE_SIGNALS.items():
         for kw in keywords:
             if kw in text_lower:
