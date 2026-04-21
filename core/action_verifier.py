@@ -71,7 +71,8 @@ def capture_before_state(action: str, params: dict) -> BeforeState:
     # ── Always: AX frontmost app ─────────────────────────────
     try:
         from perception.ui_accessibility import get_frontmost_app, get_focused_window_title
-        state.ax_frontmost_app = get_frontmost_app() or ""
+        ax_app, _ax_err = get_frontmost_app()   # unpack (value, error) tuple
+        state.ax_frontmost_app = ax_app or ""
         state.ax_window_title = get_focused_window_title() or ""
     except Exception:
         pass
@@ -306,15 +307,25 @@ def verify_folder_opened(params: dict, result: Any, before: BeforeState) -> Veri
     """Verify Finder is now the frontmost app."""
     try:
         from perception.ui_accessibility import get_frontmost_app
-        app = (get_frontmost_app() or "").lower()
+        app_val, ax_err = get_frontmost_app()
+        if ax_err:
+            return VerificationResult(
+                ok=False,
+                message=f"AX unavailable: {ax_err}",
+                details={"ax_error": ax_err, "reason": "ax_unavailable"},
+            )
+        app = _norm(app_val)
         ok = "finder" in app
         return VerificationResult(
             ok=ok,
             message="Finder is active." if ok else f"Frontmost app is '{app}', not Finder.",
             details={"frontmost_app": app},
         )
-    except Exception:
-        return VerificationResult(ok=True, message="Could not check frontmost app.")
+    except Exception as e:
+        return VerificationResult(
+            ok=False, message=f"AX check error: {e}",
+            details={"reason": "ax_exception"},
+        )
 
 
 # ═════════════════════════════════════════════════════════════
@@ -336,7 +347,18 @@ def verify_app_opened(params: dict, result: Any, before: BeforeState) -> Verific
 
     try:
         from perception.ui_accessibility import get_frontmost_app, is_app_running
-        front = _norm(get_frontmost_app())
+        front_val, ax_err = get_frontmost_app()
+
+        # AX not available (permission denied, not macOS, timeout)
+        # → return ok=False explicitly so callers know verification was not possible
+        if ax_err:
+            return VerificationResult(
+                ok=False,
+                message=f"AX unavailable — cannot confirm {target} opened. ({ax_err})",
+                details={"ax_error": ax_err, "target": target, "reason": "ax_unavailable"},
+            )
+
+        front = _norm(front_val)
 
         # Check if frontmost matches
         if target in front or front in target:
@@ -360,7 +382,11 @@ def verify_app_opened(params: dict, result: Any, before: BeforeState) -> Verific
             details={"frontmost": front, "target": target, "running": False},
         )
     except Exception as e:
-        return VerificationResult(ok=True, message=f"AX check failed: {e}")
+        return VerificationResult(
+            ok=False,
+            message=f"AX check error: {e}",
+            details={"reason": "ax_exception", "error": str(e)},
+        )
 
 
 def verify_app_switched(params: dict, result: Any, before: BeforeState) -> VerificationResult:
@@ -373,7 +399,13 @@ def verify_app_switched(params: dict, result: Any, before: BeforeState) -> Verif
 
     try:
         from perception.ui_accessibility import get_frontmost_app
-        front = _norm(get_frontmost_app())
+        front_val, ax_err = get_frontmost_app()
+        if ax_err:
+            return VerificationResult(
+                ok=False, message=f"AX unavailable: {ax_err}",
+                details={"ax_error": ax_err, "reason": "ax_unavailable"},
+            )
+        front = _norm(front_val)
 
         if target in front or front in target:
             return VerificationResult(
@@ -386,8 +418,11 @@ def verify_app_switched(params: dict, result: Any, before: BeforeState) -> Verif
             message=f"Expected {target} frontmost, got {front}.",
             details={"frontmost": front, "target": target, "before_app": before.ax_frontmost_app},
         )
-    except Exception:
-        return VerificationResult(ok=True, message="Could not verify app switch.")
+    except Exception as e:
+        return VerificationResult(
+            ok=False, message=f"AX check error: {e}",
+            details={"reason": "ax_exception"},
+        )
 
 
 def verify_app_closed(params: dict, result: Any, before: BeforeState) -> VerificationResult:
@@ -400,7 +435,13 @@ def verify_app_closed(params: dict, result: Any, before: BeforeState) -> Verific
 
     try:
         from perception.ui_accessibility import get_frontmost_app
-        front = _norm(get_frontmost_app())
+        front_val, ax_err = get_frontmost_app()
+        if ax_err:
+            return VerificationResult(
+                ok=False, message=f"AX unavailable: {ax_err}",
+                details={"ax_error": ax_err, "reason": "ax_unavailable"},
+            )
+        front = _norm(front_val)
 
         # App should no longer be frontmost
         if target not in front and front not in target:
@@ -414,8 +455,11 @@ def verify_app_closed(params: dict, result: Any, before: BeforeState) -> Verific
             message=f"{target} still appears frontmost.",
             details={"frontmost": front, "target": target},
         )
-    except Exception:
-        return VerificationResult(ok=True, message="Could not verify app closure.")
+    except Exception as e:
+        return VerificationResult(
+            ok=False, message=f"AX check error: {e}",
+            details={"reason": "ax_exception"},
+        )
 
 
 def verify_app_minimised(params: dict, result: Any, before: BeforeState) -> VerificationResult:
@@ -428,7 +472,13 @@ def verify_app_minimised(params: dict, result: Any, before: BeforeState) -> Veri
 
     try:
         from perception.ui_accessibility import get_frontmost_app
-        front = _norm(get_frontmost_app())
+        front_val, ax_err = get_frontmost_app()
+        if ax_err:
+            return VerificationResult(
+                ok=False, message=f"AX unavailable: {ax_err}",
+                details={"ax_error": ax_err, "reason": "ax_unavailable"},
+            )
+        front = _norm(front_val)
 
         if target not in front:
             return VerificationResult(
@@ -440,8 +490,11 @@ def verify_app_minimised(params: dict, result: Any, before: BeforeState) -> Veri
             message=f"{target} still frontmost.",
             details={"frontmost": front},
         )
-    except Exception:
-        return VerificationResult(ok=True, message="Could not verify minimise.")
+    except Exception as e:
+        return VerificationResult(
+            ok=False, message=f"AX check error: {e}",
+            details={"reason": "ax_exception"},
+        )
 
 
 # ═════════════════════════════════════════════════════════════
