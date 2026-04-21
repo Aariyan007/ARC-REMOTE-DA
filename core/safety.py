@@ -22,6 +22,9 @@ DESTRUCTIVE_ACTIONS = {
     "shutdown_pc",
     "restart_pc",
     "delete_file",
+    "delete_folder",
+    "empty_trash",
+    "format_disk",
     "sleep_mac",
 }
 
