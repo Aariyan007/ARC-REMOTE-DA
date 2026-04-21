@@ -411,6 +411,13 @@ FAILURE_TEMPLATES = {
 def get_failure(action_result) -> str:
     """Generates failure message from ActionResult."""
     action = action_result.action
+
+    # Phase 2: If this is a verification failure, use grounded verification message
+    if hasattr(action_result, 'verified') and action_result.verified is False:
+        verification_msg = get_verification_failure(action, action_result.data)
+        if verification_msg:
+            return verification_msg
+
     template = FAILURE_TEMPLATES.get(action)
 
     if template:
@@ -428,6 +435,49 @@ def get_failure(action_result) -> str:
     if action_result.error:
         return f"That didn't work. {action_result.error}"
     return "That didn't work."
+
+
+# ═══════════════════════════════════════════════════════════════
+#  6. VERIFICATION FAILURE — Grounded "I tried but couldn't confirm"
+# ═══════════════════════════════════════════════════════════════
+
+VERIFICATION_FAILURE_TEMPLATES = {
+    "open_app":      "I tried to open {target}, but I couldn't confirm it opened.",
+    "switch_to_app": "I tried to switch to {target}, but I couldn't confirm it's active.",
+    "close_app":     "I tried to close {target}, but it may still be running.",
+    "minimise_app":  "I tried to minimize {target}, but I couldn't confirm it changed.",
+    "create_file":   "I created {filename}, but I couldn't verify it on disk.",
+    "rename_file":   "I renamed the file, but I couldn't verify the new file exists.",
+    "delete_file":   "I deleted {filename}, but I couldn't confirm it's gone.",
+    "copy_file":     "I copied {filename}, but I couldn't verify the copy.",
+    "edit_file":     "I wrote to {filename}, but I couldn't confirm the changes.",
+    "create_folder": "I created the folder, but I couldn't verify it exists.",
+    "open_folder":   "I opened the folder, but I couldn't confirm Finder changed.",
+    "open_url":      "I couldn't confirm the page changed.",
+    "search_google": "I searched, but I couldn't confirm the results loaded.",
+    "new_tab":       "I opened a new tab, but I couldn't confirm it.",
+    "close_tab":     "I closed the tab, but I couldn't confirm it.",
+}
+
+
+def get_verification_failure(action: str, data: dict = None) -> str:
+    """
+    Returns a grounded verification failure message.
+    Short, honest, no faking success.
+    """
+    template = VERIFICATION_FAILURE_TEMPLATES.get(action)
+    if not template:
+        return ""
+
+    data = data or {}
+    subs = dict(data)
+    subs.setdefault("target", data.get("target", data.get("name", "that")))
+    subs.setdefault("filename", data.get("filename", "the file"))
+
+    try:
+        return template.format(**subs).strip()
+    except (KeyError, IndexError):
+        return template.split("{")[0].strip() + "."
 
 
 # ─── Quick test ──────────────────────────────────────────────

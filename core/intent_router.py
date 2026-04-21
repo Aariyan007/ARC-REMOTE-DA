@@ -47,7 +47,10 @@ from core.brain import get_brain, BrainDecision
 from core.working_memory import get_working_memory
 from core.continuous_memory import get_continuous_memory
 from core.command_interpreter import build_machine_context, interpret_command
-from core.action_verifier import ExpectedDelta, verify_perception_delta
+from core.action_verifier import (
+    ExpectedDelta, verify_perception_delta,
+    BeforeState, capture_before_state, verify_action, SAFE_TO_RETRY,
+)
 from core.perception_engine import get_perception_engine
 # Phase 1: Task continuity
 from core.task_state import (
@@ -178,6 +181,14 @@ def _capture_perception_state():
         return None
 
 
+def _capture_before_state(action: str, params: dict) -> BeforeState:
+    """Phase 2: Rich before-state for per-action verification."""
+    try:
+        return capture_before_state(action, params)
+    except Exception:
+        return BeforeState()
+
+
 def _build_interpreter_context():
     """Collect current machine state for the structured interpreter."""
     last_file = get_last_file().get("filename")
@@ -225,53 +236,61 @@ def _pick_interpreter_target(params: dict) -> str | None:
     return None
 
 
-def _expected_delta_for_action(action: str, params: dict, result: ActionResult, before_state):
-    """Map actions to a coarse foreground/window verification expectation."""
-    target = (
-        result.data.get("target")
-        or params.get("target")
-        or params.get("name")
-        or ""
-    )
+def _verify_action_result(
+    action: str,
+    params: dict,
+    result: ActionResult,
+    before_state: BeforeState,
+    actions: dict | None = None,
+    text: str = "",
+) -> ActionResult:
+    """
+    Phase 2: Per-action deterministic verification.
 
-    if action in {"open_app", "switch_to_app"} and target:
-        return ExpectedDelta(active_app_contains=target)
-
-    if action == "open_folder":
-        return ExpectedDelta(active_app_contains="finder")
-
-    if action in {"close_app", "minimise_app"} and target and before_state:
-        before_app = (getattr(before_state, "active_app", "") or "").lower()
-        if target.lower() in before_app:
-            return ExpectedDelta(active_app_not_equals=target)
-
-    return None
-
-
-def _verify_action_result(action: str, params: dict, result: ActionResult, before_state) -> ActionResult:
-    """Run lightweight perception-based verification after successful actions."""
+    Flow:
+      1. Run action-specific verifier
+      2. If verified → mark result.verified = True
+      3. If failed + action is safe → retry once → re-verify
+      4. If still failed → grounded failure (never fake success)
+    """
     if not result.success:
         return result
 
-    expected = _expected_delta_for_action(action, params, result, before_state)
-    if expected is None or before_state is None:
-        return result
-
-    after_state = _capture_perception_state()
-    if after_state is None:
-        return result
-
-    verification = verify_perception_delta(before_state, after_state, expected)
+    verification = verify_action(action, params, result, before_state)
     result.data.setdefault("verification", verification.details)
     result.verified = verification.ok
 
     if verification.ok:
+        print(f"  ✔ Verified: {verification.message}")
         return result
 
+    # Verification failed — try retry for safe actions
+    print(f"  ✘ Verification failed: {verification.message}")
+
+    if action in SAFE_TO_RETRY and actions is not None:
+        print(f"  🔄 Retrying {action} (safe to retry)...")
+        try:
+            retry_before = _capture_before_state(action, params)
+            retry_result = _execute_action(action, params, actions, text=text)
+            if retry_result.success:
+                retry_verification = verify_action(action, params, retry_result, retry_before)
+                retry_result.data.setdefault("verification", retry_verification.details)
+                retry_result.verified = retry_verification.ok
+                retry_result.data["retried"] = True
+
+                if retry_verification.ok:
+                    print(f"  ✔ Retry succeeded: {retry_verification.message}")
+                    return retry_result
+                else:
+                    print(f"  ✘ Retry also failed: {retry_verification.message}")
+        except Exception as e:
+            print(f"  ⚠ Retry error: {e}")
+
+    # Final failure — grounded, never fake
     result.success = False
+    result.verified = False
     result.error = verification.message
-    if not result.user_message:
-        result.user_message = "I tried, but I couldn't confirm that it actually changed."
+    # Don't override user_message — let response_policy handle it via get_failure()
     return result
 
 
@@ -865,9 +884,9 @@ def route(command: str, actions: dict) -> bool:
                     if ack_text:
                         speak_ack(ack_text)
 
-                    before_state = _capture_perception_state()
+                    before_state = _capture_before_state(action, params)
                     result = _execute_action(action, params, actions, text=command)
-                    result = _verify_action_result(action, params, result, before_state)
+                    result = _verify_action_result(action, params, result, before_state, actions=actions, text=command)
                     spoken_text = get_result_text(result)
                     speak_result(spoken_text)
 
@@ -1130,9 +1149,9 @@ def route(command: str, actions: dict) -> bool:
                 return False
 
         # 2. Execute action → get structured result
-        before_state = _capture_perception_state()
+        before_state = _capture_before_state(intent.action, params)
         result = _execute_action(intent.action, params, actions, text=command)
-        result = _verify_action_result(intent.action, params, result, before_state)
+        result = _verify_action_result(intent.action, params, result, before_state, actions=actions, text=command)
         print(f"✅ Result: {result.summary if result.success else result.error}")
 
         # 3. Generate grounded spoken text from result
@@ -1231,9 +1250,9 @@ def route(command: str, actions: dict) -> bool:
             if ack_text:
                 speak_ack(ack_text)
 
-            before_state = _capture_perception_state()
+            before_state = _capture_before_state(intent.action, params)
             result = _execute_action(intent.action, params, actions, text=cleaned)
-            result = _verify_action_result(intent.action, params, result, before_state)
+            result = _verify_action_result(intent.action, params, result, before_state, actions=actions, text=cleaned)
             spoken_text = get_result_text(result)
             speak_result(spoken_text)
             print(f"✅ Confirmed & executed: {result.summary}")
@@ -1529,9 +1548,9 @@ def _gemini_fallback(
 
         # 2. Execute
         params = _merge_gemini_params(result, fallback_params)
-        before_state = _capture_perception_state()
+        before_state = _capture_before_state(action, params)
         exec_result = _execute_action(action, params, actions, text=raw_command)
-        exec_result = _verify_action_result(action, params, exec_result, before_state)
+        exec_result = _verify_action_result(action, params, exec_result, before_state, actions=actions, text=raw_command)
         print(f"✅ Gemini action result: {exec_result.summary if exec_result.success else exec_result.error}")
 
         # 3. Grounded result
