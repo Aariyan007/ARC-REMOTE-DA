@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-from core.platform import is_mac, is_windows
+from core.platform_utils import is_mac, is_windows
 
 
 def _controls_mod():

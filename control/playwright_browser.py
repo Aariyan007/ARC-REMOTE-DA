@@ -186,6 +186,48 @@ def search_google_in_browser(query: str) -> str:
     return navigate(url)
 
 
+# ─── Read-only query methods (no-launch, safe) ──────────────
+
+def is_browser_running() -> bool:
+    """Check if a Playwright browser context is actively running."""
+    return _running_context() is not None
+
+
+def get_active_url() -> Optional[str]:
+    """Returns the URL of the active tab, or None if no browser running."""
+    ctx = _running_context()
+    if ctx is None or not ctx.pages:
+        return None
+    try:
+        return ctx.pages[-1].url
+    except Exception:
+        return None
+
+
+def get_active_title() -> Optional[str]:
+    """Returns the title of the active tab, or None if no browser running."""
+    ctx = _running_context()
+    if ctx is None or not ctx.pages:
+        return None
+    try:
+        return ctx.pages[-1].title()
+    except Exception:
+        return None
+
+
+def get_tab_count() -> int:
+    """Returns the number of open tabs, or 0 if no browser running."""
+    ctx = _running_context()
+    if ctx is None:
+        return 0
+    try:
+        return len(ctx.pages)
+    except Exception:
+        return 0
+
+
+# ─── Structured dispatch ────────────────────────────────────
+
 def dispatch(action: str, params: Optional[Dict[str, Any]] = None) -> Any:
     """Structured entry used by actions.browser."""
     p = dict(params or {})
