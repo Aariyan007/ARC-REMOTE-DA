@@ -94,3 +94,6 @@ C:\hf_cache/
 *.abi3.so
 pretrained_models/
 data/voice_samples/
+
+.venv*
+

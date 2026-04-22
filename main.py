@@ -124,10 +124,27 @@ def assistant_loop():
             print(f"[Route] {response.status}: {response.final_result}")
 
 
+def start_api_server_in_background():
+    import subprocess
+    import sys
+    print("🌐 Starting background API server for remote phone commands (Port 8000)...")
+    try:
+        return subprocess.Popen(
+            [sys.executable, "-m", "uvicorn", "main_ui:app", "--host", "0.0.0.0", "--port", "8000"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+    except Exception as e:
+        print(f"⚠️  Could not start background API server: {e}")
+        return None
+
+
+
 def main():
     if not runtime.boot(voice=True):
         return
 
+    api_process = start_api_server_in_background()
     print("\nSay the wake word to activate Jarvis...\n")
 
     try:
@@ -144,6 +161,12 @@ def main():
                 print("\nWaiting for wake word again...\n")
     except KeyboardInterrupt:
         print("\n⚠️  Shutting down...")
+    finally:
+        if api_process:
+            try:
+                api_process.terminate()
+            except Exception:
+                pass
     print("✅ Jarvis shut down.")
 
 
