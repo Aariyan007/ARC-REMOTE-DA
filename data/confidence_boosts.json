@@ -21,7 +21,9 @@
     "create a file": 2,
     "see i told you to create a file": 1,
     "create a file named superman": 1,
-    "let's create a file named as superman.txt": 1
+    "let's create a file named as superman.txt": 1,
+    "create a file dude": 1,
+    "create a file name named superman": 1
   },
   "edit_file": {
     "write something in superman.txt i tell you": 1,
@@ -30,15 +32,15 @@
     "want you to add text in it bro": 1,
     "don't you want contents in it": 1,
     "i also wanted to add some text in it": 1,
-    "create a file abc.txt in documents": 1
+    "add some contents in it add something inside batman.txt": 1,
+    "type in something inside batman.txt": 1
   },
   "open_gmail": {
     "open email": 1
   },
   "create_and_edit_file": {
     "create a file name superman.txt and also add some contents in it you are doing": 1,
-    "also kind of make a file named as batman.txt and also write contents hi how are you in it": 1,
-    "create a file": 2
+    "also kind of make a file named as batman.txt and also write contents hi how are you in it": 1
   },
   "send_email": {
     "send an email send an email send an email": 1,
@@ -51,14 +53,16 @@
     "now tell me a joke": 1,
     "i'm feeling bored man": 1,
     "dude my girlfriend left me man i'm feeling very sad": 1,
-    "you know i'm bored let's do something": 1
+    "you know i'm bored let's do something": 1,
+    "what all conversation did we have till now": 2
   },
   "play_mood_music": {
     "play some music according to my mood": 1,
     "a song according to my mood": 1
   },
   "tell_time": {
-    "what time is it": 1
+    "what time is it": 1,
+    "what is the time": 2
   },
   "morning_briefing": {
     "what is today's news man": 1,
@@ -75,7 +79,8 @@
     "what am i looking check check": 1
   },
   "read_news": {
-    "what is the news that's what i'm asking": 1
+    "what is the news that's what i'm asking": 1,
+    "what is today's news": 1
   },
   "show_desktop": {
     "you know gather me all the details regarding the website geek for geeks": 1
@@ -106,9 +111,25 @@
     "which all files did i create yesterday": 1
   },
   "fullscreen": {
-    "what screen am i looking at": 1
+    "what screen am i looking at": 1,
+    "maximize the google chrome": 1,
+    "the screen is not full": 1
   },
   "brightness_up": {
     "can you tell me what am i seeing on my screen": 1
+  },
+  "volume_down": {
+    "minimize anti gravity": 1
+  },
+  "rename_file": {
+    "want to rename dude.txt": 1,
+    "created rename superman that we created now": 1
+  },
+  "brightness_down": {
+    "reduce the brightness": 1,
+    "reduce the brightness by 50%": 1
+  },
+  "tell_weather": {
+    "what is the temperature": 1
   }
 }

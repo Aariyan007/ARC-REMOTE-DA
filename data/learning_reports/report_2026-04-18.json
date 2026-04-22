@@ -1,0 +1,53 @@
+{
+  "date": "2026-04-18",
+  "status": "reviewed",
+  "total_entries": 10,
+  "mistakes": 2,
+  "fixes": 2,
+  "details": [
+    {
+      "command": "can you tell me what am i seeing on my screen right now",
+      "wrong_action": "brightness_up",
+      "wrong_confidence": 0.477,
+      "correct_action": "take_screenshot",
+      "signal": "repetition",
+      "timestamp": "2026-04-18 22:41:09",
+      "log_index": 1
+    },
+    {
+      "command": "what all conversations did we have till now",
+      "wrong_action": "morning_briefing",
+      "wrong_confidence": 0.373,
+      "correct_action": "",
+      "signal": "low_confidence",
+      "timestamp": "2026-04-18 22:47:54",
+      "log_index": 6
+    }
+  ],
+  "fixes_applied": [
+    {
+      "correct_action": "take_screenshot",
+      "add_examples": [
+        "can you tell me what am i seeing on my screen right now",
+        "tell me what am i seeing on my screen",
+        "tell me what am seeing"
+      ],
+      "wrong_action": "brightness_up",
+      "original_command": "can you tell me what am i seeing on my screen right now",
+      "negative_example": "can you tell me what am i seeing on my screen right now",
+      "confidence": 1.0
+    },
+    {
+      "correct_action": "search_vault",
+      "add_examples": [
+        "what all conversations did we have till now",
+        "what all conversations did we"
+      ],
+      "wrong_action": "morning_briefing",
+      "original_command": "what all conversations did we have till now",
+      "negative_example": "what all conversations did we have till now",
+      "confidence": 1.0
+    }
+  ],
+  "reviewed_at": "2026-04-19T23:42:58.625260"
+}

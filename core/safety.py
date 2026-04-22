@@ -22,6 +22,9 @@ DESTRUCTIVE_ACTIONS = {
     "shutdown_pc",
     "restart_pc",
     "delete_file",
+    "delete_folder",
+    "empty_trash",
+    "format_disk",
     "sleep_mac",
 }
 
@@ -34,6 +37,7 @@ SAFE_WITH_CONTEXT = {
     "open_folder", "volume_up", "volume_down", "rename_file",
     "mute", "unmute", "brightness_up", "brightness_down",
     "tell_time", "tell_date", "get_battery", "take_screenshot",
+    "open_url", "web_back", "web_refresh", "web_new_tab", "web_close_tab",
 }
 
 # ─── Confidence Thresholds ──────────────────────────────────

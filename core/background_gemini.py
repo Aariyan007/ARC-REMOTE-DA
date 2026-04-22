@@ -47,19 +47,49 @@ ACTION_HINTS = {
 
 def should_enhance(action: str, action_result: str = None) -> bool:
     """
-    Returns True for ALL actions — every command gets personality.
-    Rate limited to prevent quota exhaustion.
+    Returns True only when a background follow-up would actually add value.
+    Gated by:
+    1. Action must exist and not be unknown
+    2. Action must NOT be trivial (volume, brightness, tabs, etc.)
+    3. Action must NOT be chat/answer (already personality-rich)
+    4. Action must NOT have failed (don't add personality to errors)
+    5. Rate limiting (cooldown between calls)
     """
     global _last_call_time
 
-    # Only skip if action is empty/unknown
+    # Skip unknown/empty
     if not action or action == "unknown":
+        return False
+
+    # Skip trivial actions — no personality needed
+    TRIVIAL_ACTIONS = {
+        "volume_up", "volume_down", "mute", "unmute",
+        "brightness_up", "brightness_down",
+        "tell_time", "tell_date",
+        "close_tab", "new_tab", "fullscreen", "mission_control",
+        "minimise_all", "show_desktop", "close_window",
+        "lock_screen", "get_battery", "get_volume",
+        "switch_to_app", "minimise_app",
+        "pause_music", "next_track", "previous_track",
+    }
+    if action in TRIVIAL_ACTIONS:
+        return False
+
+    # Skip chat/answer — already personality-rich from Gemini
+    NEVER_ENHANCE = {
+        "answer_question", "general_chat", "chat_response",
+        "morning_briefing", "tell_weather",
+    }
+    if action in NEVER_ENHANCE:
+        return False
+
+    # Skip failed actions — don't add personality to errors
+    if action_result and isinstance(action_result, str) and action_result.startswith("Error"):
         return False
 
     # Rate limiting — skip if called too recently
     now = time.time()
     if now - _last_call_time < MIN_COOLDOWN:
-        print(f"🔇 Background Gemini: cooldown ({MIN_COOLDOWN - (now - _last_call_time):.0f}s remaining)")
         return False
 
     return True
@@ -125,7 +155,6 @@ def generate_followup(
     action_result: str,
     instant_response: str,
     speak_func: Callable,
-    use_elevenlabs: bool = True,
 ) -> Optional[Future]:
     """
     Fires a background Gemini call to generate a human follow-up.
@@ -162,7 +191,7 @@ def generate_followup(
             _last_call_time = time.time()  # Mark call time BEFORE request
 
             response = client.models.generate_content(
-                model="gemini-3.1-flash-lite-preview",
+                model="gemini-2.0-flash-lite",
                 contents=prompt
             )
 
@@ -190,7 +219,8 @@ def generate_followup(
             else:
                 print(f"⚠️ Background Gemini error: {e}")
 
-    return run_background(_do_enhance)
+    future = run_background(_do_enhance)
+    return future  # May be None if run_background decides not to schedule
 
 
 # ─── Quick test ──────────────────────────────────────────────

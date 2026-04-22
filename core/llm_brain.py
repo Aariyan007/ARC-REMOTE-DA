@@ -12,19 +12,30 @@ The INSTANT_CACHE has been removed — replaced by fast_intent.py
 
 import json
 import time
-from google import genai
 from mood.mood_engine import get_mood_for_prompt
 from core.memory import get_context_for_gemini, save_exchange
 import os
-import dotenv
+try:
+    import dotenv
+except ImportError:
+    dotenv = None
 
-
-dotenv.load_dotenv()
+if dotenv is not None:
+    dotenv.load_dotenv()
 GEMINI_API_KEY = os.getenv("API_KEY")
 MODEL          = "gemini-3.1-flash-lite-preview"
 
 
-client = genai.Client(api_key=GEMINI_API_KEY)
+
+def _get_client():
+    """Create the Gemini client lazily so startup doesn't require the SDK."""
+    if not GEMINI_API_KEY:
+        return None
+    try:
+        from google import genai
+    except ImportError:
+        return None
+    return genai.Client(api_key=GEMINI_API_KEY)
 
 # Global session context
 SESSION_CONTEXT = {}
@@ -135,6 +146,11 @@ Triggers:
   When content is clear, include it: {{"type":"action","action":"edit_file","target":null,"query":null,"filename":"notes.txt","content":"hello world","location":null,"response":"Writing it down."}}
   When content is vague ("add some stuff"): {{"type":"action","action":"edit_file","target":null,"query":null,"filename":"notes.txt","content":null,"location":null,"response":"What should I write?"}}
 
+File context rules:
+- If the user says "it", "that file", "this file", or similar, use the most recent file from context.
+- Never output placeholder filenames like "unknown", "unknown file", or "it" for file actions.
+- If a filename truly cannot be inferred, use null instead of a fake placeholder.
+
 12. COMPOUND FILE OPERATIONS (create + write in one command):
 {{"type":"action","action":"create_and_edit_file","target":null,"query":null,"filename":"name.txt","content":"actual content here","location":"desktop","response":"natural response"}}
 Triggers: "create a file called X and write Y in it", "make a file named X then add Y"
@@ -149,18 +165,12 @@ Decision rules:
 - Small talk → chat
 
 Response rules:
-- Talk like you're texting your best friend, NOT writing a formal email
-- Use contractions always (don't, can't, won't — never "do not", "cannot")
-- Max 8 words for action responses. Shorter = cooler.
-- For answer_question: clear, accurate, conversational (2-3 sentences max)
-- Be opinionated. Have personality. React to things.
-- Light roasts are encouraged. Don't be a yes-man.
-- NO corporate phrases: "certainly", "of course", "I'd be happy to", "I've done that for you"
-- Sound bored sometimes. Sound excited sometimes. Be HUMAN.
-- Use their name naturally sometimes
-- Reference their projects/context when relevant
-- Never say the same thing twice
-- Match current mood exactly
+- For type "chat": conversational, casual, short. Be human.
+- For type "action" with action "answer_question": clear, accurate, 2-3 sentences max.
+- For ALL OTHER action types: set "response" to null. The response wording is handled by the system, not by you.
+- Use contractions always (don't, can't, won't)
+- Be conversational for chat. Be precise for answers.
+- NO corporate phrases: "certainly", "of course", "I'd be happy to"
 """
 
 
@@ -176,6 +186,9 @@ def ask_gemini(command: str) -> dict:
         user_context=user_context,
         mood_context=mood_context
     )
+    client = _get_client()
+    if client is None:
+        return {"type": "chat", "response": "Sorry, my Gemini fallback isn't available right now."}
 
     for attempt in range(3):
         try:

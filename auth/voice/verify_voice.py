@@ -3,7 +3,9 @@ import sounddevice as sd
 import torch
 from scipy.io.wavfile import write, read
 import os
-os.environ["HF_HOME"] = r"C:\hf_cache"
+
+if "HF_HOME" not in os.environ:
+    os.environ["HF_HOME"] = os.path.join(os.path.expanduser("~"), ".cache", "huggingface")
 
 # ── Compatibility shim ──────────────────────────────────────
 # speechbrain 0.5.x used `speechbrain.pretrained`
@@ -41,7 +43,7 @@ from .vad import remove_silence
 SAMPLE_RATE = 16000
 DURATION = 5
 TEMP_FILE = "temp_verify.wav"
-THRESHOLD = 0.50
+THRESHOLD = 0.35   # Lowered from 0.50 — live scores observed: 0.37-0.49
 
 import sys
 

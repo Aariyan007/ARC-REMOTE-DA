@@ -178,6 +178,20 @@ ACTIONS = {
     "shutdown_pc":   shutdown_pc,
     "restart_pc":    restart_pc,
 }
+try:
+    from control.playwright_browser import (
+        action_web_back,
+        action_web_close_tab,
+        action_web_new_tab,
+        action_web_refresh,
+    )
+
+    ACTIONS["web_back"] = action_web_back
+    ACTIONS["web_refresh"] = action_web_refresh
+    ACTIONS["web_new_tab"] = action_web_new_tab
+    ACTIONS["web_close_tab"] = action_web_close_tab
+except ImportError:
+    pass
 
 def assistant_loop():
     speak("Yes, I'm listening")

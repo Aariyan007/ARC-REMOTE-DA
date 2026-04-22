@@ -1,0 +1,188 @@
+{
+  "description": "Phase 1 regression test cases: casual command → expected clean command pairs",
+  "version": "1.0",
+  "test_cases": [
+    {
+      "input": "dude make a file",
+      "expected_clean": "make a file",
+      "expected_action": "create_file",
+      "tone": "casual"
+    },
+    {
+      "input": "bro can you open chrome",
+      "expected_clean_contains": ["open", "chrome"],
+      "expected_clean_excludes": ["bro", "can you"],
+      "expected_action": "open_app",
+      "tone": "casual"
+    },
+    {
+      "input": "make a stupid file",
+      "expected_clean": "make a file",
+      "expected_action": "create_file",
+      "tone": "frustrated"
+    },
+    {
+      "input": "create a file called stupid ideas",
+      "expected_clean_contains": ["create", "file", "called", "stupid", "ideas"],
+      "expected_action": "create_file",
+      "note": "stupid preserved after 'called'"
+    },
+    {
+      "input": "make a dumb random file",
+      "expected_clean_excludes": ["dumb", "random"],
+      "expected_clean_contains": ["make", "file"],
+      "expected_action": "create_file",
+      "tone": "frustrated"
+    },
+    {
+      "input": "yo dude close that dumb app",
+      "expected_clean_excludes": ["yo", "dude", "dumb"],
+      "expected_clean_contains": ["close", "app"],
+      "expected_action": "close_app",
+      "tone": "casual"
+    },
+    {
+      "input": "kinda wanna search for python tutorials man",
+      "expected_clean_excludes": ["kinda", "man", "wanna"],
+      "expected_clean_contains": ["search", "python"],
+      "expected_action": "search_google",
+      "tone": "casual"
+    },
+    {
+      "input": "please open my notes app",
+      "expected_clean_excludes": ["please"],
+      "expected_clean_contains": ["open", "notes"],
+      "expected_action": "open_app",
+      "tone": "polite"
+    },
+    {
+      "input": "hey jarvis can you please open my coding editor",
+      "expected_clean_excludes": ["hey", "jarvis", "can you", "please"],
+      "expected_action": "open_app",
+      "tone": "polite"
+    },
+    {
+      "input": "open chrome",
+      "expected_clean": "open chrome",
+      "expected_action": "open_app",
+      "tone": "neutral"
+    },
+    {
+      "input": "um like open the browser for me please",
+      "expected_clean_excludes": ["um", "like", "for me", "please"],
+      "expected_clean_contains": ["open", "browser"],
+      "tone": "polite"
+    },
+    {
+      "input": "uh could you turn up the volume by 30",
+      "expected_clean_excludes": ["uh", "could you"],
+      "expected_clean_contains": ["turn", "volume", "30"],
+      "expected_action": "volume_up",
+      "tone": "polite"
+    },
+    {
+      "input": "maybe open the important stuff in downloads",
+      "expected_clean_excludes": ["maybe", "important stuff"],
+      "expected_clean_contains": ["open", "downloads"],
+      "expected_action": "open_folder"
+    },
+    {
+      "input": "create a random file or something",
+      "expected_clean_excludes": ["random", "or something"],
+      "expected_clean_contains": ["create", "file"],
+      "expected_action": "create_file"
+    },
+    {
+      "input": "you know open the downloads or whatever",
+      "expected_clean_excludes": ["you know", "or whatever"],
+      "expected_clean_contains": ["open", "downloads"],
+      "expected_action": "open_folder"
+    },
+    {
+      "input": "lol send an email to john",
+      "expected_clean_excludes": ["lol"],
+      "expected_clean_contains": ["send", "email"],
+      "expected_action": "send_email",
+      "tone": "casual"
+    },
+    {
+      "input": "tbh i want to watch some video on youtube",
+      "expected_clean_excludes": ["tbh", "i want to"],
+      "expected_clean_contains": ["watch", "video", "youtube"],
+      "expected_target_type": "website"
+    },
+    {
+      "input": "freaking delete that stupid file",
+      "expected_clean_excludes": ["freaking", "stupid"],
+      "expected_clean_contains": ["delete", "file"],
+      "expected_action": "delete_file",
+      "tone": "frustrated"
+    },
+    {
+      "input": "bruh search for python tutorials online",
+      "expected_clean_excludes": ["bruh"],
+      "expected_clean_contains": ["search", "python"],
+      "expected_action": "search_google",
+      "tone": "casual"
+    },
+    {
+      "input": "i guess rename the file to something cool",
+      "expected_clean_excludes": ["i guess"],
+      "expected_clean_contains": ["rename", "file", "to", "something", "cool"],
+      "expected_action": "rename_file",
+      "note": "something cool preserved after 'to'"
+    }
+  ],
+  "target_type_cases": [
+    {"input": "open chrome", "action": "open_app", "expected": "app"},
+    {"input": "create a file called notes", "action": "create_file", "expected": "file"},
+    {"input": "watch something on youtube", "action": "", "expected": "website"},
+    {"input": "search for python tutorials", "action": "search_google", "expected": "browser_search"},
+    {"input": "open downloads folder", "action": "open_folder", "expected": "folder"},
+    {"input": "send email to john", "action": "send_email", "expected": "email"},
+    {"input": "save a note", "action": "save_note", "expected": "note"},
+    {"input": "close that tab", "action": "close_tab", "expected": "tab"},
+    {"input": "play video on youtube", "action": "", "expected": "website"},
+    {"input": "open github.com", "action": "", "expected": "website"},
+    {"input": "open vscode", "action": "open_app", "expected": "app"},
+    {"input": "search my inbox", "action": "search_emails", "expected": "email"}
+  ],
+  "pending_task_cases": [
+    {
+      "scenario": "create_file_missing_filename",
+      "initial_command": "dude make a stupid file",
+      "action": "create_file",
+      "known_params": {},
+      "missing_param": "filename",
+      "user_answer": "notes",
+      "expected_params": {"filename": "notes"}
+    },
+    {
+      "scenario": "send_email_missing_to",
+      "initial_command": "send an email",
+      "action": "send_email",
+      "known_params": {},
+      "missing_param": "to",
+      "user_answer": "john@example.com",
+      "expected_params": {"to": "john@example.com"}
+    },
+    {
+      "scenario": "open_app_missing_target",
+      "initial_command": "open an app",
+      "action": "open_app",
+      "known_params": {},
+      "missing_param": "target",
+      "user_answer": "chrome",
+      "expected_params": {"target": "chrome", "name": "chrome"}
+    },
+    {
+      "scenario": "cancel_pending_with_nevermind",
+      "initial_command": "create a file",
+      "action": "create_file",
+      "known_params": {},
+      "missing_param": "filename",
+      "user_answer": "nevermind",
+      "expected_cancelled": true
+    }
+  ]
+}

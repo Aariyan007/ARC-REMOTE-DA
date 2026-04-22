@@ -1,6 +1,6 @@
-torch==2.9.0
-torchaudio==2.9.0
-torchvision==0.18.0
+torch
+torchaudio
+torchvision
 speechbrain==0.5.16
 numpy
 scipy
@@ -12,4 +12,10 @@ webrtcvad
 setuptools
 pvporcupine
 python-dotenv
+google-genai
 sentence-transformers
+PyAudio
+playwright>=1.49.0
+Pillow>=10.0.0
+pytesseract>=0.3.10
+pyautogui>=0.9.54

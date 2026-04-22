@@ -1,0 +1,32 @@
+{
+  "date": "2026-04-19",
+  "status": "reviewed",
+  "total_entries": 22,
+  "mistakes": 1,
+  "fixes": 1,
+  "details": [
+    {
+      "command": "i want to create a file dude",
+      "wrong_action": "create_file",
+      "wrong_confidence": 0.226,
+      "correct_action": "",
+      "signal": "low_confidence",
+      "timestamp": "2026-04-19 02:45:03",
+      "log_index": 7
+    }
+  ],
+  "fixes_applied": [
+    {
+      "correct_action": "create_file",
+      "add_examples": [
+        "i want to create a file dude",
+        "i want to create a file"
+      ],
+      "wrong_action": "create_file",
+      "original_command": "i want to create a file dude",
+      "negative_example": "i want to create a file dude",
+      "confidence": 1.0
+    }
+  ],
+  "reviewed_at": "2026-04-20T20:12:06.083688"
+}

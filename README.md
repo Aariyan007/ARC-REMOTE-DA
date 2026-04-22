@@ -1,295 +1,301 @@
 <div align="center">
 
-<!-- HEADER BANNER -->
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:ff7a00,50:ff9a2f,100:ff7a00&height=200&section=header&text=F.R.I.E.N.D&fontSize=80&fontColor=ffffff&fontAlignY=38&desc=Just%20A%20Rather%20Very%20Intelligent%20System&descAlignY=58&descSize=18&descColor=ffffff&animation=twinkling" />
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:ff7a00,50:ff9a2f,100:ff7a00&height=200&section=header&text=ARC&fontSize=86&fontColor=ffffff&fontAlignY=38&desc=AI-Operated%20Computer&descAlignY=58&descSize=18&descColor=ffffff&animation=twinkling" />
 <br/>
 
-<!-- BADGES -->
 ![Python](https://img.shields.io/badge/Python-3.10+-ff7a00?style=for-the-badge&logo=python&logoColor=white&labelColor=1a1a1a)
-![Gemini](https://img.shields.io/badge/Gemini%201.5%20Flash-LLM%20Brain-ff9a2f?style=for-the-badge&logo=google&logoColor=white&labelColor=1a1a1a)
+![Gemini](https://img.shields.io/badge/Gemini-3.1%20Flash%20Lite-ff9a2f?style=for-the-badge&logo=google&logoColor=white&labelColor=1a1a1a)
 ![Whisper](https://img.shields.io/badge/Whisper-STT-ff7a00?style=for-the-badge&logo=openai&logoColor=white&labelColor=1a1a1a)
+![Platform](https://img.shields.io/badge/Platform-macOS%20First-silver?style=for-the-badge&logo=apple&logoColor=white&labelColor=1a1a1a)
 ![Status](https://img.shields.io/badge/Status-Active%20Development-22c55e?style=for-the-badge&labelColor=1a1a1a)
-![Platform](https://img.shields.io/badge/Platform-macOS%20M2-silver?style=for-the-badge&logo=apple&logoColor=white&labelColor=1a1a1a)
 
-<br/>
-
-```
+```text
    █████╗ ██████╗  ██████╗
   ██╔══██╗██╔══██╗██╔════╝
-  ███████║██████╔╝██║     
-  ██╔══██║██╔══██╗██║     
+  ███████║██████╔╝██║
+  ██╔══██║██╔══██╗██║
   ██║  ██║██║  ██║╚██████╗
   ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝
         A R C   S Y S T E M
 ```
 
-*"Good morning. I've already reviewed your schedule, pre-loaded your system diagnostics, and optimized your workflow. Shall we begin?"*
+*Build the computer that can actually understand, operate, verify, and recover.*
 
 </div>
 
 ---
 
-## ⚡ Overview
+## Overview
 
-**FRIEND** is a fully local, voice-controlled personal AI assistant built for developers who refuse to settle for Siri. Powered by **Gemini 3.5 preview** as the brain and **OpenAI Whisper** for speech recognition, it understands natural commands, controls your Mac, searches the web, manages memory, and learns your habits over time.
+**ARC** is a local-first voice assistant for operating your computer like an AI-controlled system, not just a chatbot with tools. It is built around a deterministic execution loop:
 
-This isn't a toy. It's a system replacement.
+`normalize -> interpret -> clarify -> execute -> verify -> respond -> learn`
 
-> **Codename internally:** `Startup`  
-> **Vision:** Replace the need for a mouse/keyboard for 80% of dev workflow
+The focus is not just “talk to the computer.” The goal is:
+
+- better command grounding
+- better OS control
+- stronger verification
+- fewer fake confirmations
+- a path to perception-driven desktop automation
+
+Some older internals and prompts still use the legacy `Jarvis` name, but the product name is **ARC**.
 
 ---
 
-## 🏗️ Architecture
+## Current Architecture
 
+```text
+┌────────────────────────────────────────────────────────────────────┐
+│                               ARC                                  │
+├────────────────┬───────────────────────────────┬───────────────────┤
+│ INPUT          │ INTELLIGENCE                  │ OUTPUT            │
+│                │                               │                   │
+│ Whisper STT    │ fast_intent.py               │ macOS say TTS     │
+│ PyAudio        │ command_interpreter.py       │ response_policy   │
+│ Wake word      │ intent_router.py             │ logger.py         │
+│ Voice auth     │ safety.py                    │ grounded results  │
+│                │ action_verifier.py           │                   │
+│                │ working_memory.py            │                   │
+│                │ manager_agent.py             │                   │
+└────────────────┴───────────────────────────────┴───────────────────┘
+                         │
+                         ▼
+                 perception_engine.py
+                 browser_state.py
+                 screen_capture.py
+                 ocr.py
+                 ui_accessibility.py
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        JARVIS CORE                          │
-├──────────────┬──────────────────────────┬───────────────────┤
-│  INPUT LAYER │     INTELLIGENCE LAYER   │   OUTPUT LAYER    │
-│              │                          │                   │
-│  🎙️ PyAudio  │  🧠 Gemini 1.5 Flash    │  🔊 Mac TTS       │
-│  Whisper STT │  (Intent Routing + LLM)  │  (Daniel Voice)   │
-│  ECAPA Auth  │  memory.py + logger.py   │  voice_response   │
-│  Noise Cal.  │  Gemini-First Routing    │  is_speaking flag │
-└──────────────┴──────────────────────────┴───────────────────┘
-        │                    │                     │
-        ▼                    ▼                     ▼
-  speech_to_text.py   intent_router.py      open_apps.py
-                       llm_brain.py         web_search.py
-                       memory.py            system_actions.py
-                                            time_utils.py
+
+### What is already true
+
+- Commands no longer rely on one fragmented response path.
+- User-facing action speech is deterministic and grounded in actual outcomes.
+- The live router now calls the structured interpreter.
+- Missing parameters trigger clarification instead of blind guessing.
+- Post-action verification exists for part of the runtime.
+- Startup now degrades more gracefully when optional dependencies are missing.
+
+### What is still being built
+
+- deeper browser verification
+- full file verification
+- accessibility-tree grounding
+- richer short-term memory
+- messy-command eval datasets
+
+---
+
+## What ARC Can Do Today
+
+- Open, close, switch, and minimize apps.
+- Create, edit, rename, copy, and delete files.
+- Search the web and open URLs.
+- Handle direct system controls like volume, brightness, screenshot, and lock.
+- Use a cleaner response loop: `ack -> execute -> verify -> speak result`.
+- Ask better follow-up questions when command parameters are missing.
+- Run a manager/orchestrator path for more complex multi-step commands.
+
+### Big improvement already shipped
+
+ARC now behaves much less like:
+
+`"I heard something, let me guess and say something cool."`
+
+And much more like:
+
+`"I know what action this is, I know what is missing, I will do it, then I will confirm what actually happened."`
+
+---
+
+## Repository Layout
+
+```text
+Startup/
+├── main.py
+├── chat.py
+├── requirements.txt
+├── README.md
+│
+├── core/
+│   ├── intent_router.py
+│   ├── command_interpreter.py
+│   ├── command_schema.py
+│   ├── response_policy.py
+│   ├── action_result.py
+│   ├── action_verifier.py
+│   ├── voice_response.py
+│   ├── speech_to_text.py
+│   ├── fast_intent.py
+│   ├── working_memory.py
+│   ├── llm_brain.py
+│   └── agents/
+│
+├── control/
+│   ├── mac/
+│   ├── windows/
+│   ├── playwright_browser.py
+│   └── web_search.py
+│
+├── perception/
+│   ├── browser_state.py
+│   ├── screen_capture.py
+│   ├── ocr.py
+│   └── ui_accessibility.py
+│
+├── evals/
+│   ├── command_benchmark.json
+│   └── run_command_eval.py
+│
+├── data/
+├── ui/
+└── _archive/
 ```
 
-**No keyword matching. No if-else chains. Every command routes through Gemini.**
-
 ---
 
-## 🧩 Module Breakdown
-
-| Module | Status | Description |
-|---|---|---|
-| `speech_to_text.py` | ✅ Complete | Whisper base model, silence detection, auto noise calibration |
-| `intent_router.py` | ✅ Complete | Gemini-first routing — LLM decides what to do |
-| `voice_response.py` | ✅ Complete | Mac `say` (Daniel), `is_speaking` flag prevents feedback loops |
-| `llm_brain.py` | ✅ Complete | Gemini 1.5 Flash — core reasoning engine |
-| `memory.py` | ✅ Complete | Stores facts, context, user history |
-| `chat.py` | ✅ Complete | Standalone text chat — `data/users/<name>.json` per user |
-| `open_apps.py` | ✅ Complete | Opens any app by voice |
-| `web_search.py` | ✅ Complete | Real-time web search on command |
-| `time_utils.py` | ✅ Complete | Time/date queries |
-| `system_actions.py` | ✅ Complete | System control (sleep, volume, etc.) |
-| `logger.py` | ✅ Complete | Full conversation logging |
-| `main.py` | ✅ Complete | Master orchestrator — everything wired |
-| `mood/` system | 🔄 In Progress | Dynamic mood-aware responses |
-| Memory → `main.py` | 🔄 In Progress | Wiring persistent memory into live session |
-| Nightly Extractor | 🔄 Planned | Gemini reads convos at midnight, extracts facts |
-
----
-
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
-- macOS (Apple Silicon M1/M2/M3 recommended)
+- macOS is the primary target right now
 - Python 3.10+
-- [Homebrew](https://brew.sh/) installed
-- Gemini API Key (free tier works — 5 req/min)
+- Homebrew recommended
+- Gemini API key for fallback/planning flows
 
-### Installation
+### Install
 
 ```bash
-# Clone the repo
-git clone https://github.com/Aariyan007/THEFriend.git
-cd THEFriend
-
-# Create virtual environment
 python3 -m venv venv
 source venv/bin/activate
-
-# Install dependencies
 pip install -r requirements.txt
-
-# Set your Gemini API Key
-export GEMINI_API_KEY="your_key_here"
-# Or add it to a .env file
-
-# Run Jarvis
-python main.py
 ```
 
-### First Time Setup
+### Environment
+
+Set your Gemini key in the shell or in `.env`:
 
 ```bash
-# Whisper downloads the base model on first run (~150MB)
-# Noise calibration happens automatically — stay quiet for 2 seconds
-# Say your name when prompted to create your profile
+export API_KEY="your_key_here"
 ```
 
----
+### Optional system dependencies
 
-## 💬 Multi-User: `chat.py`
-
-`chat.py` is a **standalone text interface** — no microphone needed. Teammates can use it on their own machines.
-
-Each user gets their own file:
-```
-data/
-└── users/
-    ├── aariyan.json      ← profile + all sessions
-    ├── teammate1.json
-    └── teammate2.json
-```
-
-**Why it exists:**
-- Teammates can interact with Jarvis from any device
-- Used as a **30-day training pipeline** — daily use exposes Jarvis to slang, habits, and personality before fine-tuning Whisper
+These improve functionality but are not required for every code path:
 
 ```bash
-python chat.py
-# > Enter your name: Aariyan
-# > You: bro open chrome
-# > Jarvis: On it.
+brew install tesseract
+brew install ffmpeg
 ```
+
+### Run
+
+```bash
+python3 main.py
+```
+
+If some optional dependencies are missing, ARC should now fail more cleanly and tell you what needs to be installed instead of crashing immediately on import.
 
 ---
 
-## 🖥️ Iron Man HUD Interface
+## Testing
 
-The UI is an **Iron Man-style HUD** with 8 live panels:
+### Quick module checks
 
-```
-┌─────────────┬──────────────┬─────────────────┐
-│   RADAR     │ VOICE AUTH   │ SYS DIAGNOSTICS │
-├─────────────┼──────────────┼─────────────────┤
-│ FACE TRACK  │  ARC REACTOR │   BIOMETRICS    │
-├─────────────┴──────────────┴─────────────────┤
-│           COMMAND LOG                        │
-├──────────────────────────────────────────────┤
-│   JARVIS BRAIN  (Mood · Gemini · Commands)   │
-└──────────────────────────────────────────────┘
+```bash
+python3 -m core.response_policy
+python3 -m core.action_result
 ```
 
-> UI launch is the **last** step. Everything else gets built first.
+### Intent benchmark
+
+```bash
+python3 evals/run_command_eval.py
+```
+
+### Smoke tests to try manually
+
+- `open chrome`
+- `what time is it`
+- `create a file`
+- `rename it to ideas`
+- `open url`
+- `volume up`
+
+What you should observe:
+
+- fast ack
+- action executes
+- grounded result is spoken
+- missing info triggers a focused clarification question
 
 ---
 
-## 📡 Remote Terminal Mode (ESP32)
+## Roadmap
 
-**The vision:** Control Jarvis from your college classroom.
+### Done
 
-```
-[Class]                              [Home]
-ESP32 + INMP441 mic                  Mac M2
-   │                                    │
-   │──── audio over WiFi ─────────────▶│
-   │                                    │ Full Jarvis pipeline runs
-   │◀─── audio response ───────────────│
-   │                                    │
-   Plays on speaker              Flask server + ngrok
-```
+- Centralized response system
+- Structured action result layer
+- Mac-say response flow
+- Live structured interpreter wiring
+- Initial action verification hooks
+- Better startup dependency handling
 
-**Hardware needed (~₹1350 total):**
-| Component | Price |
-|---|---|
-| ESP32 | ₹950 |
-| INMP441 MEMS Mic | ₹200 |
-| Small USB Speaker | ₹500 |
+### Next priorities
 
----
+1. Finish action verification for files, browser, and desktop actions
+2. Make accessibility and OCR first-class perception inputs
+3. Expand working memory for tabs, clipboard, selected items, and task chains
+4. Build real messy-command and ambiguity eval datasets
+5. Improve browser automation depth to make ARC stronger than OpenClaw on OS control quality
 
-## 🗺️ Roadmap
+### Long-term goal
 
-### 🔥 Near Term
-- [ ] Dynamic Gemini-generated responses (no static replies)
-- [ ] Mood system (`mood/` folder) — affect tone based on context
-- [ ] Wire `memory.py` into live `main.py` session
-- [ ] Nightly extractor — Gemini reads conversation logs at midnight, extracts key facts
+Beat broad assistant platforms by being narrower and better:
 
-### 🚀 Medium Term
-- [ ] Email — send, search, read aloud
-- [ ] Folder search and creation by voice
-- [ ] Face detection + mood detection (small USB camera)
-- [ ] Rude / personality mode
-- [ ] ESP32 remote terminal from class
-- [ ] Screen vision + automation
-- [ ] ML habit learning
-
-### 🌐 Long Term
-- [ ] Fine-tune Whisper on 30 days of personal chat data
-- [ ] Voice cloning
-- [ ] Real-time translation
-- [ ] Smart home (ESP32 sensors)
-- [ ] Meeting mode — auto-summarize, take notes
-- [ ] Proactive mode — Jarvis acts without being asked
-- [ ] Code assistant with screen vision
-- [ ] Face recognition from ID card database
-- [ ] Morning briefing (news + calendar + weather)
-- [ ] Health monitoring
-- [ ] WhatsApp / call integration
+- better command grounding
+- better clarification
+- better verification
+- better desktop control
 
 ---
 
-## 🛠️ Tech Stack
+## Known Limits
 
-```yaml
-Speech-to-Text:   OpenAI Whisper (base, local)
-LLM Brain:        Google Gemini 1.5 Flash (free tier → paid later)
-Voice Output:     macOS "say" command (Daniel voice)
-Mic Input:        PyAudio + silence detection
-Voice Auth:       ECAPA speaker verification model
-Fuzzy Matching:   rapidfuzz
-Data Storage:     JSON (data/users/<name>.json)
-Remote Server:    Flask + ngrok (for ESP32 mode)
-Hardware:         Mac M2 (primary), ESP32 (remote terminal)
-```
+- Some optional dependencies are still environment-sensitive.
+- macOS is the best-supported platform today.
+- `ui_accessibility.py` is still a placeholder, not full native grounding yet.
+- `run_command_eval.py --no-init` still needs improvement if you want a truly lightweight no-embedding smoke mode.
+- The perception stack exists, but it is not yet complete enough to claim full screen-aware control.
 
 ---
 
-## 📁 Project Structure
+## Why This Project Exists
 
-```
-THEFriend/
-├── main.py                  # Master orchestrator
-├── chat.py                  # Standalone text chat
-├── requirements.txt
-├── .env                     # API keys (gitignored)
-│
-├── modules/
-│   ├── speech_to_text.py    # Whisper STT
-│   ├── intent_router.py     # Gemini-first routing
-│   ├── voice_response.py    # TTS + feedback prevention
-│   ├── llm_brain.py         # Gemini 1.5 Flash
-│   ├── memory.py            # Persistent memory
-│   ├── logger.py            # Conversation logging
-│   ├── open_apps.py         # App control
-│   ├── web_search.py        # Web search
-│   ├── time_utils.py        # Time queries
-│   └── system_actions.py   # System control
-│
-├── mood/                    # Mood system (WIP)
-│
-├── data/
-│   └── users/               # Per-user JSON profiles
-│       └── <name>.json
-│
-└── ui/                      # Iron Man HUD (built separately)
-```
+Most assistants stop at:
+
+- answer a question
+- call one tool
+- say something polished
+
+ARC is trying to go further:
+
+- understand casual commands
+- ask the right clarification
+- operate the machine
+- verify the result
+- recover if it fails
+
+That is the difference between a voice chatbot and an AI-operated computer.
 
 ---
 
-## ⚠️ Known Limits
+## Author
 
-- Gemini free tier: **5 requests/minute** — will upgrade to paid API
-- Voice auth (ECAPA) is experimental — may have false accepts in noisy environments
-- ESP32 mode requires ngrok tunnel running on Mac
-
----
-
-## 👤 Author
-
-**Aariyan** — Full Stack Developer · Backend Engineer · AI Builder  
-3rd Year BTech CSE @ MITS (KTU)
+**Aariyan**  
+Backend Engineer · AI Builder · Full Stack Developer
 
 [![GitHub](https://img.shields.io/badge/GitHub-Aariyan007-ff7a00?style=for-the-badge&logo=github&logoColor=white&labelColor=1a1a1a)](https://github.com/Aariyan007)
 
@@ -298,8 +304,7 @@ THEFriend/
 <div align="center">
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:ff7a00,50:ff9a2f,100:ff7a00&height=100&section=footer" />
-*"The thing is, the suit and I are one."*
 
-**⭐ Star this repo if you think AI assistants should be built, not bought.**
+**ARC is not meant to sound smart. It is meant to control the computer well.**
 
 </div>

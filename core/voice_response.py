@@ -1,163 +1,43 @@
 """
-Voice Response — Hybrid TTS system.
+Voice Response — Mac `say` only TTS system.
 
-Strategy:
-- Mac `say` for quick acks ("Got it", "On it") → instant feel
-- ElevenLabs for longer/smarter responses → premium quality
-- Stream ElevenLabs chunks to reduce perceived latency
-- Fallback to Mac `say` when ElevenLabs tokens exhausted
+All speech uses Mac `say` for now. Zero network latency, zero API cost.
+ElevenLabs will be re-added as final polish after the core pipeline works.
+
+Three delivery modes:
+    speak_ack(text)    — Fast rate Mac say, for short acks (<100ms)
+    speak_result(text) — Normal rate Mac say, for results (<200ms)
+    speak_chat(text)   — Normal rate Mac say, for chat/answers (<300ms)
 """
 
 import subprocess
 import sys
 import os
 import time
-import pyaudio
 import numpy as np
-from dotenv import load_dotenv
-
-load_dotenv()
 
 # ─── Settings ────────────────────────────────────────────────
-ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
-VOICE_ID           = os.getenv("ELEVENLABS_VOICE_ID", "TxGEqnHWrfWFTfGW9XjX")  # Josh voice
-# USE_ELEVENLABS     = os.getenv("USE_ELEVENLABS", "false").lower() == "true"
-USE_ELEVENLABS     = ELEVENLABS_API_KEY is not None
+# ElevenLabs disabled for now — all speech via Mac say
+USE_ELEVENLABS = False
 
-# Mac fallback settings
-MAC_VOICE = "Daniel"
-MAC_RATE  = 200
-
-# Threshold: responses shorter than this use Mac say (instant)
-# Longer responses use ElevenLabs (quality)
-SHORT_RESPONSE_WORDS = 6
+# Mac voice settings
+MAC_VOICE      = "Daniel"
+MAC_RATE_ACK   = 230   # Faster for snappy acks
+MAC_RATE_NORMAL = 200   # Normal for results and chat
 # ─────────────────────────────────────────────────────────────
 
 is_speaking     = False
 _speech_process = None
-_elevenlabs_fail_count = 0
-_elevenlabs_max_fails  = 3     # disable for session after N consecutive fails
 
 
-# ── Mood → Voice Settings ────────────────────────────────────
-MOOD_VOICE_SETTINGS = {
-    "focused": {
-        "stability":        0.85,
-        "similarity_boost": 0.75,
-        "style":            0.10,
-        "speed":            0.90,   # slightly slower, clear
-    },
-    "casual": {
-        "stability":        0.60,
-        "similarity_boost": 0.80,
-        "style":            0.35,
-        "speed":            1.00,   # normal
-    },
-    "sarcastic": {
-        "stability":        0.45,
-        "similarity_boost": 0.75,
-        "style":            0.60,   # more expressive
-        "speed":            1.10,   # slightly faster
-    },
-    "night": {
-        "stability":        0.80,
-        "similarity_boost": 0.70,
-        "style":            0.15,
-        "speed":            0.85,   # slower, chill
-    },
-}
-# ─────────────────────────────────────────────────────────────
-
-
-def _get_mood_settings() -> dict:
-    """Gets current mood and returns matching voice settings."""
-    try:
-        from mood.mood_engine import get_current_mood
-        mood = get_current_mood()
-        mood_name = mood.get("name", "casual")
-        return MOOD_VOICE_SETTINGS.get(mood_name, MOOD_VOICE_SETTINGS["casual"])
-    except:
-        return MOOD_VOICE_SETTINGS["casual"]
-
-
-def _is_short_response(text: str) -> bool:
-    """Check if response is short enough for instant Mac say."""
-    return len(text.split()) <= SHORT_RESPONSE_WORDS
-
-
-def _speak_elevenlabs(text: str) -> bool:
-    """Speaks using ElevenLabs API with mood-based voice settings."""
-    global is_speaking, _speech_process, _elevenlabs_fail_count
-    try:
-        from elevenlabs import ElevenLabs, VoiceSettings, play
-        import io
-
-        client   = ElevenLabs(api_key=ELEVENLABS_API_KEY)
-        settings = _get_mood_settings()
-
-        audio = client.text_to_speech.convert(
-            voice_id=VOICE_ID,
-            text=text,
-            model_id="eleven_turbo_v2",   # fastest model
-            voice_settings=VoiceSettings(
-                stability=settings["stability"],
-                similarity_boost=settings["similarity_boost"],
-                style=settings["style"],
-                use_speaker_boost=True,
-            )
-        )
-
-        # Save to temp file and play
-        import tempfile
-        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
-            tmp_path = f.name
-            for chunk in audio:
-                f.write(chunk)
-
-        # Play audio — use platform-appropriate player
-        if sys.platform == "darwin":
-            _speech_process = subprocess.Popen(["afplay", tmp_path])
-        else:
-            # Windows: use PowerShell to play the mp3
-            _speech_process = subprocess.Popen(
-                ["powershell", "-c",
-                 f'Add-Type -AssemblyName PresentationCore; '
-                 f'$p = New-Object System.Windows.Media.MediaPlayer; '
-                 f'$p.Open("{tmp_path}"); $p.Play(); '
-                 f'Start-Sleep -Milliseconds ($p.NaturalDuration.TimeSpan.TotalMilliseconds + 500)'],
-            )
-        interrupted = _listen_for_interrupt()
-
-        if interrupted:
-            _speech_process.terminate()
-            _speech_process.wait()
-            os.remove(tmp_path)
-            is_speaking = False
-            print("✋ Interrupted")
-            return False
-
-        _speech_process.wait()
-        os.remove(tmp_path)
-        _elevenlabs_fail_count = 0   # reset on success
-        return True
-
-    except Exception as e:
-        _elevenlabs_fail_count += 1
-        if _elevenlabs_fail_count >= _elevenlabs_max_fails:
-            print(f"⚠️  ElevenLabs failed {_elevenlabs_fail_count}x — disabling for this session")
-        else:
-            print(f"⚠️  ElevenLabs failed: {e} — falling back to local TTS")
-        if sys.platform == "darwin":
-            return _speak_mac(text)
-        else:
-            return _speak_windows(text)
-
-
-def _speak_mac(text: str) -> bool:
+def _speak_mac(text: str, rate: int = MAC_RATE_NORMAL) -> bool:
     """Speaks using Mac built-in say command."""
-    global _speech_process
+    global _speech_process, is_speaking
+    if sys.platform != "darwin":
+        return _speak_fallback(text)
+
     _speech_process = subprocess.Popen(
-        ["say", "-v", MAC_VOICE, "-r", str(MAC_RATE), text]
+        ["say", "-v", MAC_VOICE, "-r", str(rate), text]
     )
     interrupted = _listen_for_interrupt()
     if interrupted:
@@ -170,8 +50,8 @@ def _speak_mac(text: str) -> bool:
     return True
 
 
-def _speak_windows(text: str) -> bool:
-    """Speaks using pyttsx3 on Windows."""
+def _speak_fallback(text: str) -> bool:
+    """Fallback TTS for non-Mac platforms."""
     global is_speaking
     try:
         import pyttsx3
@@ -186,15 +66,23 @@ def _speak_windows(text: str) -> bool:
         engine.runAndWait()
         return True
     except Exception as e:
-        print(f"❌ Windows TTS error: {e}")
-        return True  # Return True anyway — don't block on TTS failure
+        print(f"❌ TTS error: {e}")
+        return True  # Don't block on TTS failure
 
 
-def _listen_for_interrupt(threshold_multiplier: float = 6.0) -> bool:
+def _listen_for_interrupt(threshold_multiplier: float = 12.0) -> bool:
     """Listens for user interruption while Jarvis speaks."""
+    try:
+        import pyaudio
+    except ImportError:
+        # No pyaudio — just wait for process to finish
+        if _speech_process:
+            _speech_process.wait()
+        return False
+
     CHUNK            = 1024
     SAMPLE_RATE      = 16000
-    CALIBRATE_CHUNKS = 15
+    CALIBRATE_CHUNKS = 20
 
     audio  = pyaudio.PyAudio()
     stream = audio.open(
@@ -206,7 +94,7 @@ def _listen_for_interrupt(threshold_multiplier: float = 6.0) -> bool:
     )
 
     # Wait for speaker to start — calibrate WITH Jarvis voice as background
-    time.sleep(0.3)
+    time.sleep(0.4)
 
     calibration = []
     for _ in range(CALIBRATE_CHUNKS):
@@ -230,141 +118,101 @@ def _listen_for_interrupt(threshold_multiplier: float = 6.0) -> bool:
     return interrupted
 
 
-def speak(text: str, force_elevenlabs: bool = False) -> bool:
+# ═══════════════════════════════════════════════════════════════
+#  The 3 delivery modes
+# ═══════════════════════════════════════════════════════════════
+
+def speak_ack(text: str) -> bool:
     """
-    TTS — speaks text using ElevenLabs when available (all responses),
-    falls back to Mac say.
-
-    Args:
-        text:              The text to speak
-        force_elevenlabs:  Override to force ElevenLabs (for smart follow-ups)
-
-    Returns:
-        True if completed, False if interrupted.
+    Quick ack — fast rate Mac say. For "On it.", "Renaming." etc.
+    Target: <100ms perceived latency.
     """
     global is_speaking
+    if not text:
+        return True  # Empty ack = skip
+    is_speaking = True
+    print(f"🔊 Jarvis (ack): {text}")
+    result = _speak_mac(text, rate=MAC_RATE_ACK)
+    is_speaking = False
+    return result
+
+
+def speak_result(text: str) -> bool:
+    """
+    Result delivery — normal rate Mac say. For "Chrome's open.", "Renamed X to Y."
+    Target: <200ms perceived latency.
+    """
+    global is_speaking
+    if not text:
+        return True
     is_speaking = True
     print(f"🔊 Jarvis: {text}")
-
-    if USE_ELEVENLABS and _elevenlabs_fail_count < _elevenlabs_max_fails:
-        result = _speak_elevenlabs(text)
-    elif sys.platform == "darwin":
-        result = _speak_mac(text)
-    else:
-        result = _speak_windows(text)
-
+    result = _speak_mac(text, rate=MAC_RATE_NORMAL)
     is_speaking = False
     return result
 
 
-def speak_instant(text: str) -> bool:
+def speak_chat(text: str) -> bool:
     """
-    Quick ack response — uses ElevenLabs when available,
-    falls back to Mac say for instant response.
-    """
-    global is_speaking
-    is_speaking = True
-    print(f"🔊 Jarvis (instant): {text}")
-
-    if USE_ELEVENLABS and _elevenlabs_fail_count < _elevenlabs_max_fails:
-        result = _speak_elevenlabs(text)
-    elif sys.platform == "darwin":
-        result = _speak_mac(text)
-    else:
-        result = _speak_windows(text)
-
-    is_speaking = False
-    return result
-
-
-def speak_smart(text: str) -> bool:
-    """
-    Uses ElevenLabs if available, for richer/longer responses.
-    Falls back to local TTS if ElevenLabs unavailable.
+    Chat/answer delivery — normal rate Mac say. For personality and answers.
+    Target: <300ms perceived latency.
     """
     global is_speaking
+    if not text:
+        return True
     is_speaking = True
-    print(f"🔊 Jarvis (smart): {text}")
-
-    if USE_ELEVENLABS and _elevenlabs_fail_count < _elevenlabs_max_fails:
-        result = _speak_elevenlabs(text)
-    elif sys.platform == "darwin":
-        result = _speak_mac(text)
-    else:
-        result = _speak_windows(text)
-
+    print(f"🔊 Jarvis: {text}")
+    result = _speak_mac(text, rate=MAC_RATE_NORMAL)
     is_speaking = False
     return result
 
 
 def speak_and_wait(text: str) -> None:
-    """Always completes — not interruptible. For warnings."""
+    """Always completes — not interruptible. For warnings/confirmations."""
     global is_speaking
     is_speaking = True
     print(f"🔊 Jarvis: {text}")
-
-    if USE_ELEVENLABS and _elevenlabs_fail_count < _elevenlabs_max_fails:
-        try:
-            from elevenlabs import ElevenLabs, VoiceSettings
-            client   = ElevenLabs(api_key=ELEVENLABS_API_KEY)
-            settings = _get_mood_settings()
-            audio    = client.text_to_speech.convert(
-                voice_id=VOICE_ID,
-                text=text,
-                model_id="eleven_turbo_v2",
-                voice_settings=VoiceSettings(
-                    stability=settings["stability"],
-                    similarity_boost=settings["similarity_boost"],
-                    style=settings["style"],
-                )
-            )
-            import tempfile
-            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
-                tmp_path = f.name
-                for chunk in audio:
-                    f.write(chunk)
-            if sys.platform == "darwin":
-                subprocess.run(["afplay", tmp_path])
-            else:
-                subprocess.run(
-                    ["powershell", "-c",
-                     f'Add-Type -AssemblyName PresentationCore; '
-                     f'$p = New-Object System.Windows.Media.MediaPlayer; '
-                     f'$p.Open("{tmp_path}"); $p.Play(); '
-                     f'Start-Sleep -Milliseconds ($p.NaturalDuration.TimeSpan.TotalMilliseconds + 500)'],
-                )
-            os.remove(tmp_path)
-        except Exception as e:
-            print(f"⚠️  ElevenLabs failed: {e}")
-            if sys.platform == "darwin":
-                subprocess.run(["say", "-v", MAC_VOICE, "-r", str(MAC_RATE), text])
-            else:
-                _speak_windows(text)
+    if sys.platform == "darwin":
+        subprocess.run(["say", "-v", MAC_VOICE, "-r", str(MAC_RATE_NORMAL), text])
     else:
-        if sys.platform == "darwin":
-            subprocess.run(["say", "-v", MAC_VOICE, "-r", str(MAC_RATE), text])
-        else:
-            _speak_windows(text)
-
+        _speak_fallback(text)
     is_speaking = False
+
+
+# ═══════════════════════════════════════════════════════════════
+#  Backward-compat aliases (old code still calls these)
+# ═══════════════════════════════════════════════════════════════
+
+def speak(text: str, force_elevenlabs: bool = False) -> bool:
+    """Alias → speak_result. Kept for backward compatibility."""
+    return speak_result(text)
+
+
+def speak_instant(text: str) -> bool:
+    """Alias → speak_ack. Kept for backward compatibility."""
+    return speak_ack(text)
+
+
+def speak_smart(text: str) -> bool:
+    """Alias → speak_chat. Kept for backward compatibility."""
+    return speak_chat(text)
 
 
 # ─── Quick test ──────────────────────────────────────────────
 if __name__ == "__main__":
-    print(f"Using ElevenLabs: {USE_ELEVENLABS}")
-    print("Testing hybrid voice...\n")
+    print(f"Platform: {sys.platform}")
+    print(f"ElevenLabs: {USE_ELEVENLABS}")
+    print("Testing Mac say only voice...\n")
 
-    from mood.mood_engine import set_mood
+    speak_ack("On it.")
+    time.sleep(0.3)
 
-    set_mood("casual")
+    speak_result("Chrome is open.")
+    time.sleep(0.3)
 
-    # Short response — should use Mac say (instant)
-    speak("Got it.")
-    time.sleep(0.5)
+    speak_chat("You have 3 unread emails and a meeting at 2 PM.")
+    time.sleep(0.3)
 
-    # Longer response — would use ElevenLabs if available
-    speak("Here's your morning briefing. You have 3 unread emails and a meeting at 2 PM.")
-    time.sleep(0.5)
-
-    # Force instant
-    speak_instant("On it.")
+    # Test aliases
+    speak("Testing backward compat.")
+    speak_instant("Got it.")

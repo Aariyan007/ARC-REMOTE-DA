@@ -160,6 +160,30 @@ INTENT_REGISTRY = {
         "search online", "browse for", "find online",
     ],
 
+    # ── Playwright browser (DOM-first; distinct from OS new_tab) ─
+    "open_url": [
+        "open https://", "go to https://", "visit https://",
+        "navigate to https://", "open http://",
+        "go to github.com", "visit reddit.com", "open example.com",
+        "navigate to news.ycombinator.com", "browse to stackoverflow.com",
+    ],
+    "web_back": [
+        "browser go back", "web page back", "go back in the browser",
+        "previous web page", "browser back button",
+    ],
+    "web_refresh": [
+        "reload web page", "refresh this webpage", "reload the browser page",
+        "refresh browser page", "reload the site",
+    ],
+    "web_new_tab": [
+        "jarvis new browser tab", "automation browser new tab",
+        "controlled browser new tab", "new tab in the automation browser",
+    ],
+    "web_close_tab": [
+        "close automation browser tab", "close jarvis browser tab",
+        "close the automation tab", "close controlled browser tab",
+    ],
+
     # ── Folders ──────────────────────────────────────────────
     "open_folder": [
         "open downloads", "open desktop", "open documents",
@@ -404,6 +428,32 @@ INTENT_REGISTRY = {
         "could you play music", "play music please",
         "play a track", "put on a song", "i want to hear music",
         "play blinding lights", "play bohemian rhapsody",
+        # Song-name patterns (Bug 3 fix)
+        "play a song named back in black",
+        "play a song named shape of you",
+        "play a song called thriller",
+        "play the song called perfect",
+        "play the song named believer",
+        "play back in black by ac dc",
+        "play shape of you by ed sheeran",
+        "play blinding lights by the weeknd",
+        "play a song named back and back",
+        "play the song back and back",
+        "i want to listen to back and back",
+        "play me a song named back and back",
+        "play me a song called thriller",
+        "play me the song shape of you",
+        "can you play the song perfect",
+        "play something named believer",
+        "put on the song hotel california",
+        "play hotel california by eagles",
+        "play stay by the kid laroi",
+        "play levitating by dua lipa",
+        "play as it was by harry styles",
+        "i want to hear back and back",
+        "i want to listen to shape of you",
+        "can you play back in black for me",
+        "play me something by ed sheeran",
     ],
     "play_mood_music": [
         "play music according to my mood", "play something for my mood",
@@ -467,6 +517,38 @@ INTENT_REGISTRY = {
         "tile these windows", "split screen with",
         "side by side layout", "tile two windows",
     ],
+
+    # ── Computer Use / UI Control ─────────────────────────────
+    "computer_use": [
+        # WhatsApp
+        "send a whatsapp message to", "message my mom on whatsapp",
+        "whatsapp my mom", "send whatsapp to", "text my mom on whatsapp",
+        "send a message to mom on whatsapp", "whatsapp message",
+        "message my friend on whatsapp", "send whatsapp",
+        "open whatsapp and message", "whatsapp and say",
+        # Gmail UI
+        "open gmail and search", "go to gmail and find",
+        "search for emails from mom in gmail",
+        "find emails from my boss in gmail",
+        "open gmail and look for emails about",
+        "search gmail for", "gmail search for",
+        # Click/Type UI
+        "click the send button", "click on the button",
+        "click the search bar", "click the login button",
+        "type hello in the chat", "type in the search box",
+        "fill in the form", "click submit",
+        # Navigate
+        "go to youtube and search for",
+        "open youtube and search for music",
+        "navigate to the website and click",
+        "go to the website and fill in",
+        # Generic computer use
+        "control my computer and", "use the computer to",
+        "do it on my screen", "do it visually",
+        "use my mouse to", "move the mouse and click",
+        "click and type", "on screen do",
+        "open the browser and go to",
+    ],
 }
 
 # ─── Negative Examples (anti-match patterns) ────────────────
@@ -516,14 +598,75 @@ def _get_cross_encoder():
 
 
 def _get_model():
-    """Lazy-load the sentence transformer model."""
+    """
+    Lazy-load the sentence transformer model.
+
+    Resolution order:
+      1. SENTENCE_TRANSFORMERS_HOME env var → local directory (fully offline)
+      2. Default HuggingFace cache (~/.cache/huggingface/hub) if already cached
+      3. Network download as last resort
+
+    Raises RuntimeError with a clear message if the model cannot be loaded,
+    so callers can degrade gracefully instead of stalling.
+    """
     global _model
     if _model is None:
-        print("🧠 Loading sentence-transformer model...")
+        import os
         from sentence_transformers import SentenceTransformer
-        _model = SentenceTransformer("all-MiniLM-L6-v2")
-        print("✅ Model loaded")
+
+        MODEL_NAME = "all-MiniLM-L6-v2"
+
+        # 1. Check for an explicit local path override
+        local_path = os.environ.get("SENTENCE_TRANSFORMERS_HOME", "")
+        if local_path:
+            candidate = os.path.join(local_path, MODEL_NAME)
+            if os.path.isdir(candidate):
+                print(f"Loading sentence-transformer from local path: {candidate}")
+                try:
+                    _model = SentenceTransformer(candidate)
+                    print("Model loaded (offline).")
+                    return _model
+                except Exception as e:
+                    print(f"Warning: local model load failed ({e}), trying cache...")
+
+        # 2. Check default HuggingFace cache — skip network if already cached
+        cache_dir = os.path.expanduser(
+            os.environ.get("HF_HOME",
+                os.path.join(os.path.expanduser("~"), ".cache", "huggingface", "hub"))
+        )
+        # HF hub stores models as "models--org--name"
+        hf_cache_name = f"models--sentence-transformers--{MODEL_NAME}"
+        if os.path.isdir(os.path.join(cache_dir, hf_cache_name)):
+            print(f"Loading sentence-transformer from HuggingFace cache...")
+            try:
+                # local_files_only=True: skip the redundant HEAD request to HuggingFace
+                # This prevents startup hangs when offline or when HF is unreachable
+                _model = SentenceTransformer(
+                    MODEL_NAME,
+                    cache_folder=cache_dir,
+                    local_files_only=True,
+                )
+                print("Model loaded (cached).")
+                return _model
+            except Exception as e:
+                print(f"Warning: offline load failed ({e}), attempting live download...")
+
+        # 3. Network download — last resort (first-time setup only)
+        print(f"Downloading sentence-transformer model '{MODEL_NAME}' (first-time setup)...")
+        print("Tip: set SENTENCE_TRANSFORMERS_HOME to a local dir to avoid this.")
+        try:
+            _model = SentenceTransformer(MODEL_NAME)
+            print("Model loaded (downloaded).")
+        except Exception as e:
+            raise RuntimeError(
+                f"Could not load sentence-transformer model '{MODEL_NAME}'.\n"
+                f"Reason: {e}\n"
+                f"Fix: run `pip install sentence-transformers` and ensure network "
+                f"access on first run, or set SENTENCE_TRANSFORMERS_HOME to a "
+                f"directory containing a pre-downloaded '{MODEL_NAME}' folder."
+            ) from e
     return _model
+
 
 
 def _load_intent_patches() -> dict:

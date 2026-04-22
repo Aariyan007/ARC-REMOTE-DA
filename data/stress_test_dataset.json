@@ -1,0 +1,4009 @@
+{
+  "description": "ARC stress test dataset — 520+ cases across 10 categories",
+  "version": "1.0",
+  "total_cases": 528,
+  "category_counts": {
+    "corrupted_input": 80,
+    "slang_stripping": 60,
+    "target_type": 50,
+    "compound_command": 70,
+    "file_operation": 60,
+    "clarification": 40,
+    "pronoun_resolution": 40,
+    "safety_gate": 28,
+    "action_correction": 20,
+    "grounded_followup": 40,
+    "error_recovery": 20,
+    "task_planner": 20
+  },
+  "cases": [
+    {
+      "category": "corrupted_input",
+      "input": "opne chrome",
+      "correct_form": "open chrome",
+      "expected_action": "open_app",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "open crhome",
+      "correct_form": "open chrome",
+      "expected_action": "open_app",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "open chrom",
+      "correct_form": "open chrome",
+      "expected_action": "open_app",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "opn chrome",
+      "correct_form": "open chrome",
+      "expected_action": "open_app",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "oebn chrome",
+      "correct_form": "open chrome",
+      "expected_action": "open_app",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "openn chrome",
+      "correct_form": "open chrome",
+      "expected_action": "open_app",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "open chromee",
+      "correct_form": "open chrome",
+      "expected_action": "open_app",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "open chrme",
+      "correct_form": "open chrome",
+      "expected_action": "open_app",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "pen chrome",
+      "correct_form": "open chrome",
+      "expected_action": "open_app",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "oopen chrome",
+      "correct_form": "open chrome",
+      "expected_action": "open_app",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "creat a file",
+      "correct_form": "create a file",
+      "expected_action": "create_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "crate a file",
+      "correct_form": "create a file",
+      "expected_action": "create_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "create a fiel",
+      "correct_form": "create a file",
+      "expected_action": "create_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "craete a file",
+      "correct_form": "create a file",
+      "expected_action": "create_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "create a fle",
+      "correct_form": "create a file",
+      "expected_action": "create_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "create a fil",
+      "correct_form": "create a file",
+      "expected_action": "create_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "creeate a file",
+      "correct_form": "create a file",
+      "expected_action": "create_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "creatae a file",
+      "correct_form": "create a file",
+      "expected_action": "create_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "create a fi le",
+      "correct_form": "create a file",
+      "expected_action": "create_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "creat a fille",
+      "correct_form": "create a file",
+      "expected_action": "create_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "delte the file",
+      "correct_form": "delete the file",
+      "expected_action": "delete_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "deleet the file",
+      "correct_form": "delete the file",
+      "expected_action": "delete_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "delete teh file",
+      "correct_form": "delete the file",
+      "expected_action": "delete_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "delet the file",
+      "correct_form": "delete the file",
+      "expected_action": "delete_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "dleete the file",
+      "correct_form": "delete the file",
+      "expected_action": "delete_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "delete th file",
+      "correct_form": "delete the file",
+      "expected_action": "delete_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "delete the fiel",
+      "correct_form": "delete the file",
+      "expected_action": "delete_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "deelte the file",
+      "correct_form": "delete the file",
+      "expected_action": "delete_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "delete tthe file",
+      "correct_form": "delete the file",
+      "expected_action": "delete_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "deletee the file",
+      "correct_form": "delete the file",
+      "expected_action": "delete_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "serach for python",
+      "correct_form": "search for python",
+      "expected_action": "search_google",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "search fr python",
+      "correct_form": "search for python",
+      "expected_action": "search_google",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "saerch for python",
+      "correct_form": "search for python",
+      "expected_action": "search_google",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "search for pyhton",
+      "correct_form": "search for python",
+      "expected_action": "search_google",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "serch for python",
+      "correct_form": "search for python",
+      "expected_action": "search_google",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "search for pythn",
+      "correct_form": "search for python",
+      "expected_action": "search_google",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "searhc for python",
+      "correct_form": "search for python",
+      "expected_action": "search_google",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "search fro python",
+      "correct_form": "search for python",
+      "expected_action": "search_google",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "search for pyton",
+      "correct_form": "search for python",
+      "expected_action": "search_google",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "searh for python",
+      "correct_form": "search for python",
+      "expected_action": "search_google",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "opne youtube",
+      "correct_form": "open youtube",
+      "expected_action": "open_url",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "open yuotube",
+      "correct_form": "open youtube",
+      "expected_action": "open_url",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "open yotube",
+      "correct_form": "open youtube",
+      "expected_action": "open_url",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "open youutbe",
+      "correct_form": "open youtube",
+      "expected_action": "open_url",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "open yutube",
+      "correct_form": "open youtube",
+      "expected_action": "open_url",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "opne yotube",
+      "correct_form": "open youtube",
+      "expected_action": "open_url",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "open youttube",
+      "correct_form": "open youtube",
+      "expected_action": "open_url",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "open yotuube",
+      "correct_form": "open youtube",
+      "expected_action": "open_url",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "open youtub",
+      "correct_form": "open youtube",
+      "expected_action": "open_url",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "oen youtube",
+      "correct_form": "open youtube",
+      "expected_action": "open_url",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "renam the file",
+      "correct_form": "rename the file",
+      "expected_action": "rename_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "renmae the file",
+      "correct_form": "rename the file",
+      "expected_action": "rename_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "rename teh file",
+      "correct_form": "rename the file",
+      "expected_action": "rename_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "rename the fiel",
+      "correct_form": "rename the file",
+      "expected_action": "rename_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "rnmae the file",
+      "correct_form": "rename the file",
+      "expected_action": "rename_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "rename th file",
+      "correct_form": "rename the file",
+      "expected_action": "rename_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "renamee the file",
+      "correct_form": "rename the file",
+      "expected_action": "rename_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "rename hte file",
+      "correct_form": "rename the file",
+      "expected_action": "rename_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "renaem the file",
+      "correct_form": "rename the file",
+      "expected_action": "rename_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "renme the file",
+      "correct_form": "rename the file",
+      "expected_action": "rename_file",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "clsoe the app",
+      "correct_form": "close the app",
+      "expected_action": "close_app",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "close teh app",
+      "correct_form": "close the app",
+      "expected_action": "close_app",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "close the ap",
+      "correct_form": "close the app",
+      "expected_action": "close_app",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "closee the app",
+      "correct_form": "close the app",
+      "expected_action": "close_app",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "cloe the app",
+      "correct_form": "close the app",
+      "expected_action": "close_app",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "close the aap",
+      "correct_form": "close the app",
+      "expected_action": "close_app",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "clsoe teh app",
+      "correct_form": "close the app",
+      "expected_action": "close_app",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "close th app",
+      "correct_form": "close the app",
+      "expected_action": "close_app",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "colse the app",
+      "correct_form": "close the app",
+      "expected_action": "close_app",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "close hte app",
+      "correct_form": "close the app",
+      "expected_action": "close_app",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "sned an email",
+      "correct_form": "send an email",
+      "expected_action": "send_email",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "send an emal",
+      "correct_form": "send an email",
+      "expected_action": "send_email",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "send an emial",
+      "correct_form": "send an email",
+      "expected_action": "send_email",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "sedn an email",
+      "correct_form": "send an email",
+      "expected_action": "send_email",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "send an eamil",
+      "correct_form": "send an email",
+      "expected_action": "send_email",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "send an emai",
+      "correct_form": "send an email",
+      "expected_action": "send_email",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "send na email",
+      "correct_form": "send an email",
+      "expected_action": "send_email",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "send a nemail",
+      "correct_form": "send an email",
+      "expected_action": "send_email",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "snde an email",
+      "correct_form": "send an email",
+      "expected_action": "send_email",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "corrupted_input",
+      "input": "send an eemail",
+      "correct_form": "send an email",
+      "expected_action": "send_email",
+      "note": "typo/voice-to-text error"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "bro rename report",
+      "expected_clean_contains": [
+        "rename",
+        "report"
+      ],
+      "expected_clean_excludes": [
+        "bro"
+      ],
+      "expected_action": "rename_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "dude open chrome",
+      "expected_clean_contains": [
+        "open",
+        "chrome"
+      ],
+      "expected_clean_excludes": [
+        "dude"
+      ],
+      "expected_action": "open_app"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "yo open chrome",
+      "expected_clean_contains": [
+        "open",
+        "chrome"
+      ],
+      "expected_clean_excludes": [
+        "yo"
+      ],
+      "expected_action": "open_app"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "man rename report",
+      "expected_clean_contains": [
+        "rename",
+        "report"
+      ],
+      "expected_clean_excludes": [
+        "man"
+      ],
+      "expected_action": "rename_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "like search for cats",
+      "expected_clean_contains": [
+        "search",
+        "for"
+      ],
+      "expected_clean_excludes": [
+        "like"
+      ],
+      "expected_action": "search_google"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "uh make a file",
+      "expected_clean_contains": [
+        "make",
+        "a"
+      ],
+      "expected_clean_excludes": [
+        "uh"
+      ],
+      "expected_action": "create_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "um make a file",
+      "expected_clean_contains": [
+        "make",
+        "a"
+      ],
+      "expected_clean_excludes": [
+        "um"
+      ],
+      "expected_action": "create_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "lol make a file",
+      "expected_clean_contains": [
+        "make",
+        "a"
+      ],
+      "expected_clean_excludes": [
+        "lol"
+      ],
+      "expected_action": "create_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "bruh rename report",
+      "expected_clean_contains": [
+        "rename",
+        "report"
+      ],
+      "expected_clean_excludes": [
+        "bruh"
+      ],
+      "expected_action": "rename_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "tbh open chrome",
+      "expected_clean_contains": [
+        "open",
+        "chrome"
+      ],
+      "expected_clean_excludes": [
+        "tbh"
+      ],
+      "expected_action": "open_app"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "kinda rename report",
+      "expected_clean_contains": [
+        "rename",
+        "report"
+      ],
+      "expected_clean_excludes": [
+        "kinda"
+      ],
+      "expected_action": "rename_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "hey rename report",
+      "expected_clean_contains": [
+        "rename",
+        "report"
+      ],
+      "expected_clean_excludes": [
+        "hey"
+      ],
+      "expected_action": "rename_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "please delete notes.txt",
+      "expected_clean_contains": [
+        "delete",
+        "notes.txt"
+      ],
+      "expected_clean_excludes": [
+        "please"
+      ],
+      "expected_action": "delete_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "just open chrome",
+      "expected_clean_contains": [
+        "open",
+        "chrome"
+      ],
+      "expected_clean_excludes": [
+        "just"
+      ],
+      "expected_action": "open_app"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "maybe delete notes.txt",
+      "expected_clean_contains": [
+        "delete",
+        "notes.txt"
+      ],
+      "expected_clean_excludes": [
+        "maybe"
+      ],
+      "expected_action": "delete_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "basically close spotify",
+      "expected_clean_contains": [
+        "close",
+        "spotify"
+      ],
+      "expected_clean_excludes": [
+        "basically"
+      ],
+      "expected_action": "close_app"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "dude bro open chrome",
+      "expected_clean_excludes": [
+        "dude",
+        "bro"
+      ],
+      "expected_action": "open_app"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "um man delete notes.txt",
+      "expected_clean_excludes": [
+        "um",
+        "man"
+      ],
+      "expected_action": "delete_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "bro bruh make a file",
+      "expected_clean_excludes": [
+        "bro",
+        "bruh"
+      ],
+      "expected_action": "create_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "just man close spotify",
+      "expected_clean_excludes": [
+        "just",
+        "man"
+      ],
+      "expected_action": "close_app"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "bruh please open chrome",
+      "expected_clean_excludes": [
+        "bruh",
+        "please"
+      ],
+      "expected_action": "open_app"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "uh hey close spotify",
+      "expected_clean_excludes": [
+        "uh",
+        "hey"
+      ],
+      "expected_action": "close_app"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "kinda like make a file",
+      "expected_clean_excludes": [
+        "kinda",
+        "like"
+      ],
+      "expected_action": "create_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "um please search for cats",
+      "expected_clean_excludes": [
+        "um",
+        "please"
+      ],
+      "expected_action": "search_google"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "man dude close spotify",
+      "expected_clean_excludes": [
+        "man",
+        "dude"
+      ],
+      "expected_action": "close_app"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "man uh search for cats",
+      "expected_clean_excludes": [
+        "man",
+        "uh"
+      ],
+      "expected_action": "search_google"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "bruh please open chrome",
+      "expected_clean_excludes": [
+        "bruh",
+        "please"
+      ],
+      "expected_action": "open_app"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "maybe bruh open chrome",
+      "expected_clean_excludes": [
+        "maybe",
+        "bruh"
+      ],
+      "expected_action": "open_app"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "please dude delete notes.txt",
+      "expected_clean_excludes": [
+        "please",
+        "dude"
+      ],
+      "expected_action": "delete_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "tbh just rename report",
+      "expected_clean_excludes": [
+        "tbh",
+        "just"
+      ],
+      "expected_action": "rename_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "hey tbh make a file",
+      "expected_clean_excludes": [
+        "hey",
+        "tbh"
+      ],
+      "expected_action": "create_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "yo bro rename report",
+      "expected_clean_excludes": [
+        "yo",
+        "bro"
+      ],
+      "expected_action": "rename_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "lol please search for cats",
+      "expected_clean_excludes": [
+        "lol",
+        "please"
+      ],
+      "expected_action": "search_google"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "yo just make a file",
+      "expected_clean_excludes": [
+        "yo",
+        "just"
+      ],
+      "expected_action": "create_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "man um search for cats",
+      "expected_clean_excludes": [
+        "man",
+        "um"
+      ],
+      "expected_action": "search_google"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "maybe kinda search for cats",
+      "expected_clean_excludes": [
+        "maybe",
+        "kinda"
+      ],
+      "expected_action": "search_google"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "search for cats uh",
+      "expected_clean_excludes": [
+        "uh"
+      ],
+      "expected_action": "search_google"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "make a file hey",
+      "expected_clean_excludes": [
+        "hey"
+      ],
+      "expected_action": "create_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "rename report bruh",
+      "expected_clean_excludes": [
+        "bruh"
+      ],
+      "expected_action": "rename_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "delete notes.txt yo",
+      "expected_clean_excludes": [
+        "yo"
+      ],
+      "expected_action": "delete_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "delete notes.txt uh",
+      "expected_clean_excludes": [
+        "uh"
+      ],
+      "expected_action": "delete_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "make a file lol",
+      "expected_clean_excludes": [
+        "lol"
+      ],
+      "expected_action": "create_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "close spotify maybe",
+      "expected_clean_excludes": [
+        "maybe"
+      ],
+      "expected_action": "close_app"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "rename report bruh",
+      "expected_clean_excludes": [
+        "bruh"
+      ],
+      "expected_action": "rename_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "rename report lol",
+      "expected_clean_excludes": [
+        "lol"
+      ],
+      "expected_action": "rename_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "open chrome kinda",
+      "expected_clean_excludes": [
+        "kinda"
+      ],
+      "expected_action": "open_app"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "open chrome lol",
+      "expected_clean_excludes": [
+        "lol"
+      ],
+      "expected_action": "open_app"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "close spotify kinda",
+      "expected_clean_excludes": [
+        "kinda"
+      ],
+      "expected_action": "close_app"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "open chrome bruh",
+      "expected_clean_excludes": [
+        "bruh"
+      ],
+      "expected_action": "open_app"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "delete notes.txt um",
+      "expected_clean_excludes": [
+        "um"
+      ],
+      "expected_action": "delete_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "make a file kinda",
+      "expected_clean_excludes": [
+        "kinda"
+      ],
+      "expected_action": "create_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "close spotify basically",
+      "expected_clean_excludes": [
+        "basically"
+      ],
+      "expected_action": "close_app"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "make a file maybe",
+      "expected_clean_excludes": [
+        "maybe"
+      ],
+      "expected_action": "create_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "make a file bruh",
+      "expected_clean_excludes": [
+        "bruh"
+      ],
+      "expected_action": "create_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "rename report lol",
+      "expected_clean_excludes": [
+        "lol"
+      ],
+      "expected_action": "rename_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "rename report bruh",
+      "expected_clean_excludes": [
+        "bruh"
+      ],
+      "expected_action": "rename_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "delete notes.txt just",
+      "expected_clean_excludes": [
+        "just"
+      ],
+      "expected_action": "delete_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "search for cats please",
+      "expected_clean_excludes": [
+        "please"
+      ],
+      "expected_action": "search_google"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "make a file lol",
+      "expected_clean_excludes": [
+        "lol"
+      ],
+      "expected_action": "create_file"
+    },
+    {
+      "category": "slang_stripping",
+      "input": "open chrome basically",
+      "expected_clean_excludes": [
+        "basically"
+      ],
+      "expected_action": "open_app"
+    },
+    {
+      "category": "target_type",
+      "input": "open chrome",
+      "expected_type": "app"
+    },
+    {
+      "category": "target_type",
+      "input": "open safari",
+      "expected_type": "app"
+    },
+    {
+      "category": "target_type",
+      "input": "open vscode",
+      "expected_type": "app"
+    },
+    {
+      "category": "target_type",
+      "input": "open spotify",
+      "expected_type": "app"
+    },
+    {
+      "category": "target_type",
+      "input": "open finder",
+      "expected_type": "app"
+    },
+    {
+      "category": "target_type",
+      "input": "open slack",
+      "expected_type": "app"
+    },
+    {
+      "category": "target_type",
+      "input": "open terminal",
+      "expected_type": "app"
+    },
+    {
+      "category": "target_type",
+      "input": "launch discord",
+      "expected_type": "app"
+    },
+    {
+      "category": "target_type",
+      "input": "run photoshop",
+      "expected_type": "app"
+    },
+    {
+      "category": "target_type",
+      "input": "open calculator",
+      "expected_type": "app"
+    },
+    {
+      "category": "target_type",
+      "input": "watch youtube",
+      "expected_type": "website"
+    },
+    {
+      "category": "target_type",
+      "input": "open google.com",
+      "expected_type": "website"
+    },
+    {
+      "category": "target_type",
+      "input": "go to github",
+      "expected_type": "website"
+    },
+    {
+      "category": "target_type",
+      "input": "open reddit",
+      "expected_type": "website"
+    },
+    {
+      "category": "target_type",
+      "input": "visit twitter",
+      "expected_type": "website"
+    },
+    {
+      "category": "target_type",
+      "input": "browse stackoverflow",
+      "expected_type": "website"
+    },
+    {
+      "category": "target_type",
+      "input": "open facebook.com",
+      "expected_type": "website"
+    },
+    {
+      "category": "target_type",
+      "input": "go to netflix",
+      "expected_type": "website"
+    },
+    {
+      "category": "target_type",
+      "input": "visit amazon",
+      "expected_type": "website"
+    },
+    {
+      "category": "target_type",
+      "input": "open linkedin",
+      "expected_type": "website"
+    },
+    {
+      "category": "target_type",
+      "input": "search for python",
+      "expected_type": "browser_search"
+    },
+    {
+      "category": "target_type",
+      "input": "google react hooks",
+      "expected_type": "browser_search"
+    },
+    {
+      "category": "target_type",
+      "input": "look up machine learning",
+      "expected_type": "browser_search"
+    },
+    {
+      "category": "target_type",
+      "input": "find nodejs tutorial",
+      "expected_type": "browser_search"
+    },
+    {
+      "category": "target_type",
+      "input": "search how to cook pasta",
+      "expected_type": "browser_search"
+    },
+    {
+      "category": "target_type",
+      "input": "create a file",
+      "expected_type": "file"
+    },
+    {
+      "category": "target_type",
+      "input": "make a new file",
+      "expected_type": "file"
+    },
+    {
+      "category": "target_type",
+      "input": "edit report.txt",
+      "expected_type": "file"
+    },
+    {
+      "category": "target_type",
+      "input": "rename notes.py",
+      "expected_type": "file"
+    },
+    {
+      "category": "target_type",
+      "input": "delete old.txt",
+      "expected_type": "file"
+    },
+    {
+      "category": "target_type",
+      "input": "open downloads",
+      "expected_type": "folder"
+    },
+    {
+      "category": "target_type",
+      "input": "open documents folder",
+      "expected_type": "folder"
+    },
+    {
+      "category": "target_type",
+      "input": "go to desktop",
+      "expected_type": "folder"
+    },
+    {
+      "category": "target_type",
+      "input": "open my projects",
+      "expected_type": "folder"
+    },
+    {
+      "category": "target_type",
+      "input": "browse photos folder",
+      "expected_type": "folder"
+    },
+    {
+      "category": "target_type",
+      "input": "send email to john",
+      "expected_type": "email"
+    },
+    {
+      "category": "target_type",
+      "input": "compose an email",
+      "expected_type": "email"
+    },
+    {
+      "category": "target_type",
+      "input": "mail the report",
+      "expected_type": "email"
+    },
+    {
+      "category": "target_type",
+      "input": "email mom",
+      "expected_type": "email"
+    },
+    {
+      "category": "target_type",
+      "input": "reply to boss",
+      "expected_type": "email"
+    },
+    {
+      "category": "target_type",
+      "input": "save a note",
+      "expected_type": "note"
+    },
+    {
+      "category": "target_type",
+      "input": "write a memo",
+      "expected_type": "note"
+    },
+    {
+      "category": "target_type",
+      "input": "jot this down",
+      "expected_type": "note"
+    },
+    {
+      "category": "target_type",
+      "input": "take a note",
+      "expected_type": "note"
+    },
+    {
+      "category": "target_type",
+      "input": "save as note",
+      "expected_type": "note"
+    },
+    {
+      "category": "target_type",
+      "input": "close this tab",
+      "expected_type": "tab"
+    },
+    {
+      "category": "target_type",
+      "input": "new tab",
+      "expected_type": "tab"
+    },
+    {
+      "category": "target_type",
+      "input": "switch tab",
+      "expected_type": "tab"
+    },
+    {
+      "category": "target_type",
+      "input": "close all tabs",
+      "expected_type": "tab"
+    },
+    {
+      "category": "target_type",
+      "input": "open new tab",
+      "expected_type": "tab"
+    },
+    {
+      "category": "compound_command",
+      "input": "make a folder and then make a file",
+      "expected_step1": "create_folder",
+      "expected_step2": "create_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "make a folder then make a file",
+      "expected_step1": "create_folder",
+      "expected_step2": "create_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "make a folder, then make a file",
+      "expected_step1": "create_folder",
+      "expected_step2": "create_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "make a folder; make a file",
+      "expected_step1": "create_folder",
+      "expected_step2": "create_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "make a folder, and then make a file",
+      "expected_step1": "create_folder",
+      "expected_step2": "create_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "make a folder after that make a file",
+      "expected_step1": "create_folder",
+      "expected_step2": "create_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "create a file and then write hello in it",
+      "expected_step1": "create_file",
+      "expected_step2": "edit_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "create a file then write hello in it",
+      "expected_step1": "create_file",
+      "expected_step2": "edit_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "create a file, then write hello in it",
+      "expected_step1": "create_file",
+      "expected_step2": "edit_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "create a file; write hello in it",
+      "expected_step1": "create_file",
+      "expected_step2": "edit_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "create a file, and then write hello in it",
+      "expected_step1": "create_file",
+      "expected_step2": "edit_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "create a file after that write hello in it",
+      "expected_step1": "create_file",
+      "expected_step2": "edit_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "open chrome and search for python",
+      "expected_step1": "open_app",
+      "expected_step2": "search_google"
+    },
+    {
+      "category": "compound_command",
+      "input": "make a folder, and then delete it",
+      "expected_step1": "create_folder",
+      "expected_step2": "delete_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "make a folder, then delete it",
+      "expected_step1": "create_folder",
+      "expected_step2": "delete_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "make a folder,, then delete it",
+      "expected_step1": "create_folder",
+      "expected_step2": "delete_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "make a folder,; delete it",
+      "expected_step1": "create_folder",
+      "expected_step2": "delete_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "make a folder,, and then delete it",
+      "expected_step1": "create_folder",
+      "expected_step2": "delete_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "make a folder, after that delete it",
+      "expected_step1": "create_folder",
+      "expected_step2": "delete_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "create notes.txt and then rename it to report",
+      "expected_step1": "create_file",
+      "expected_step2": "rename_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "create notes.txt then rename it to report",
+      "expected_step1": "create_file",
+      "expected_step2": "rename_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "create notes.txt, then rename it to report",
+      "expected_step1": "create_file",
+      "expected_step2": "rename_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "create notes.txt; rename it to report",
+      "expected_step1": "create_file",
+      "expected_step2": "rename_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "create notes.txt, and then rename it to report",
+      "expected_step1": "create_file",
+      "expected_step2": "rename_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "create notes.txt after that rename it to report",
+      "expected_step1": "create_file",
+      "expected_step2": "rename_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "open safari and go to youtube",
+      "expected_step1": "open_app",
+      "expected_step2": "open_url"
+    },
+    {
+      "category": "compound_command",
+      "input": "create a folder and then make a file inside it",
+      "expected_step1": "create_folder",
+      "expected_step2": "create_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "create a folder then make a file inside it",
+      "expected_step1": "create_folder",
+      "expected_step2": "create_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "create a folder, then make a file inside it",
+      "expected_step1": "create_folder",
+      "expected_step2": "create_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "create a folder; make a file inside it",
+      "expected_step1": "create_folder",
+      "expected_step2": "create_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "create a folder, and then make a file inside it",
+      "expected_step1": "create_folder",
+      "expected_step2": "create_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "create a folder after that make a file inside it",
+      "expected_step1": "create_folder",
+      "expected_step2": "create_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "make a file and then put my notes in it",
+      "expected_step1": "create_file",
+      "expected_step2": "edit_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "make a file then put my notes in it",
+      "expected_step1": "create_file",
+      "expected_step2": "edit_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "make a file, then put my notes in it",
+      "expected_step1": "create_file",
+      "expected_step2": "edit_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "make a file; put my notes in it",
+      "expected_step1": "create_file",
+      "expected_step2": "edit_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "make a file, and then put my notes in it",
+      "expected_step1": "create_file",
+      "expected_step2": "edit_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "make a file after that put my notes in it",
+      "expected_step1": "create_file",
+      "expected_step2": "edit_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "open vscode and then open terminal",
+      "expected_step1": "open_app",
+      "expected_step2": "open_app"
+    },
+    {
+      "category": "compound_command",
+      "input": "open vscode then open terminal",
+      "expected_step1": "open_app",
+      "expected_step2": "open_app"
+    },
+    {
+      "category": "compound_command",
+      "input": "open vscode, then open terminal",
+      "expected_step1": "open_app",
+      "expected_step2": "open_app"
+    },
+    {
+      "category": "compound_command",
+      "input": "open vscode; open terminal",
+      "expected_step1": "open_app",
+      "expected_step2": "open_app"
+    },
+    {
+      "category": "compound_command",
+      "input": "open vscode, and then open terminal",
+      "expected_step1": "open_app",
+      "expected_step2": "open_app"
+    },
+    {
+      "category": "compound_command",
+      "input": "open vscode after that open terminal",
+      "expected_step1": "open_app",
+      "expected_step2": "open_app"
+    },
+    {
+      "category": "compound_command",
+      "input": "create a folder called work and then create a file",
+      "expected_step1": "create_folder",
+      "expected_step2": "create_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "create a folder called work then create a file",
+      "expected_step1": "create_folder",
+      "expected_step2": "create_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "create a folder called work, then create a file",
+      "expected_step1": "create_folder",
+      "expected_step2": "create_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "create a folder called work; create a file",
+      "expected_step1": "create_folder",
+      "expected_step2": "create_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "create a folder called work, and then create a file",
+      "expected_step1": "create_folder",
+      "expected_step2": "create_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "create a folder called work after that create a file",
+      "expected_step1": "create_folder",
+      "expected_step2": "create_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "make a file and then close chrome",
+      "expected_step1": "create_file",
+      "expected_step2": "close_app"
+    },
+    {
+      "category": "compound_command",
+      "input": "create report.txt then email it",
+      "expected_step1": "create_file",
+      "expected_step2": "send_email"
+    },
+    {
+      "category": "compound_command",
+      "input": "open downloads then delete old.zip",
+      "expected_step1": "open_folder",
+      "expected_step2": "delete_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "create a folder then open it",
+      "expected_step1": "create_folder",
+      "expected_step2": "open_folder"
+    },
+    {
+      "category": "compound_command",
+      "input": "search python then open the first result",
+      "expected_step1": "search_google",
+      "expected_step2": "open_url"
+    },
+    {
+      "category": "compound_command",
+      "input": "rename notes to report then delete the old one",
+      "expected_step1": "rename_file",
+      "expected_step2": "delete_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "open spotify then search for jazz",
+      "expected_step1": "open_app",
+      "expected_step2": "search_google"
+    },
+    {
+      "category": "compound_command",
+      "input": "create code.py then write print hello",
+      "expected_step1": "create_file",
+      "expected_step2": "edit_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "make a folder called src then make main.py in it",
+      "expected_step1": "create_folder",
+      "expected_step2": "create_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "close all tabs then open google",
+      "expected_step1": "close_tab",
+      "expected_step2": "open_url"
+    },
+    {
+      "category": "compound_command",
+      "input": "make a folder called assets then copy image.png into it",
+      "expected_step1": "create_folder",
+      "expected_step2": "copy_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "open chrome then close safari",
+      "expected_step1": "open_app",
+      "expected_step2": "close_app"
+    },
+    {
+      "category": "compound_command",
+      "input": "delete old.txt then create new.txt",
+      "expected_step1": "delete_file",
+      "expected_step2": "create_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "make notes.md then write todo list in it",
+      "expected_step1": "create_file",
+      "expected_step2": "edit_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "create a folder called build then rename it to dist",
+      "expected_step1": "create_folder",
+      "expected_step2": "rename_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "open terminal then search for git commands",
+      "expected_step1": "open_app",
+      "expected_step2": "search_google"
+    },
+    {
+      "category": "compound_command",
+      "input": "create config.json then edit it",
+      "expected_step1": "create_file",
+      "expected_step2": "edit_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "make a folder then put a file in it",
+      "expected_step1": "create_folder",
+      "expected_step2": "create_file"
+    },
+    {
+      "category": "compound_command",
+      "input": "open finder then go to downloads",
+      "expected_step1": "open_app",
+      "expected_step2": "open_folder"
+    },
+    {
+      "category": "compound_command",
+      "input": "create a file called todo then write buy milk",
+      "expected_step1": "create_file",
+      "expected_step2": "edit_file"
+    },
+    {
+      "input": "create notes.txt in desktop",
+      "action": "create_file",
+      "params": {
+        "filename": "notes.txt"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "delete notes.txt",
+      "action": "delete_file",
+      "params": {
+        "filename": "notes.txt"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "create report.py in desktop",
+      "action": "create_file",
+      "params": {
+        "filename": "report.py"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "delete report.py",
+      "action": "delete_file",
+      "params": {
+        "filename": "report.py"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "create data.json in downloads",
+      "action": "create_file",
+      "params": {
+        "filename": "data.json"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "delete data.json",
+      "action": "delete_file",
+      "params": {
+        "filename": "data.json"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "create readme.md in downloads",
+      "action": "create_file",
+      "params": {
+        "filename": "readme.md"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "delete readme.md",
+      "action": "delete_file",
+      "params": {
+        "filename": "readme.md"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "create config.yaml in home",
+      "action": "create_file",
+      "params": {
+        "filename": "config.yaml"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "delete config.yaml",
+      "action": "delete_file",
+      "params": {
+        "filename": "config.yaml"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "create main.py in desktop",
+      "action": "create_file",
+      "params": {
+        "filename": "main.py"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "delete main.py",
+      "action": "delete_file",
+      "params": {
+        "filename": "main.py"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "create index.html in home",
+      "action": "create_file",
+      "params": {
+        "filename": "index.html"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "delete index.html",
+      "action": "delete_file",
+      "params": {
+        "filename": "index.html"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "create styles.css in home",
+      "action": "create_file",
+      "params": {
+        "filename": "styles.css"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "delete styles.css",
+      "action": "delete_file",
+      "params": {
+        "filename": "styles.css"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "create app.js in home",
+      "action": "create_file",
+      "params": {
+        "filename": "app.js"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "delete app.js",
+      "action": "delete_file",
+      "params": {
+        "filename": "app.js"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "create test.py in documents",
+      "action": "create_file",
+      "params": {
+        "filename": "test.py"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "delete test.py",
+      "action": "delete_file",
+      "params": {
+        "filename": "test.py"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "create a folder called projects",
+      "action": "create_folder",
+      "params": {
+        "target": "projects"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "open projects folder",
+      "action": "open_folder",
+      "params": {
+        "target": "projects"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "create a folder called work",
+      "action": "create_folder",
+      "params": {
+        "target": "work"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "open work folder",
+      "action": "open_folder",
+      "params": {
+        "target": "work"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "create a folder called school",
+      "action": "create_folder",
+      "params": {
+        "target": "school"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "open school folder",
+      "action": "open_folder",
+      "params": {
+        "target": "school"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "create a folder called backup",
+      "action": "create_folder",
+      "params": {
+        "target": "backup"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "open backup folder",
+      "action": "open_folder",
+      "params": {
+        "target": "backup"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "create a folder called src",
+      "action": "create_folder",
+      "params": {
+        "target": "src"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "open src folder",
+      "action": "open_folder",
+      "params": {
+        "target": "src"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "create a folder called docs",
+      "action": "create_folder",
+      "params": {
+        "target": "docs"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "open docs folder",
+      "action": "open_folder",
+      "params": {
+        "target": "docs"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "create a folder called images",
+      "action": "create_folder",
+      "params": {
+        "target": "images"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "open images folder",
+      "action": "open_folder",
+      "params": {
+        "target": "images"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "create a folder called music",
+      "action": "create_folder",
+      "params": {
+        "target": "music"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "open music folder",
+      "action": "open_folder",
+      "params": {
+        "target": "music"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "create a folder called code",
+      "action": "create_folder",
+      "params": {
+        "target": "code"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "open code folder",
+      "action": "open_folder",
+      "params": {
+        "target": "code"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "create a folder called temp",
+      "action": "create_folder",
+      "params": {
+        "target": "temp"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "open temp folder",
+      "action": "open_folder",
+      "params": {
+        "target": "temp"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "rename notes.txt to new_notes.txt",
+      "action": "rename_file",
+      "params": {
+        "filename": "notes.txt",
+        "new_name": "new_notes.txt"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "copy notes.txt to downloads",
+      "action": "copy_file",
+      "params": {
+        "filename": "notes.txt"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "rename report.py to new_report.py",
+      "action": "rename_file",
+      "params": {
+        "filename": "report.py",
+        "new_name": "new_report.py"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "copy report.py to downloads",
+      "action": "copy_file",
+      "params": {
+        "filename": "report.py"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "rename data.json to new_data.json",
+      "action": "rename_file",
+      "params": {
+        "filename": "data.json",
+        "new_name": "new_data.json"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "copy data.json to downloads",
+      "action": "copy_file",
+      "params": {
+        "filename": "data.json"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "rename readme.md to new_readme.md",
+      "action": "rename_file",
+      "params": {
+        "filename": "readme.md",
+        "new_name": "new_readme.md"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "copy readme.md to downloads",
+      "action": "copy_file",
+      "params": {
+        "filename": "readme.md"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "rename config.yaml to new_config.yaml",
+      "action": "rename_file",
+      "params": {
+        "filename": "config.yaml",
+        "new_name": "new_config.yaml"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "copy config.yaml to downloads",
+      "action": "copy_file",
+      "params": {
+        "filename": "config.yaml"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "edit notes.txt",
+      "action": "edit_file",
+      "params": {
+        "filename": "notes.txt"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "write hello world in notes.txt",
+      "action": "edit_file",
+      "params": {
+        "filename": "notes.txt",
+        "content": "hello world"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "edit report.py",
+      "action": "edit_file",
+      "params": {
+        "filename": "report.py"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "write hello world in report.py",
+      "action": "edit_file",
+      "params": {
+        "filename": "report.py",
+        "content": "hello world"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "edit data.json",
+      "action": "edit_file",
+      "params": {
+        "filename": "data.json"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "write hello world in data.json",
+      "action": "edit_file",
+      "params": {
+        "filename": "data.json",
+        "content": "hello world"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "edit readme.md",
+      "action": "edit_file",
+      "params": {
+        "filename": "readme.md"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "write hello world in readme.md",
+      "action": "edit_file",
+      "params": {
+        "filename": "readme.md",
+        "content": "hello world"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "edit config.yaml",
+      "action": "edit_file",
+      "params": {
+        "filename": "config.yaml"
+      },
+      "category": "file_operation"
+    },
+    {
+      "input": "write hello world in config.yaml",
+      "action": "edit_file",
+      "params": {
+        "filename": "config.yaml",
+        "content": "hello world"
+      },
+      "category": "file_operation"
+    },
+    {
+      "category": "clarification",
+      "action": "create_file",
+      "missing_params": [
+        "filename"
+      ],
+      "expected_slot": "filename",
+      "question_must_contain": "name",
+      "variant": 0
+    },
+    {
+      "category": "clarification",
+      "action": "create_file",
+      "missing_params": [
+        "filename"
+      ],
+      "expected_slot": "filename",
+      "question_must_contain": "name",
+      "variant": 1
+    },
+    {
+      "category": "clarification",
+      "action": "create_file",
+      "missing_params": [
+        "filename"
+      ],
+      "expected_slot": "filename",
+      "question_must_contain": "name",
+      "variant": 2
+    },
+    {
+      "category": "clarification",
+      "action": "create_file",
+      "missing_params": [
+        "filename"
+      ],
+      "expected_slot": "filename",
+      "question_must_contain": "name",
+      "variant": 3
+    },
+    {
+      "category": "clarification",
+      "action": "create_file",
+      "missing_params": [
+        "filename",
+        "location"
+      ],
+      "expected_slot": "filename",
+      "question_must_contain": "name",
+      "variant": 0
+    },
+    {
+      "category": "clarification",
+      "action": "create_file",
+      "missing_params": [
+        "filename",
+        "location"
+      ],
+      "expected_slot": "filename",
+      "question_must_contain": "name",
+      "variant": 1
+    },
+    {
+      "category": "clarification",
+      "action": "create_file",
+      "missing_params": [
+        "filename",
+        "location"
+      ],
+      "expected_slot": "filename",
+      "question_must_contain": "name",
+      "variant": 2
+    },
+    {
+      "category": "clarification",
+      "action": "create_file",
+      "missing_params": [
+        "filename",
+        "location"
+      ],
+      "expected_slot": "filename",
+      "question_must_contain": "name",
+      "variant": 3
+    },
+    {
+      "category": "clarification",
+      "action": "open_app",
+      "missing_params": [
+        "target"
+      ],
+      "expected_slot": "target",
+      "question_must_contain": "app",
+      "variant": 0
+    },
+    {
+      "category": "clarification",
+      "action": "open_app",
+      "missing_params": [
+        "target"
+      ],
+      "expected_slot": "target",
+      "question_must_contain": "app",
+      "variant": 1
+    },
+    {
+      "category": "clarification",
+      "action": "open_app",
+      "missing_params": [
+        "target"
+      ],
+      "expected_slot": "target",
+      "question_must_contain": "app",
+      "variant": 2
+    },
+    {
+      "category": "clarification",
+      "action": "open_app",
+      "missing_params": [
+        "target"
+      ],
+      "expected_slot": "target",
+      "question_must_contain": "app",
+      "variant": 3
+    },
+    {
+      "category": "clarification",
+      "action": "send_email",
+      "missing_params": [
+        "to",
+        "subject",
+        "body"
+      ],
+      "expected_slot": "to",
+      "question_must_contain": "who",
+      "variant": 0
+    },
+    {
+      "category": "clarification",
+      "action": "send_email",
+      "missing_params": [
+        "to",
+        "subject",
+        "body"
+      ],
+      "expected_slot": "to",
+      "question_must_contain": "who",
+      "variant": 1
+    },
+    {
+      "category": "clarification",
+      "action": "send_email",
+      "missing_params": [
+        "to",
+        "subject",
+        "body"
+      ],
+      "expected_slot": "to",
+      "question_must_contain": "who",
+      "variant": 2
+    },
+    {
+      "category": "clarification",
+      "action": "send_email",
+      "missing_params": [
+        "to",
+        "subject",
+        "body"
+      ],
+      "expected_slot": "to",
+      "question_must_contain": "who",
+      "variant": 3
+    },
+    {
+      "category": "clarification",
+      "action": "send_email",
+      "missing_params": [
+        "to"
+      ],
+      "expected_slot": "to",
+      "question_must_contain": "who",
+      "variant": 0
+    },
+    {
+      "category": "clarification",
+      "action": "send_email",
+      "missing_params": [
+        "to"
+      ],
+      "expected_slot": "to",
+      "question_must_contain": "who",
+      "variant": 1
+    },
+    {
+      "category": "clarification",
+      "action": "send_email",
+      "missing_params": [
+        "to"
+      ],
+      "expected_slot": "to",
+      "question_must_contain": "who",
+      "variant": 2
+    },
+    {
+      "category": "clarification",
+      "action": "send_email",
+      "missing_params": [
+        "to"
+      ],
+      "expected_slot": "to",
+      "question_must_contain": "who",
+      "variant": 3
+    },
+    {
+      "category": "clarification",
+      "action": "rename_file",
+      "missing_params": [
+        "new_name"
+      ],
+      "expected_slot": "new_name",
+      "question_must_contain": "rename",
+      "variant": 0
+    },
+    {
+      "category": "clarification",
+      "action": "rename_file",
+      "missing_params": [
+        "new_name"
+      ],
+      "expected_slot": "new_name",
+      "question_must_contain": "rename",
+      "variant": 1
+    },
+    {
+      "category": "clarification",
+      "action": "rename_file",
+      "missing_params": [
+        "new_name"
+      ],
+      "expected_slot": "new_name",
+      "question_must_contain": "rename",
+      "variant": 2
+    },
+    {
+      "category": "clarification",
+      "action": "rename_file",
+      "missing_params": [
+        "new_name"
+      ],
+      "expected_slot": "new_name",
+      "question_must_contain": "rename",
+      "variant": 3
+    },
+    {
+      "category": "clarification",
+      "action": "delete_file",
+      "missing_params": [
+        "target"
+      ],
+      "expected_slot": "target",
+      "question_must_contain": "delete",
+      "variant": 0
+    },
+    {
+      "category": "clarification",
+      "action": "delete_file",
+      "missing_params": [
+        "target"
+      ],
+      "expected_slot": "target",
+      "question_must_contain": "delete",
+      "variant": 1
+    },
+    {
+      "category": "clarification",
+      "action": "delete_file",
+      "missing_params": [
+        "target"
+      ],
+      "expected_slot": "target",
+      "question_must_contain": "delete",
+      "variant": 2
+    },
+    {
+      "category": "clarification",
+      "action": "delete_file",
+      "missing_params": [
+        "target"
+      ],
+      "expected_slot": "target",
+      "question_must_contain": "delete",
+      "variant": 3
+    },
+    {
+      "category": "clarification",
+      "action": "search_google",
+      "missing_params": [
+        "query"
+      ],
+      "expected_slot": "query",
+      "question_must_contain": "search",
+      "variant": 0
+    },
+    {
+      "category": "clarification",
+      "action": "search_google",
+      "missing_params": [
+        "query"
+      ],
+      "expected_slot": "query",
+      "question_must_contain": "search",
+      "variant": 1
+    },
+    {
+      "category": "clarification",
+      "action": "search_google",
+      "missing_params": [
+        "query"
+      ],
+      "expected_slot": "query",
+      "question_must_contain": "search",
+      "variant": 2
+    },
+    {
+      "category": "clarification",
+      "action": "search_google",
+      "missing_params": [
+        "query"
+      ],
+      "expected_slot": "query",
+      "question_must_contain": "search",
+      "variant": 3
+    },
+    {
+      "category": "clarification",
+      "action": "edit_file",
+      "missing_params": [
+        "filename"
+      ],
+      "expected_slot": "filename",
+      "question_must_contain": "file",
+      "variant": 0
+    },
+    {
+      "category": "clarification",
+      "action": "edit_file",
+      "missing_params": [
+        "filename"
+      ],
+      "expected_slot": "filename",
+      "question_must_contain": "file",
+      "variant": 1
+    },
+    {
+      "category": "clarification",
+      "action": "edit_file",
+      "missing_params": [
+        "filename"
+      ],
+      "expected_slot": "filename",
+      "question_must_contain": "file",
+      "variant": 2
+    },
+    {
+      "category": "clarification",
+      "action": "edit_file",
+      "missing_params": [
+        "filename"
+      ],
+      "expected_slot": "filename",
+      "question_must_contain": "file",
+      "variant": 3
+    },
+    {
+      "category": "clarification",
+      "action": "open_url",
+      "missing_params": [
+        "url"
+      ],
+      "expected_slot": "url",
+      "question_must_contain": "URL",
+      "variant": 0
+    },
+    {
+      "category": "clarification",
+      "action": "open_url",
+      "missing_params": [
+        "url"
+      ],
+      "expected_slot": "url",
+      "question_must_contain": "URL",
+      "variant": 1
+    },
+    {
+      "category": "clarification",
+      "action": "open_url",
+      "missing_params": [
+        "url"
+      ],
+      "expected_slot": "url",
+      "question_must_contain": "URL",
+      "variant": 2
+    },
+    {
+      "category": "clarification",
+      "action": "open_url",
+      "missing_params": [
+        "url"
+      ],
+      "expected_slot": "url",
+      "question_must_contain": "URL",
+      "variant": 3
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "it",
+      "context": {
+        "last_file": "notes.txt",
+        "last_action": "create_file",
+        "expected": "notes.txt"
+      },
+      "expected_resolution": "notes.txt"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "it",
+      "context": {
+        "last_file": "report.py",
+        "last_action": "edit_file",
+        "expected": "report.py"
+      },
+      "expected_resolution": "report.py"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "it",
+      "context": {
+        "last_file": "data.json",
+        "last_action": "rename_file",
+        "expected": "data.json"
+      },
+      "expected_resolution": "data.json"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "it",
+      "context": {
+        "last_file": "config.yaml",
+        "last_action": "delete_file",
+        "expected": "config.yaml"
+      },
+      "expected_resolution": "config.yaml"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "that",
+      "context": {
+        "last_file": "notes.txt",
+        "last_action": "create_file",
+        "expected": "notes.txt"
+      },
+      "expected_resolution": "notes.txt"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "that",
+      "context": {
+        "last_file": "report.py",
+        "last_action": "edit_file",
+        "expected": "report.py"
+      },
+      "expected_resolution": "report.py"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "that",
+      "context": {
+        "last_file": "data.json",
+        "last_action": "rename_file",
+        "expected": "data.json"
+      },
+      "expected_resolution": "data.json"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "that",
+      "context": {
+        "last_file": "config.yaml",
+        "last_action": "delete_file",
+        "expected": "config.yaml"
+      },
+      "expected_resolution": "config.yaml"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "this",
+      "context": {
+        "last_file": "notes.txt",
+        "last_action": "create_file",
+        "expected": "notes.txt"
+      },
+      "expected_resolution": "notes.txt"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "this",
+      "context": {
+        "last_file": "report.py",
+        "last_action": "edit_file",
+        "expected": "report.py"
+      },
+      "expected_resolution": "report.py"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "this",
+      "context": {
+        "last_file": "data.json",
+        "last_action": "rename_file",
+        "expected": "data.json"
+      },
+      "expected_resolution": "data.json"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "this",
+      "context": {
+        "last_file": "config.yaml",
+        "last_action": "delete_file",
+        "expected": "config.yaml"
+      },
+      "expected_resolution": "config.yaml"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "that file",
+      "context": {
+        "last_file": "notes.txt",
+        "last_action": "create_file",
+        "expected": "notes.txt"
+      },
+      "expected_resolution": "notes.txt"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "that file",
+      "context": {
+        "last_file": "report.py",
+        "last_action": "edit_file",
+        "expected": "report.py"
+      },
+      "expected_resolution": "report.py"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "that file",
+      "context": {
+        "last_file": "data.json",
+        "last_action": "rename_file",
+        "expected": "data.json"
+      },
+      "expected_resolution": "data.json"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "that file",
+      "context": {
+        "last_file": "config.yaml",
+        "last_action": "delete_file",
+        "expected": "config.yaml"
+      },
+      "expected_resolution": "config.yaml"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "this file",
+      "context": {
+        "last_file": "notes.txt",
+        "last_action": "create_file",
+        "expected": "notes.txt"
+      },
+      "expected_resolution": "notes.txt"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "this file",
+      "context": {
+        "last_file": "report.py",
+        "last_action": "edit_file",
+        "expected": "report.py"
+      },
+      "expected_resolution": "report.py"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "this file",
+      "context": {
+        "last_file": "data.json",
+        "last_action": "rename_file",
+        "expected": "data.json"
+      },
+      "expected_resolution": "data.json"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "this file",
+      "context": {
+        "last_file": "config.yaml",
+        "last_action": "delete_file",
+        "expected": "config.yaml"
+      },
+      "expected_resolution": "config.yaml"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "that app",
+      "context": {
+        "last_file": "notes.txt",
+        "last_action": "create_file",
+        "expected": "notes.txt"
+      },
+      "expected_resolution": "notes.txt"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "that app",
+      "context": {
+        "last_file": "report.py",
+        "last_action": "edit_file",
+        "expected": "report.py"
+      },
+      "expected_resolution": "report.py"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "that app",
+      "context": {
+        "last_file": "data.json",
+        "last_action": "rename_file",
+        "expected": "data.json"
+      },
+      "expected_resolution": "data.json"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "that app",
+      "context": {
+        "last_file": "config.yaml",
+        "last_action": "delete_file",
+        "expected": "config.yaml"
+      },
+      "expected_resolution": "config.yaml"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "this one",
+      "context": {
+        "last_file": "notes.txt",
+        "last_action": "create_file",
+        "expected": "notes.txt"
+      },
+      "expected_resolution": "notes.txt"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "this one",
+      "context": {
+        "last_file": "report.py",
+        "last_action": "edit_file",
+        "expected": "report.py"
+      },
+      "expected_resolution": "report.py"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "this one",
+      "context": {
+        "last_file": "data.json",
+        "last_action": "rename_file",
+        "expected": "data.json"
+      },
+      "expected_resolution": "data.json"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "this one",
+      "context": {
+        "last_file": "config.yaml",
+        "last_action": "delete_file",
+        "expected": "config.yaml"
+      },
+      "expected_resolution": "config.yaml"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "the file",
+      "context": {
+        "last_file": "notes.txt",
+        "last_action": "create_file",
+        "expected": "notes.txt"
+      },
+      "expected_resolution": "notes.txt"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "the file",
+      "context": {
+        "last_file": "report.py",
+        "last_action": "edit_file",
+        "expected": "report.py"
+      },
+      "expected_resolution": "report.py"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "the file",
+      "context": {
+        "last_file": "data.json",
+        "last_action": "rename_file",
+        "expected": "data.json"
+      },
+      "expected_resolution": "data.json"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "the file",
+      "context": {
+        "last_file": "config.yaml",
+        "last_action": "delete_file",
+        "expected": "config.yaml"
+      },
+      "expected_resolution": "config.yaml"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "that folder",
+      "context": {
+        "last_file": "notes.txt",
+        "last_action": "create_file",
+        "expected": "notes.txt"
+      },
+      "expected_resolution": "notes.txt"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "that folder",
+      "context": {
+        "last_file": "report.py",
+        "last_action": "edit_file",
+        "expected": "report.py"
+      },
+      "expected_resolution": "report.py"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "that folder",
+      "context": {
+        "last_file": "data.json",
+        "last_action": "rename_file",
+        "expected": "data.json"
+      },
+      "expected_resolution": "data.json"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "that folder",
+      "context": {
+        "last_file": "config.yaml",
+        "last_action": "delete_file",
+        "expected": "config.yaml"
+      },
+      "expected_resolution": "config.yaml"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "this thing",
+      "context": {
+        "last_file": "notes.txt",
+        "last_action": "create_file",
+        "expected": "notes.txt"
+      },
+      "expected_resolution": "notes.txt"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "this thing",
+      "context": {
+        "last_file": "report.py",
+        "last_action": "edit_file",
+        "expected": "report.py"
+      },
+      "expected_resolution": "report.py"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "this thing",
+      "context": {
+        "last_file": "data.json",
+        "last_action": "rename_file",
+        "expected": "data.json"
+      },
+      "expected_resolution": "data.json"
+    },
+    {
+      "category": "pronoun_resolution",
+      "pronoun": "this thing",
+      "context": {
+        "last_file": "config.yaml",
+        "last_action": "delete_file",
+        "expected": "config.yaml"
+      },
+      "expected_resolution": "config.yaml"
+    },
+    {
+      "category": "safety_gate",
+      "action": "delete_file",
+      "expected_decision": "confirm"
+    },
+    {
+      "category": "safety_gate",
+      "action": "shutdown_pc",
+      "expected_decision": "confirm"
+    },
+    {
+      "category": "safety_gate",
+      "action": "restart_pc",
+      "expected_decision": "confirm"
+    },
+    {
+      "category": "safety_gate",
+      "action": "empty_trash",
+      "expected_decision": "confirm"
+    },
+    {
+      "category": "safety_gate",
+      "action": "format_disk",
+      "expected_decision": "confirm"
+    },
+    {
+      "category": "safety_gate",
+      "action": "delete_folder",
+      "expected_decision": "confirm"
+    },
+    {
+      "category": "safety_gate",
+      "action": "create_file",
+      "expected_decision": "execute"
+    },
+    {
+      "category": "safety_gate",
+      "action": "open_app",
+      "expected_decision": "execute"
+    },
+    {
+      "category": "safety_gate",
+      "action": "search_google",
+      "expected_decision": "execute"
+    },
+    {
+      "category": "safety_gate",
+      "action": "open_url",
+      "expected_decision": "execute"
+    },
+    {
+      "category": "safety_gate",
+      "action": "create_folder",
+      "expected_decision": "execute"
+    },
+    {
+      "category": "safety_gate",
+      "action": "edit_file",
+      "expected_decision": "execute"
+    },
+    {
+      "category": "safety_gate",
+      "action": "rename_file",
+      "expected_decision": "execute"
+    },
+    {
+      "category": "safety_gate",
+      "action": "copy_file",
+      "expected_decision": "execute"
+    },
+    {
+      "category": "safety_gate",
+      "action": "open_folder",
+      "expected_decision": "execute"
+    },
+    {
+      "category": "safety_gate",
+      "action": "new_tab",
+      "expected_decision": "execute"
+    },
+    {
+      "category": "safety_gate",
+      "action": "delete_file",
+      "confidence": 0.5,
+      "expected_decision": "gemini"
+    },
+    {
+      "category": "safety_gate",
+      "action": "delete_file",
+      "confidence": 0.7,
+      "expected_decision": "gemini"
+    },
+    {
+      "category": "safety_gate",
+      "action": "delete_file",
+      "confidence": 0.95,
+      "expected_decision": "confirm"
+    },
+    {
+      "category": "safety_gate",
+      "action": "shutdown_pc",
+      "confidence": 0.5,
+      "expected_decision": "gemini"
+    },
+    {
+      "category": "safety_gate",
+      "action": "shutdown_pc",
+      "confidence": 0.7,
+      "expected_decision": "gemini"
+    },
+    {
+      "category": "safety_gate",
+      "action": "shutdown_pc",
+      "confidence": 0.95,
+      "expected_decision": "confirm"
+    },
+    {
+      "category": "safety_gate",
+      "action": "restart_pc",
+      "confidence": 0.5,
+      "expected_decision": "gemini"
+    },
+    {
+      "category": "safety_gate",
+      "action": "restart_pc",
+      "confidence": 0.7,
+      "expected_decision": "gemini"
+    },
+    {
+      "category": "safety_gate",
+      "action": "restart_pc",
+      "confidence": 0.95,
+      "expected_decision": "confirm"
+    },
+    {
+      "category": "safety_gate",
+      "action": "empty_trash",
+      "confidence": 0.5,
+      "expected_decision": "gemini"
+    },
+    {
+      "category": "safety_gate",
+      "action": "empty_trash",
+      "confidence": 0.7,
+      "expected_decision": "gemini"
+    },
+    {
+      "category": "safety_gate",
+      "action": "empty_trash",
+      "confidence": 0.95,
+      "expected_decision": "confirm"
+    },
+    {
+      "category": "action_correction",
+      "fast_action": "open_app",
+      "target_type": "website",
+      "target": "youtube",
+      "expected_corrected": "open_url"
+    },
+    {
+      "category": "action_correction",
+      "fast_action": "open_app",
+      "target_type": "website",
+      "target": "google.com",
+      "expected_corrected": "open_url"
+    },
+    {
+      "category": "action_correction",
+      "fast_action": "open_app",
+      "target_type": "website",
+      "target": "github",
+      "expected_corrected": "open_url"
+    },
+    {
+      "category": "action_correction",
+      "fast_action": "open_app",
+      "target_type": "website",
+      "target": "reddit",
+      "expected_corrected": "open_url"
+    },
+    {
+      "category": "action_correction",
+      "fast_action": "open_app",
+      "target_type": "website",
+      "target": "stackoverflow",
+      "expected_corrected": "open_url"
+    },
+    {
+      "category": "action_correction",
+      "fast_action": "open_app",
+      "target_type": "website",
+      "target": "netflix",
+      "expected_corrected": "open_url"
+    },
+    {
+      "category": "action_correction",
+      "fast_action": "open_app",
+      "target_type": "website",
+      "target": "twitter",
+      "expected_corrected": "open_url"
+    },
+    {
+      "category": "action_correction",
+      "fast_action": "open_app",
+      "target_type": "website",
+      "target": "facebook",
+      "expected_corrected": "open_url"
+    },
+    {
+      "category": "action_correction",
+      "fast_action": "open_app",
+      "target_type": "website",
+      "target": "amazon",
+      "expected_corrected": "open_url"
+    },
+    {
+      "category": "action_correction",
+      "fast_action": "open_app",
+      "target_type": "website",
+      "target": "linkedin",
+      "expected_corrected": "open_url"
+    },
+    {
+      "category": "action_correction",
+      "fast_action": "open_app",
+      "target_type": "browser_search",
+      "target": "python tutorial",
+      "expected_corrected": "search_google"
+    },
+    {
+      "category": "action_correction",
+      "fast_action": "open_app",
+      "target_type": "browser_search",
+      "target": "react hooks",
+      "expected_corrected": "search_google"
+    },
+    {
+      "category": "action_correction",
+      "fast_action": "open_app",
+      "target_type": "browser_search",
+      "target": "how to code",
+      "expected_corrected": "search_google"
+    },
+    {
+      "category": "action_correction",
+      "fast_action": "open_app",
+      "target_type": "browser_search",
+      "target": "machine learning",
+      "expected_corrected": "search_google"
+    },
+    {
+      "category": "action_correction",
+      "fast_action": "open_app",
+      "target_type": "browser_search",
+      "target": "javascript guide",
+      "expected_corrected": "search_google"
+    },
+    {
+      "category": "action_correction",
+      "fast_action": "open_app",
+      "target_type": "browser_search",
+      "target": "rust tutorial",
+      "expected_corrected": "search_google"
+    },
+    {
+      "category": "action_correction",
+      "fast_action": "open_app",
+      "target_type": "folder",
+      "target": "downloads",
+      "expected_corrected": "open_folder"
+    },
+    {
+      "category": "action_correction",
+      "fast_action": "open_app",
+      "target_type": "folder",
+      "target": "documents",
+      "expected_corrected": "open_folder"
+    },
+    {
+      "category": "action_correction",
+      "fast_action": "open_app",
+      "target_type": "folder",
+      "target": "desktop",
+      "expected_corrected": "open_folder"
+    },
+    {
+      "category": "action_correction",
+      "fast_action": "open_app",
+      "target_type": "folder",
+      "target": "photos",
+      "expected_corrected": "open_folder"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_folder",
+      "parent_target": "my_projects",
+      "follow_action": "edit_file",
+      "inject_key": "location",
+      "expected_param_key": "location",
+      "expected_param_value": "my_projects"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_folder",
+      "parent_target": "my_projects",
+      "follow_action": "create_file",
+      "inject_key": "location",
+      "expected_param_key": "location",
+      "expected_param_value": "my_projects"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_folder",
+      "parent_target": "my_projects",
+      "follow_action": "delete_file",
+      "inject_key": "location",
+      "expected_param_key": "location",
+      "expected_param_value": "my_projects"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_folder",
+      "parent_target": "my_projects",
+      "follow_action": "rename_file",
+      "inject_key": "location",
+      "expected_param_key": "location",
+      "expected_param_value": "my_projects"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_folder",
+      "parent_target": "work",
+      "follow_action": "edit_file",
+      "inject_key": "location",
+      "expected_param_key": "location",
+      "expected_param_value": "work"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_folder",
+      "parent_target": "work",
+      "follow_action": "create_file",
+      "inject_key": "location",
+      "expected_param_key": "location",
+      "expected_param_value": "work"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_folder",
+      "parent_target": "work",
+      "follow_action": "delete_file",
+      "inject_key": "location",
+      "expected_param_key": "location",
+      "expected_param_value": "work"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_folder",
+      "parent_target": "work",
+      "follow_action": "rename_file",
+      "inject_key": "location",
+      "expected_param_key": "location",
+      "expected_param_value": "work"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_folder",
+      "parent_target": "school",
+      "follow_action": "edit_file",
+      "inject_key": "location",
+      "expected_param_key": "location",
+      "expected_param_value": "school"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_folder",
+      "parent_target": "school",
+      "follow_action": "create_file",
+      "inject_key": "location",
+      "expected_param_key": "location",
+      "expected_param_value": "school"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_folder",
+      "parent_target": "school",
+      "follow_action": "delete_file",
+      "inject_key": "location",
+      "expected_param_key": "location",
+      "expected_param_value": "school"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_folder",
+      "parent_target": "school",
+      "follow_action": "rename_file",
+      "inject_key": "location",
+      "expected_param_key": "location",
+      "expected_param_value": "school"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_folder",
+      "parent_target": "src",
+      "follow_action": "edit_file",
+      "inject_key": "location",
+      "expected_param_key": "location",
+      "expected_param_value": "src"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_folder",
+      "parent_target": "src",
+      "follow_action": "create_file",
+      "inject_key": "location",
+      "expected_param_key": "location",
+      "expected_param_value": "src"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_folder",
+      "parent_target": "src",
+      "follow_action": "delete_file",
+      "inject_key": "location",
+      "expected_param_key": "location",
+      "expected_param_value": "src"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_folder",
+      "parent_target": "src",
+      "follow_action": "rename_file",
+      "inject_key": "location",
+      "expected_param_key": "location",
+      "expected_param_value": "src"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_folder",
+      "parent_target": "docs",
+      "follow_action": "edit_file",
+      "inject_key": "location",
+      "expected_param_key": "location",
+      "expected_param_value": "docs"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_folder",
+      "parent_target": "docs",
+      "follow_action": "create_file",
+      "inject_key": "location",
+      "expected_param_key": "location",
+      "expected_param_value": "docs"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_folder",
+      "parent_target": "docs",
+      "follow_action": "delete_file",
+      "inject_key": "location",
+      "expected_param_key": "location",
+      "expected_param_value": "docs"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_folder",
+      "parent_target": "docs",
+      "follow_action": "rename_file",
+      "inject_key": "location",
+      "expected_param_key": "location",
+      "expected_param_value": "docs"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_file",
+      "parent_target": "notes.txt",
+      "follow_action": "edit_file",
+      "inject_key": "filename",
+      "expected_param_key": "filename",
+      "expected_param_value": "notes.txt"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_file",
+      "parent_target": "notes.txt",
+      "follow_action": "create_file",
+      "inject_key": "filename",
+      "expected_param_key": "filename",
+      "expected_param_value": "notes.txt"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_file",
+      "parent_target": "notes.txt",
+      "follow_action": "delete_file",
+      "inject_key": "filename",
+      "expected_param_key": "filename",
+      "expected_param_value": "notes.txt"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_file",
+      "parent_target": "notes.txt",
+      "follow_action": "rename_file",
+      "inject_key": "filename",
+      "expected_param_key": "filename",
+      "expected_param_value": "notes.txt"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_file",
+      "parent_target": "main.py",
+      "follow_action": "edit_file",
+      "inject_key": "filename",
+      "expected_param_key": "filename",
+      "expected_param_value": "main.py"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_file",
+      "parent_target": "main.py",
+      "follow_action": "create_file",
+      "inject_key": "filename",
+      "expected_param_key": "filename",
+      "expected_param_value": "main.py"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_file",
+      "parent_target": "main.py",
+      "follow_action": "delete_file",
+      "inject_key": "filename",
+      "expected_param_key": "filename",
+      "expected_param_value": "main.py"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_file",
+      "parent_target": "main.py",
+      "follow_action": "rename_file",
+      "inject_key": "filename",
+      "expected_param_key": "filename",
+      "expected_param_value": "main.py"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_file",
+      "parent_target": "app.js",
+      "follow_action": "edit_file",
+      "inject_key": "filename",
+      "expected_param_key": "filename",
+      "expected_param_value": "app.js"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_file",
+      "parent_target": "app.js",
+      "follow_action": "create_file",
+      "inject_key": "filename",
+      "expected_param_key": "filename",
+      "expected_param_value": "app.js"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_file",
+      "parent_target": "app.js",
+      "follow_action": "delete_file",
+      "inject_key": "filename",
+      "expected_param_key": "filename",
+      "expected_param_value": "app.js"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "create_file",
+      "parent_target": "app.js",
+      "follow_action": "rename_file",
+      "inject_key": "filename",
+      "expected_param_key": "filename",
+      "expected_param_value": "app.js"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "open_folder",
+      "parent_target": "downloads",
+      "follow_action": "edit_file",
+      "inject_key": "location",
+      "expected_param_key": "location",
+      "expected_param_value": "downloads"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "open_folder",
+      "parent_target": "downloads",
+      "follow_action": "create_file",
+      "inject_key": "location",
+      "expected_param_key": "location",
+      "expected_param_value": "downloads"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "open_folder",
+      "parent_target": "downloads",
+      "follow_action": "delete_file",
+      "inject_key": "location",
+      "expected_param_key": "location",
+      "expected_param_value": "downloads"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "open_folder",
+      "parent_target": "downloads",
+      "follow_action": "rename_file",
+      "inject_key": "location",
+      "expected_param_key": "location",
+      "expected_param_value": "downloads"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "open_folder",
+      "parent_target": "documents",
+      "follow_action": "edit_file",
+      "inject_key": "location",
+      "expected_param_key": "location",
+      "expected_param_value": "documents"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "open_folder",
+      "parent_target": "documents",
+      "follow_action": "create_file",
+      "inject_key": "location",
+      "expected_param_key": "location",
+      "expected_param_value": "documents"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "open_folder",
+      "parent_target": "documents",
+      "follow_action": "delete_file",
+      "inject_key": "location",
+      "expected_param_key": "location",
+      "expected_param_value": "documents"
+    },
+    {
+      "category": "grounded_followup",
+      "parent_action": "open_folder",
+      "parent_target": "documents",
+      "follow_action": "rename_file",
+      "inject_key": "location",
+      "expected_param_key": "location",
+      "expected_param_value": "documents"
+    },
+    {
+      "category": "error_recovery",
+      "action": "create_file",
+      "should_retry": true,
+      "should_never_retry": false
+    },
+    {
+      "category": "error_recovery",
+      "action": "open_app",
+      "should_retry": true,
+      "should_never_retry": false
+    },
+    {
+      "category": "error_recovery",
+      "action": "search_google",
+      "should_retry": true,
+      "should_never_retry": false
+    },
+    {
+      "category": "error_recovery",
+      "action": "open_url",
+      "should_retry": true,
+      "should_never_retry": false
+    },
+    {
+      "category": "error_recovery",
+      "action": "create_folder",
+      "should_retry": true,
+      "should_never_retry": false
+    },
+    {
+      "category": "error_recovery",
+      "action": "copy_file",
+      "should_retry": true,
+      "should_never_retry": false
+    },
+    {
+      "category": "error_recovery",
+      "action": "open_folder",
+      "should_retry": true,
+      "should_never_retry": false
+    },
+    {
+      "category": "error_recovery",
+      "action": "switch_to_app",
+      "should_retry": true,
+      "should_never_retry": false
+    },
+    {
+      "category": "error_recovery",
+      "action": "edit_file",
+      "should_retry": true,
+      "should_never_retry": false
+    },
+    {
+      "category": "error_recovery",
+      "action": "new_tab",
+      "should_retry": true,
+      "should_never_retry": false
+    },
+    {
+      "category": "error_recovery",
+      "action": "delete_file",
+      "should_retry": false,
+      "should_never_retry": true
+    },
+    {
+      "category": "error_recovery",
+      "action": "shutdown_pc",
+      "should_retry": false,
+      "should_never_retry": true
+    },
+    {
+      "category": "error_recovery",
+      "action": "restart_pc",
+      "should_retry": false,
+      "should_never_retry": true
+    },
+    {
+      "category": "error_recovery",
+      "action": "empty_trash",
+      "should_retry": false,
+      "should_never_retry": true
+    },
+    {
+      "category": "error_recovery",
+      "action": "format_disk",
+      "should_retry": false,
+      "should_never_retry": true
+    },
+    {
+      "category": "error_recovery",
+      "action": "send_email",
+      "should_retry": false,
+      "should_never_retry": true
+    },
+    {
+      "category": "error_recovery",
+      "action": "delete_folder",
+      "should_retry": false,
+      "should_never_retry": true
+    },
+    {
+      "category": "error_recovery",
+      "action": "open_app",
+      "has_alternative": true,
+      "alternative": "search_google"
+    },
+    {
+      "category": "error_recovery",
+      "action": "open_url",
+      "has_alternative": true,
+      "alternative": "search_google"
+    },
+    {
+      "category": "error_recovery",
+      "action": "open_folder",
+      "has_alternative": true,
+      "alternative": "create_folder"
+    },
+    {
+      "category": "task_planner",
+      "input": "open chrome",
+      "expected_step_count": 1,
+      "expected_first_action": "open_app"
+    },
+    {
+      "category": "task_planner",
+      "input": "create a folder called work, make a file inside it",
+      "expected_step_count": 2,
+      "expected_first_action": "create_folder"
+    },
+    {
+      "category": "task_planner",
+      "input": "make notes.txt then write hello",
+      "expected_step_count": 2,
+      "expected_first_action": "create_file"
+    },
+    {
+      "category": "task_planner",
+      "input": "create a folder, make a file, write hello world",
+      "expected_step_count": 3,
+      "expected_first_action": "create_folder"
+    },
+    {
+      "category": "task_planner",
+      "input": "open chrome and search for python",
+      "expected_step_count": 2,
+      "expected_first_action": "open_app"
+    },
+    {
+      "category": "task_planner",
+      "input": "delete old.txt then create new.txt",
+      "expected_step_count": 2,
+      "expected_first_action": "delete_file"
+    },
+    {
+      "category": "task_planner",
+      "input": "create config.json then edit it",
+      "expected_step_count": 2,
+      "expected_first_action": "create_file"
+    },
+    {
+      "category": "task_planner",
+      "input": "make a folder called docs then create readme.md in it",
+      "expected_step_count": 2,
+      "expected_first_action": "create_folder"
+    },
+    {
+      "category": "task_planner",
+      "input": "open terminal then search for git commands",
+      "expected_step_count": 2,
+      "expected_first_action": "open_app"
+    },
+    {
+      "category": "task_planner",
+      "input": "rename notes to report then delete old",
+      "expected_step_count": 2,
+      "expected_first_action": "rename_file"
+    },
+    {
+      "category": "task_planner",
+      "input": "create a file; close chrome",
+      "expected_step_count": 2,
+      "expected_first_action": "create_file"
+    },
+    {
+      "category": "task_planner",
+      "input": "make a folder then put a file in it",
+      "expected_step_count": 2,
+      "expected_first_action": "create_folder"
+    },
+    {
+      "category": "task_planner",
+      "input": "search cats then close the tab",
+      "expected_step_count": 2,
+      "expected_first_action": "search_google"
+    },
+    {
+      "category": "task_planner",
+      "input": "open spotify then open vscode",
+      "expected_step_count": 2,
+      "expected_first_action": "open_app"
+    },
+    {
+      "category": "task_planner",
+      "input": "create test.py then write print hello",
+      "expected_step_count": 2,
+      "expected_first_action": "create_file"
+    },
+    {
+      "category": "task_planner",
+      "input": "make a folder called build, create index.html inside, write hello",
+      "expected_step_count": 3,
+      "expected_first_action": "create_folder"
+    },
+    {
+      "category": "task_planner",
+      "input": "open finder then go to downloads",
+      "expected_step_count": 2,
+      "expected_first_action": "open_app"
+    },
+    {
+      "category": "task_planner",
+      "input": "create a file then rename it to report",
+      "expected_step_count": 2,
+      "expected_first_action": "create_file"
+    },
+    {
+      "category": "task_planner",
+      "input": "close safari then open chrome",
+      "expected_step_count": 2,
+      "expected_first_action": "close_app"
+    },
+    {
+      "category": "task_planner",
+      "input": "make a folder; make a file; delete the file",
+      "expected_step_count": 3,
+      "expected_first_action": "create_folder"
+    }
+  ]
+}

@@ -1,1 +1,30 @@
-[]
+[
+  {
+    "id": "aca13c9542",
+    "intent": "brightness_up",
+    "wrong_param": "brightness_up",
+    "correct_param": "take_screenshot",
+    "param_key": "_intent_",
+    "correct_intent": "take_screenshot",
+    "original_command": "can you tell me what am i seeing on my screen right now",
+    "context": "retrospective",
+    "confidence": 1.0,
+    "timestamp": "2026-04-19T23:42:58.624147",
+    "times_applied": 0,
+    "last_applied": ""
+  },
+  {
+    "id": "9557f727c9",
+    "intent": "morning_briefing",
+    "wrong_param": "morning_briefing",
+    "correct_param": "search_vault",
+    "param_key": "_intent_",
+    "correct_intent": "search_vault",
+    "original_command": "what all conversations did we have till now",
+    "context": "retrospective",
+    "confidence": 1.0,
+    "timestamp": "2026-04-19T23:42:58.624993",
+    "times_applied": 2,
+    "last_applied": "2026-04-19T23:38:47.189467"
+  }
+]

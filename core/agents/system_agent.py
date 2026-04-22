@@ -78,6 +78,13 @@ class SystemControlAgent(BaseAgent):
         self.register_action("close_tab",       self._simple_action)
         self.register_action("new_tab",         self._simple_action)
 
+        # ── Playwright browser (DOM automation) ─────────────
+        self.register_action("open_url",        self._open_url)
+        self.register_action("web_back",        self._simple_action)
+        self.register_action("web_refresh",     self._simple_action)
+        self.register_action("web_new_tab",     self._simple_action)
+        self.register_action("web_close_tab",   self._simple_action)
+
         # ── Routines ─────────────────────────────────────────
         self.register_action("start_work_day",  self._simple_action)
         self.register_action("end_work_day",    self._simple_action)
@@ -133,7 +140,15 @@ class SystemControlAgent(BaseAgent):
     # ── App Control ──────────────────────────────────────────
     def _open_app(self, params: dict) -> AgentResult:
         """Opens an application by name."""
-        target = params.get("target", params.get("name", ""))
+        # Gemini may use any of: target, name, app, application
+        target = (
+            params.get("target")
+            or params.get("name")
+            or params.get("app")
+            or params.get("application")
+            or ""
+        ).strip()
+
         if not target:
             return AgentResult(
                 success=False, action="open_app",
@@ -189,6 +204,26 @@ class SystemControlAgent(BaseAgent):
         )
 
     # ── Battery ──────────────────────────────────────────────
+    def _open_url(self, params: dict) -> AgentResult:
+        """Navigate the Playwright automation browser to a URL."""
+        url = params.get("url", params.get("query", ""))
+        if not url:
+            return AgentResult(
+                success=False, action="open_url",
+                error="No URL provided",
+            )
+        try:
+            from control.playwright_browser import navigate
+
+            final = navigate(url)
+            return AgentResult(
+                success=True, action="open_url",
+                result=f"Opened {final}",
+                data={"url": final},
+            )
+        except Exception as e:
+            return AgentResult(success=False, action="open_url", error=str(e))
+
     def _get_battery(self, params: dict) -> AgentResult:
         """Returns current battery percentage."""
         import subprocess, re
@@ -247,7 +282,11 @@ class SystemControlAgent(BaseAgent):
             "mission_control", "shutdown_pc", "restart_pc",
             "sleep_mac", "minimise_all", "close_window",
             "close_tab", "new_tab", "start_work_day", "end_work_day",
+            "web_back", "web_refresh", "web_new_tab", "web_close_tab",
         }
+
+        if action == "open_url":
+            return self._open_url(params)
 
         if action in simple_actions:
             if action in self._actions:
