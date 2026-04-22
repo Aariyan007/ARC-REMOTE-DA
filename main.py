@@ -12,6 +12,16 @@ All initialization and execution logic lives in core/runtime.py.
 import os
 import sys
 
+# Ensure running in venv
+VENV_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "venv"))
+if sys.prefix != VENV_PATH:
+    python_exe = os.path.join(VENV_PATH, "bin", "python")
+    if os.path.exists(python_exe):
+        os.execv(python_exe, [python_exe] + sys.argv)
+    else:
+        print("Error: venv not found. Please create it first.", file=sys.stderr)
+        sys.exit(1)
+
 # ── Fix speechbrain lazy module crashes ──────────────────────
 try:
     import speechbrain.utils.importutils as _sb_importutils

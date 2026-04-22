@@ -11,6 +11,7 @@ Voice (speak) is an optional side effect gated by source.
 from __future__ import annotations
 
 import sys
+import os
 import time
 import uuid
 import threading
@@ -329,28 +330,35 @@ def execute_text_command(
             source=source,
         )
 
+    # Non-voice sources should never trigger local TTS by default.
+    prev_silent = os.environ.get("ARC_SILENT")
+    if source != "voice":
+        os.environ["ARC_SILENT"] = "1"
+
     request = CommandRequest(
         text=text, source=source, user=user, session_id=session_id
     )
+    if session_id:
+        request.id = session_id
 
     start = time.time()
 
-    # ── Phase 4: WorkflowEngine first ────────────────────────
     try:
-        from core.workflow_engine import get_workflow_engine
-        engine = get_workflow_engine()
-        workflow_name = engine.match(text)
-        if workflow_name:
-            print(f"⚙️  WorkflowEngine matched: {workflow_name}")
-            response = engine.run(workflow_name, text, request.id, source=source)
-            response.elapsed_ms = (time.time() - start) * 1000
-            store_result(response)
-            return response
-    except Exception as e:
-        print(f"⚠️  WorkflowEngine error: {e}")
+        # ── Phase 4: WorkflowEngine first ────────────────────────
+        try:
+            from core.workflow_engine import get_workflow_engine
+            engine = get_workflow_engine()
+            workflow_name = engine.match(text)
+            if workflow_name:
+                print(f"⚙️  WorkflowEngine matched: {workflow_name}")
+                response = engine.run(workflow_name, text, request.id, source=source)
+                response.elapsed_ms = (time.time() - start) * 1000
+                store_result(response)
+                return response
+        except Exception as e:
+            print(f"⚠️  WorkflowEngine error: {e}")
 
-    # ── Fallback: existing intent_router pipeline ─────────────
-    try:
+        # ── Fallback: existing intent_router pipeline ─────────────
         from core.intent_router import route
         # route() returns bool (was_interrupted); wrap its output
         route(text, ACTIONS, _source=source, _request_id=request.id)
@@ -368,6 +376,12 @@ def execute_text_command(
             request.id, "unknown", str(e),
             elapsed_ms=(time.time() - start) * 1000, source=source,
         )
+    finally:
+        if source != "voice":
+            if prev_silent is None:
+                os.environ.pop("ARC_SILENT", None)
+            else:
+                os.environ["ARC_SILENT"] = prev_silent
 
     response.elapsed_ms = (time.time() - start) * 1000
     store_result(response)

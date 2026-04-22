@@ -13,6 +13,7 @@ If fast engine fails → Gemini fallback → learn from result.
 import time
 import sys
 import threading
+import uuid
 from core.normalizer import normalize
 from core.fast_intent import classify, IntentResult
 from core.param_extractors import (
@@ -38,7 +39,7 @@ from core.logger import log_interaction
 from core.voice_response import speak, speak_instant, speak_ack, speak_result, speak_chat
 from core.speech_to_text import listen as stt_listen
 from core.llm_brain import ask_gemini
-from mood.mood_engine import get_current_mood
+
 from core.reinforcement import track_action, boost_confidence, get_penalty, get_boost
 from core.thinking_ui import update_thinking
 from core.interrupt_manager import is_interrupt, get_interrupt_manager
@@ -59,8 +60,20 @@ from core.task_state import (
     detect_follow_up_intent,
 )
 from core.ambiguity_resolver import build_single_slot_question
-# Keep old import for backward compat in _execute_action
 from core.instant_responses import get_instant_response, get_confirmation_prompt
+
+def ask_user_input(prompt: str, source: str, request_id: str, event_type: str = "clarify") -> str:
+    if source == "api":
+        try:
+            from remote.job_store import ask_user
+            return ask_user(request_id, prompt, event_type)
+        except Exception as e:
+            print(f"Warning: api ask_user failed: {e}")
+            return ""
+    else:
+        speak_result(prompt)
+        res = stt_listen()
+        return res if res else ""
 
 # ── Format Keywords → Extensions ───────────────────────────────
 FORMAT_MAP = {
@@ -405,7 +418,7 @@ def _auto_play_focus_music():
         print(f"⚠️  Auto-play failed: {e}")
 
 
-def _execute_action(action: str, params: dict, actions: dict, text: str = "") -> ActionResult:
+def _execute_action(action: str, params: dict, actions: dict, text: str = "", _source: str = "voice", _request_id: str = "") -> ActionResult:
     """
     Executes an action with extracted params.
     Returns ActionResult — structured, never a loose string.
@@ -530,8 +543,7 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "") ->
             location = params.get("location") or "desktop"
 
             if not filename:
-                speak_result("What should I name the file?")
-                name_resp = stt_listen()
+                name_resp = ask_user_input("What should I name the file?", _source, _request_id)
                 if name_resp and name_resp.strip():
                     filename = name_resp.strip()
                     print(f"📄 User provided filename: {filename}")
@@ -544,8 +556,7 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "") ->
                     filename = filename + detected_fmt
                     print(f"📄 Auto-detected format: {detected_fmt}")
                 else:
-                    speak_result(f"What format should {filename} be? Like text, document, python, or something else?")
-                    fmt_response = stt_listen()
+                    fmt_response = ask_user_input(f"What format should {filename} be? Like text, document, python, or something else?", _source, _request_id)
                     if fmt_response:
                         ext = _resolve_format(fmt_response)
                         filename = filename + ext
@@ -568,8 +579,7 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "") ->
                 update_file_context(filename, action="edit_file")
                 return ActionResult.ok(action, f"Wrote to {filename}", data={"filename": filename})
             elif filename and not content:
-                speak_result("What do you want me to write in that file?")
-                content_response = stt_listen()
+                content_response = ask_user_input("What do you want me to write in that file?", _source, _request_id)
                 if content_response and content_response.strip():
                     actions["edit_file"](filename, content_response.strip(), location)
                     update_file_context(filename, action="edit_file")
@@ -635,8 +645,7 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "") ->
                     update_file_context(filename, action="edit_file")
                     return ActionResult.ok(action, f"Created {filename} and wrote content", data={"filename": filename})
                 elif not content:
-                    speak_result("What do you want me to write in it?")
-                    content_response = stt_listen()
+                    content_response = ask_user_input("What do you want me to write in it?", _source, _request_id)
                     if content_response and content_response.strip():
                         actions["edit_file"](filename, content_response.strip(), location)
                         update_file_context(filename, action="edit_file")
@@ -667,8 +676,7 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "") ->
                     title = params.get("title", params.get("target", ""))
                     content = params.get("content", text)
                     if not title:
-                        speak_result("What should I title this note?")
-                        title_res = stt_listen()
+                        title_res = ask_user_input("What should I title this note?", _source, _request_id)
                         title = title_res.strip() if title_res else text[:20].strip()
                     res = agent.execute("save_note", {"title": title, "content": content})
                     return ActionResult.from_agent_result(res)
@@ -805,7 +813,7 @@ def _handle_terminal_preroute(command: str, actions: dict, start_time: float) ->
     return False
 
 
-def route(command: str, actions: dict) -> bool:
+def route(command: str, actions: dict, _source: str = "voice", _request_id: str = "") -> bool:
     """
     Speed-first intent routing pipeline.
 
@@ -819,6 +827,10 @@ def route(command: str, actions: dict) -> bool:
     Returns True if completed, False if user interrupted.
     """
     start_time = time.time()
+
+    # Ensure every routed command has a stable request id (used by API + remote job flows)
+    if not _request_id:
+        _request_id = str(uuid.uuid4())
 
     if not command or not command.strip():
         print("⚠️  Empty command received")
@@ -1164,7 +1176,7 @@ def route(command: str, actions: dict) -> bool:
 
         # 2. Execute action → get structured result
         before_state = _capture_before_state(intent.action, params)
-        result = _execute_action(intent.action, params, actions, text=command)
+        result = _execute_action(intent.action, params, actions, text=command, _source=_source, _request_id=_request_id)
         result = _verify_action_result(intent.action, params, result, before_state, actions=actions, text=command)
         print(f"✅ Result: {result.summary if result.success else result.error}")
 
@@ -1202,6 +1214,32 @@ def route(command: str, actions: dict) -> bool:
         )
 
         save_exchange(command, full_spoken)
+
+        # ── Phase 1: Store structured result for API / remote callers ──
+        try:
+            from core.command_models import CommandResponse, ExecutionStatus
+            from core.runtime import store_result
+
+            step = result.to_step_result()
+            data = dict(result.data or {})
+            data.setdefault("params", dict(params or {}))
+            if ack_text:
+                data.setdefault("ack", ack_text)
+
+            resp = CommandResponse(
+                request_id=_request_id,
+                status=ExecutionStatus.COMPLETED if result.success else ExecutionStatus.FAILED,
+                interpreted_action=intent.action,
+                final_result=spoken_text,
+                steps=[step],
+                data=data,
+                errors=[spoken_text] if not result.success else [],
+                elapsed_ms=(time.time() - start_time) * 1000,
+                source=_source,
+            )
+            store_result(resp)
+        except Exception:
+            pass
 
         # ── Reinforcement: track + boost successful action ───
         track_action(cleaned, intent.action, intent.confidence, params, intent.source)
@@ -1253,11 +1291,14 @@ def route(command: str, actions: dict) -> bool:
 
         return True
 
-    # ── DECISION: CONFIRM (destructive action) ───────────────
     elif safety.decision == SafetyDecision.CONFIRM:
         # Use response_policy for confirmation prompt
         prompt = get_confirmation(intent.action, params)
-        confirmed = ask_voice_confirmation(prompt)
+        if _source == "api":
+            confirmed_resp = ask_user_input(prompt, _source, _request_id, event_type="confirm")
+            confirmed = confirmed_resp.strip().lower() in ("yes", "y", "confirm", "ok", "sure", "do it")
+        else:
+            confirmed = ask_voice_confirmation(prompt)
 
         if confirmed:
             ack_text = get_ack(intent.action)
@@ -1265,7 +1306,7 @@ def route(command: str, actions: dict) -> bool:
                 speak_ack(ack_text)
 
             before_state = _capture_before_state(intent.action, params)
-            result = _execute_action(intent.action, params, actions, text=cleaned)
+            result = _execute_action(intent.action, params, actions, text=cleaned, _source=_source, _request_id=_request_id)
             result = _verify_action_result(intent.action, params, result, before_state, actions=actions, text=cleaned)
             spoken_text = get_result_text(result)
             speak_result(spoken_text)
@@ -1302,6 +1343,32 @@ def route(command: str, actions: dict) -> bool:
                 )
             except Exception:
                 pass
+
+            # ── Phase 1: Store structured result for API / remote callers ──
+            try:
+                from core.command_models import CommandResponse, ExecutionStatus
+                from core.runtime import store_result
+
+                step = result.to_step_result()
+                data = dict(result.data or {})
+                data.setdefault("params", dict(params or {}))
+                if ack_text:
+                    data.setdefault("ack", ack_text)
+
+                resp = CommandResponse(
+                    request_id=_request_id,
+                    status=ExecutionStatus.COMPLETED if result.success else ExecutionStatus.FAILED,
+                    interpreted_action=intent.action,
+                    final_result=spoken_text,
+                    steps=[step],
+                    data=data,
+                    errors=[spoken_text] if not result.success else [],
+                    elapsed_ms=(time.time() - start_time) * 1000,
+                    source=_source,
+                )
+                store_result(resp)
+            except Exception:
+                pass
         else:
             latency_ms = (time.time() - start_time) * 1000
             log_interaction(
@@ -1311,6 +1378,23 @@ def route(command: str, actions: dict) -> bool:
                 normalized_text=cleaned,
                 spoken_text="Alright, cancelled.",
             )
+
+            # ── Phase 1: Store cancellation for API / remote callers ──
+            try:
+                from core.command_models import CommandResponse, ExecutionStatus
+                from core.runtime import store_result
+
+                store_result(CommandResponse(
+                    request_id=_request_id,
+                    status=ExecutionStatus.CANCELLED,
+                    interpreted_action=intent.action,
+                    final_result="Cancelled by user.",
+                    elapsed_ms=(time.time() - start_time) * 1000,
+                    source=_source,
+                    data={"params": dict(params or {})},
+                ))
+            except Exception:
+                pass
         return True
 
     # ── DECISION: CONTEXT_ASK ────────────────────────────────
@@ -1330,6 +1414,17 @@ def route(command: str, actions: dict) -> bool:
             # Fallback to old clarification if no missing param detected
             question = get_clarification(intent.action, params)
             missing_param = missing_params[0] if missing_params else "target"
+
+        if _source == "api":
+            resp = ask_user_input(question, _source, _request_id, event_type="clarify")
+            if resp:
+                from core.runtime import store_result
+                return route(f"{command} {resp}", actions, _source=_source, _request_id=_request_id)
+            else:
+                from core.runtime import store_result
+                from core.command_models import CommandResponse
+                store_result(CommandResponse.fail(_request_id, intent.action, "Clarification cancelled.", source=_source))
+                return True
 
         # Store pending task for resumption
         # Phase 1 fix: Detect follow-up intent from the original command
@@ -1364,6 +1459,27 @@ def route(command: str, actions: dict) -> bool:
 
     # ── DECISION: GEMINI FALLBACK ────────────────────────────
     elif safety.decision == SafetyDecision.GEMINI:
+        if _source == "api":
+            # Remote/API mode should never hard-depend on voice/Gemini loops.
+            # Fail closed with a clear message so the controller can rephrase.
+            msg = "I couldn't understand that well enough to act. Please rephrase."
+            try:
+                from core.command_models import CommandResponse, ExecutionStatus
+                from core.runtime import store_result
+                store_result(CommandResponse(
+                    request_id=_request_id,
+                    status=ExecutionStatus.FAILED,
+                    interpreted_action=intent.action,
+                    final_result=msg,
+                    errors=[msg],
+                    elapsed_ms=(time.time() - start_time) * 1000,
+                    source=_source,
+                    data={"params": dict(params or {})},
+                ))
+            except Exception:
+                pass
+            return True
+
         print(f"🤖 Falling back to Gemini (confidence={intent.confidence:.2f})")
         return _gemini_fallback(command, cleaned, actions, start_time, params)
 

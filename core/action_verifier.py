@@ -73,7 +73,8 @@ def capture_before_state(action: str, params: dict) -> BeforeState:
         from perception.ui_accessibility import get_frontmost_app, get_focused_window_title
         ax_app, _ax_err = get_frontmost_app()   # unpack (value, error) tuple
         state.ax_frontmost_app = ax_app or ""
-        state.ax_window_title = get_focused_window_title() or ""
+        ax_title, _ = get_focused_window_title()
+        state.ax_window_title = ax_title or ""
     except Exception:
         pass
 
@@ -382,7 +383,9 @@ def verify_app_opened(params: dict, result: Any, before: BeforeState) -> Verific
             )
 
         # Check if at least running
-        running = is_app_running(target) or is_app_running(target.title())
+        running_target, _ = is_app_running(target)
+        running_title, _ = is_app_running(target.title())
+        running = running_target or running_title
         if running:
             return VerificationResult(
                 ok=True,
@@ -693,9 +696,9 @@ def verify_action(
     try:
         return verifier(params, result, before)
     except Exception as e:
-        # Never crash in verification — report the error but don't block
+        # Never crash in verification — fail closed on error
         return VerificationResult(
-            ok=True,
+            ok=False,
             message=f"Verifier error: {e}",
             details={"action": action, "error": str(e)},
         )
