@@ -191,7 +191,7 @@ def generate_followup(
             _last_call_time = time.time()  # Mark call time BEFORE request
 
             response = client.models.generate_content(
-                model="gemini-3.1-flash-lite-preview",
+                model="gemini-2.0-flash-lite",
                 contents=prompt
             )
 
@@ -219,7 +219,8 @@ def generate_followup(
             else:
                 print(f"⚠️ Background Gemini error: {e}")
 
-    return run_background(_do_enhance)
+    future = run_background(_do_enhance)
+    return future  # May be None if run_background decides not to schedule
 
 
 # ─── Quick test ──────────────────────────────────────────────

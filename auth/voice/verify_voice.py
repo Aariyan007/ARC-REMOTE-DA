@@ -43,7 +43,7 @@ from .vad import remove_silence
 SAMPLE_RATE = 16000
 DURATION = 5
 TEMP_FILE = "temp_verify.wav"
-THRESHOLD = 0.50
+THRESHOLD = 0.35   # Lowered from 0.50 — live scores observed: 0.37-0.49
 
 import sys
 

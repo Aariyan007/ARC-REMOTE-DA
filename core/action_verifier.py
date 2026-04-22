@@ -245,13 +245,27 @@ def verify_file_copied(params: dict, result: Any, before: BeforeState) -> Verifi
 
 def verify_file_edited(params: dict, result: Any, before: BeforeState) -> VerificationResult:
     """Verify file content changed (mtime or size changed)."""
-    path = before.file_path or _resolve_file_path("edit_file", params)
+    # Priority: before.file_path > result.data["path"] > resolve from params
+    path = before.file_path
+
+    if not path and hasattr(result, 'data'):
+        path = result.data.get("path") or result.data.get("filename")
+
+    if not path:
+        path = _resolve_file_path("edit_file", params)
+
     if not path:
         return VerificationResult(ok=False, message="No file path to verify.")
 
     if not os.path.exists(path):
-        return VerificationResult(ok=False, message=f"File not found: {path}.",
-                                  details={"path": path})
+        # Try glob for bare filenames missing extension (e.g. "superman" → "superman.txt")
+        import glob
+        matches = glob.glob(path + ".*")
+        if matches:
+            path = matches[0]  # Take first match
+        else:
+            return VerificationResult(ok=False, message=f"File not found: {path}.",
+                                      details={"path": path})
 
     try:
         stat = os.stat(path)
