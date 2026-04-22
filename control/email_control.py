@@ -383,6 +383,106 @@ def send_email(to: str = "", subject: str = "", body: str = "") -> None:
         return "Email cancelled by user"
 
 
+# ─── Attachment-capable email draft ──────────────────────────────
+
+def draft_email_with_attachment(
+    to: str,
+    subject: str = "",
+    body: str = "",
+    attachment_path: str = None,
+    announce: bool = True,
+) -> dict:
+    """
+    Opens Gmail compose with the given fields pre-filled, then attaches
+    a file via Playwright browser automation.
+
+    Args:
+        to:              Recipient email address
+        subject:         Email subject line
+        body:            Email body text
+        attachment_path: Absolute path to the file to attach (optional)
+        announce:        If True, speak status updates (voice mode)
+
+    Returns:
+        {
+            "success": bool,
+            "draft_opened": bool,
+            "attachment_verified": bool,
+            "error": str
+        }
+    """
+    result = {
+        "success": False,
+        "draft_opened": False,
+        "attachment_verified": False,
+        "error": "",
+    }
+
+    to = _safe(to)
+    subject = _safe(subject)
+    body = _safe(body)
+
+    if not to:
+        result["error"] = "No recipient provided."
+        return result
+
+    # Resolve contact name → email
+    to = _resolve_contact(to)
+
+    # Build the Gmail compose URL
+    params = urllib.parse.urlencode(
+        {"to": to, "su": subject, "body": body},
+        quote_via=urllib.parse.quote,
+    )
+    compose_url = f"https://mail.google.com/mail/?view=cm&fs=1&{params}"
+    print(f"📧 Gmail compose URL: {compose_url[:100]}...")
+
+    # ── Attempt Playwright attach ——————————————————————
+    if attachment_path:
+        try:
+            from control.playwright_browser import open_gmail_compose_with_attachment
+            attach_result = open_gmail_compose_with_attachment(
+                to=to,
+                subject=subject,
+                body=body,
+                file_path=attachment_path,
+            )
+            result["draft_opened"] = True
+            result["attachment_verified"] = attach_result.get("attachment_verified", False)
+            result["success"] = True
+            if announce:
+                if result["attachment_verified"]:
+                    if announce:
+                        speak(f"Done. Gmail compose opened with attachment.")
+                else:
+                    if announce:
+                        speak("Gmail opened. Please verify the attachment.")
+            print(f"  ✔ Draft opened. Attachment verified: {result['attachment_verified']}")
+            return result
+        except Exception as e:
+            print(f"  ⚠️  Playwright attach failed ({e}), falling back to URL open.")
+            result["error"] = str(e)
+
+    # ── Fallback: open compose URL in default browser (no attachment) ———
+    try:
+        webbrowser.open(compose_url)
+        result["draft_opened"] = True
+        result["success"] = True
+        if attachment_path:
+            result["error"] = "Playwright unavailable; file not attached automatically."
+            if announce:
+                speak(f"Gmail opened. Please attach {os.path.basename(attachment_path)} manually.")
+        else:
+            if announce:
+                speak("Gmail compose opened. Review and send when ready.")
+    except Exception as e:
+        result["error"] = str(e)
+        if announce:
+            speak("Couldn't open Gmail.")
+
+    return result
+
+
 def open_gmail() -> None:
     """Opens Gmail in the default browser."""
     speak("Opening Gmail.")

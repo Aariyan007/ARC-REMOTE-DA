@@ -526,3 +526,39 @@ if __name__ == "__main__":
     print(f"  open_app:    {get_failure(r5)}")
 
     print("\n✅ Response policy test passed!")
+
+
+# ═══════════════════════════════════════════════════════════════
+#  7. SOURCE-AWARE FORMATTING
+# ═══════════════════════════════════════════════════════════════
+
+def format_for_source(response, source: str) -> str:
+    """
+    Format a CommandResponse for the given source channel.
+
+    Args:
+        response: CommandResponse instance
+        source:   "voice" | "api" | "phone" | "local_ui"
+
+    Returns:
+        A string appropriate for the channel.
+    """
+    if source == "api":
+        import json
+        return json.dumps(response.to_dict(), indent=2)
+
+    if source in ("phone", "local_ui"):
+        # Concise text: status + one-liner result
+        status_icon = {
+            "completed": "✅",
+            "failed":    "❌",
+            "needs_confirmation": "❓",
+            "queued":    "⏳",
+            "running":   "🔄",
+            "cancelled": "🚫",
+        }.get(response.status.value if hasattr(response.status, "value") else response.status, "•")
+        return f"{status_icon} {response.final_result}"
+
+    # Default / voice: just the final result text (caller will speak it)
+    return response.final_result
+

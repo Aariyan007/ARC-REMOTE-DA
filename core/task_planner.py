@@ -97,10 +97,13 @@ class TaskPlan:
 # When step N produces a result, what key should be forwarded to step N+1?
 RESULT_FORWARD_RULES: Dict[str, Dict[str, str]] = {
     # parent_action → {inject_from: what result key, inject_as: what param key}
-    "create_folder": {"inject_from": "target", "inject_as": "location"},
-    "create_file":   {"inject_from": "filename", "inject_as": "filename"},
-    "open_folder":   {"inject_from": "target", "inject_as": "location"},
-    "rename_file":   {"inject_from": "new_name", "inject_as": "filename"},
+    "create_folder": {"inject_from": "target",   "inject_as": "location"},
+    "create_file":   {"inject_from": "filename",  "inject_as": "filename"},
+    "open_folder":   {"inject_from": "target",   "inject_as": "location"},
+    "rename_file":   {"inject_from": "new_name",  "inject_as": "filename"},
+    # file → email: pass resolved path as attachment_path
+    "search_file":   {"inject_from": "path",      "inject_as": "attachment_path"},
+    "read_file":     {"inject_from": "path",      "inject_as": "attachment_path"},
 }
 
 

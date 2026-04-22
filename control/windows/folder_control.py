@@ -1,7 +1,163 @@
 import subprocess
 import os
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import List, Optional
 from core.voice_response import speak
 from core.llm_brain import set_context
+
+
+# ─── Structured file resolution ──────────────────────────────
+
+@dataclass
+class FileMatch:
+    """Single file match from a search."""
+    path: str
+    name: str
+    size_bytes: int = 0
+    modified_time: str = ""     # ISO 8601
+    extension: str = ""
+    score: float = 1.0          # 1.0 = exact name, <1.0 = fuzzy
+
+
+@dataclass
+class FileResolution:
+    """Result of resolving a filename to a concrete path."""
+    resolved: bool                          # True iff we have exactly ONE best match
+    path: Optional[str] = None             # full path if resolved
+    matches: List[FileMatch] = field(default_factory=list)
+    reason: str = "not_found"             # exact_match | fuzzy_top | ambiguous | not_found
+
+
+# Directories we always skip during walks
+_SKIP_DIRS = {
+    "venv", ".venv", ".git", "node_modules",
+    "__pycache__", ".cache", "Application Support", ".Trash",
+}
+
+_SEARCH_DIRS = [
+    os.path.expanduser("~/Desktop"),
+    os.path.expanduser("~/Documents"),
+    os.path.expanduser("~/Downloads"),
+]
+
+
+def find_files(name: str, constraints: dict = None) -> List[FileMatch]:
+    """
+    Search common directories for files matching `name`.
+    Returns a ranked list of FileMatch objects.
+    Never opens a microphone. Never speaks.
+
+    Ranking:
+      score=1.0  → exact filename match (case-insensitive)
+      score=0.7  → filename contains the search term
+      score=0.5  → stem contains the search term
+    """
+    name_lower = name.lower()
+    # Strip common extensions from search term for stem matching
+    name_stem = os.path.splitext(name_lower)[0]
+
+    matches: List[FileMatch] = []
+    seen: set = set()
+
+    for search_dir in _SEARCH_DIRS:
+        if not os.path.exists(search_dir):
+            continue
+        for root, dirs, files in os.walk(search_dir):
+            dirs[:] = [d for d in dirs if d not in _SKIP_DIRS]
+            for f in files:
+                f_lower = f.lower()
+                f_stem  = os.path.splitext(f_lower)[0]
+                full    = os.path.join(root, f)
+
+                if full in seen:
+                    continue
+
+                # Score the match
+                if f_lower == name_lower:
+                    score = 1.0
+                elif name_lower in f_lower:
+                    score = 0.7
+                elif name_stem and name_stem in f_stem:
+                    score = 0.5
+                else:
+                    continue
+
+                seen.add(full)
+                try:
+                    stat = os.stat(full)
+                    size = stat.st_size
+                    mtime = datetime.fromtimestamp(stat.st_mtime).isoformat()
+                except OSError:
+                    size, mtime = 0, ""
+
+                matches.append(FileMatch(
+                    path=full,
+                    name=f,
+                    size_bytes=size,
+                    modified_time=mtime,
+                    extension=os.path.splitext(f)[1].lower(),
+                    score=score,
+                ))
+
+    # Sort: score desc, then modified_time desc (newest first)
+    matches.sort(key=lambda m: (-m.score, m.modified_time), reverse=False)
+    matches.sort(key=lambda m: (-m.score,))
+    return matches
+
+
+def resolve_best_file(name: str, constraints: dict = None) -> FileResolution:
+    """
+    Resolve a filename to exactly one path, or report ambiguity.
+    Never opens a microphone. Returns structured data the caller can act on.
+
+    Returns:
+      resolved=True  → path is the single best match
+      resolved=False, reason='ambiguous'  → multiple matches; caller must choose
+      resolved=False, reason='not_found'  → nothing found
+    """
+    matches = find_files(name, constraints)
+
+    if not matches:
+        return FileResolution(resolved=False, reason="not_found")
+
+    # Group by score tier
+    exact   = [m for m in matches if m.score == 1.0]
+    fuzzy   = [m for m in matches if m.score < 1.0]
+
+    # One exact match → unambiguous
+    if len(exact) == 1:
+        return FileResolution(
+            resolved=True,
+            path=exact[0].path,
+            matches=exact,
+            reason="exact_match",
+        )
+
+    # Multiple exact matches → ambiguous
+    if len(exact) > 1:
+        return FileResolution(
+            resolved=False,
+            matches=exact,
+            reason="ambiguous",
+        )
+
+    # No exact, one fuzzy → use it (top score)
+    if len(fuzzy) == 1:
+        return FileResolution(
+            resolved=True,
+            path=fuzzy[0].path,
+            matches=fuzzy,
+            reason="fuzzy_top",
+        )
+
+    # Multiple fuzzy → ambiguous
+    return FileResolution(
+        resolved=False,
+        matches=fuzzy[:5],   # cap at 5 candidates
+        reason="ambiguous",
+    )
+
 
 
 def open_folder(folder_name: str) -> None:
@@ -51,80 +207,57 @@ def create_folder(folder_name: str, location: str = "desktop") -> None:
     subprocess.Popen(["explorer", path])
 
 
-def search_file(filename: str) -> None:
+def search_file(filename: str, announce: bool = True) -> None:
     """
-    Searches for files using os.walk on common directories.
-    Lists results and asks user which one to open.
-    Reads contents if text file.
+    Voice-mode wrapper around find_files() + resolve_best_file().
+    Uses the mic for disambiguation ONLY when source is voice.
+    For programmatic/remote use, call resolve_best_file() directly.
     """
-    speak(f"Searching for {filename}.")
+    if announce:
+        speak(f"Searching for {filename}.")
     print(f"🔍 Searching for: {filename}")
 
-    # Search common directories (Windows equivalent of Spotlight/mdfind)
-    search_dirs = [
-        os.path.expanduser("~/Desktop"),
-        os.path.expanduser("~/Documents"),
-        os.path.expanduser("~/Downloads"),
-    ]
-    files = []
-    for search_dir in search_dirs:
-        if not os.path.exists(search_dir):
-            continue
-        for root, dirs, dir_files in os.walk(search_dir):
-            # Skip junk directories
-            dirs[:] = [d for d in dirs if d not in (
-                "venv", ".venv", ".git", "node_modules",
-                "__pycache__", ".cache", "Application Support",
-                ".Trash"
-            )]
-            for f in dir_files:
-                if filename.lower() in f.lower():
-                    full_path = os.path.join(root, f)
-                    files.append(full_path)
+    resolution = resolve_best_file(filename)
 
-    if not files:
-        speak(f"Couldn't find any file named {filename}.")
-        return
+    if not resolution.resolved:
+        if resolution.reason == "not_found":
+            speak(f"Couldn't find any file named {filename}.")
+            return
+        # Ambiguous — list options and ask via voice
+        shown = resolution.matches[:5]
+        speak(f"I found {len(shown)} files.")
+        for i, m in enumerate(shown, 1):
+            location = os.path.dirname(m.path).replace(os.path.expanduser("~"), "home")
+            speak(f"File {i}: {m.name}.")
+            print(f"  {i}. {m.name} — {m.path}")
 
-    # Only one result
-    if len(files) == 1:
-        path     = files[0]
-        name     = os.path.basename(path)
-        location = os.path.dirname(path).replace(os.path.expanduser("~"), "home")
-        speak(f"Found one file: {name} in {location}.")
-        _open_or_read(path)
-        return
+        speak("Which one do you want? Say the number.")
+        shown_paths = [m.path for m in shown]
 
-    # Multiple results — list them
-    shown = files[:5]
-    speak(f"I found {len(shown)} files.")
+        # Listen for choice — direct mic input, no Gemini
+        from core.speech_to_text import listen
+        choice = listen()
+        print(f"📝 Choice heard: '{choice}'")
 
-    for i, f in enumerate(shown, 1):
-        name     = os.path.basename(f)
-        location = os.path.dirname(f).replace(os.path.expanduser("~"), "home")
-        speak(f"File {i}: {name}.")
-        print(f"  {i}. {name} — {f}")
-
-    speak("Which one do you want? Say the number.")
-
-    # Listen for choice — direct mic input, no Gemini
-    from core.speech_to_text import listen
-    choice = listen()
-    print(f"📝 Choice heard: '{choice}'")
-
-    # Extract number
-    number = _extract_number(choice)
-
-    if number and 1 <= number <= len(shown):
-        _open_or_read(shown[number - 1])
-    else:
-        speak("Didn't catch that. Try again.")
-        choice2 = listen()
-        number2 = _extract_number(choice2)
-        if number2 and 1 <= number2 <= len(shown):
-            _open_or_read(shown[number2 - 1])
+        number = _extract_number(choice)
+        if number and 1 <= number <= len(shown_paths):
+            _open_or_read(shown_paths[number - 1])
         else:
-            speak("No worries, try searching again.")
+            speak("Didn't catch that. Try again.")
+            choice2 = listen()
+            number2 = _extract_number(choice2)
+            if number2 and 1 <= number2 <= len(shown_paths):
+                _open_or_read(shown_paths[number2 - 1])
+            else:
+                speak("No worries, try searching again.")
+        return
+
+    # Single resolved match
+    path = resolution.path
+    name = os.path.basename(path)
+    location = os.path.dirname(path).replace(os.path.expanduser("~"), "home")
+    speak(f"Found {name} in {location}.")
+    _open_or_read(path)
 
 
 def _open_or_read(path: str) -> None:
