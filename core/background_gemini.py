@@ -191,7 +191,7 @@ def generate_followup(
             _last_call_time = time.time()  # Mark call time BEFORE request
 
             response = client.models.generate_content(
-                model="gemini-2.0-flash-lite",
+                model="gemini-2.5-flash",
                 contents=prompt
             )
 
