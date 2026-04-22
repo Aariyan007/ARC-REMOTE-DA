@@ -128,6 +128,9 @@ def test_computer_use_module():
     else:
         _fail("move_to(clamped)", r.error)
 
+    # ── Move back to center so PyAutoGUI fail-safe doesn't trip ──
+    cu.move_to(cx, cy, duration=0.1)
+
     # scroll()
     r = cu.scroll(cx, cy, clicks=1)
     if r.ok:
@@ -392,24 +395,27 @@ def test_bug_regressions():
     # ── Bug 2: open_app accepts "app" and "application" keys ─────
     try:
         from core.agents.system_agent import SystemControlAgent
+        from unittest.mock import patch
         agent = SystemControlAgent(actions_map={})
 
         # Test that it doesn't fail with "No app name provided" for these keys
-        for key in ["app", "application", "target", "name"]:
-            result = agent._open_app({key: "TestApp"})
-            # It will fail because TestApp doesn't exist, but NOT with "No app name provided"
-            error = (result.error or "").lower()
-            if "no app name" not in error:
-                _ok(f"open_app accepts '{key}' param key", f"error='{result.error or 'none'}'")
-            else:
-                _fail(f"open_app '{key}' key rejected", f"still says: {result.error}")
+        # We mock speak so the test doesn't actually try to talk and listen to the mic
+        with patch("control.mac.open_apps.speak"):
+            for key in ["app", "application", "target", "name"]:
+                result = agent._open_app({key: "TestApp"})
+                # It will fail because TestApp doesn't exist, but NOT with "No app name provided"
+                error = (result.error or "").lower()
+                if "no app name" not in error:
+                    _ok(f"open_app accepts '{key}' param key", f"error='{result.error or 'none'}'")
+                else:
+                    _fail(f"open_app '{key}' key rejected", f"still says: {result.error}")
 
-        # Test empty params still fails correctly
-        result = agent._open_app({})
-        if "no app name" in (result.error or "").lower():
-            _ok("open_app {} params → 'No app name provided'")
-        else:
-            _fail("open_app {} params", f"unexpected error: {result.error}")
+            # Test empty params still fails correctly
+            result = agent._open_app({})
+            if "no app name" in (result.error or "").lower():
+                _ok("open_app {} params → 'No app name provided'")
+            else:
+                _fail("open_app {} params", f"unexpected error: {result.error}")
 
     except Exception as e:
         _fail("open_app param key regression", f"{e}")
@@ -419,8 +425,8 @@ def test_bug_regressions():
         import ast
         with open("core/background_gemini.py") as f:
             content = f.read()
-        if "gemini-2.0-flash-lite" in content and "gemini-3.1-flash-lite-preview" not in content:
-            _ok("background_gemini model name fixed", "uses gemini-2.0-flash-lite")
+        if "gemini-2.5-flash" in content and "gemini-3.1-flash-lite-preview" not in content:
+            _ok("background_gemini model name fixed", "uses gemini-2.5-flash")
         elif "gemini-3.1-flash-lite-preview" in content:
             _fail("background_gemini model name", "still uses dead model 'gemini-3.1-flash-lite-preview'")
         else:

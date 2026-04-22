@@ -93,8 +93,9 @@ def move_to(x: int, y: int, duration: float = DEFAULT_MOVE_DURATION) -> ControlR
     try:
         pag = _get_pyautogui()
         w, h = pag.size()
-        x = max(0, min(x, w - 1))
-        y = max(0, min(y, h - 1))
+        # Clamp slightly inward to avoid triggering PyAutoGUI's corner fail-safe
+        x = max(2, min(x, w - 3))
+        y = max(2, min(y, h - 3))
         pag.moveTo(x, y, duration=duration)
         return ControlResult.success(f"Moved to ({x}, {y})")
     except Exception as e:
@@ -106,8 +107,9 @@ def click(x: int, y: int, button: str = "left", clicks: int = 1) -> ControlResul
     try:
         pag = _get_pyautogui()
         w, h = pag.size()
-        x = max(0, min(x, w - 1))
-        y = max(0, min(y, h - 1))
+        # Clamp slightly inward to avoid triggering PyAutoGUI's corner fail-safe
+        x = max(2, min(x, w - 3))
+        y = max(2, min(y, h - 3))
         pag.click(x, y, button=button, clicks=clicks, interval=0.1)
         time.sleep(CLICK_PAUSE)
         return ControlResult.success(f"Clicked ({x}, {y}) [{button}]")

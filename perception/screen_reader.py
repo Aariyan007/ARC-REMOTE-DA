@@ -24,7 +24,7 @@ from typing import Optional, Tuple
 
 # ─── Settings ────────────────────────────────────────────────
 GEMINI_API_KEY = os.getenv("API_KEY")
-VISION_MODEL   = "gemini-2.0-flash"
+VISION_MODEL   = "gemini-2.5-flash"
 MAX_RETRIES    = 2
 # ─────────────────────────────────────────────────────────────
 

@@ -276,7 +276,7 @@ def interpret_with_structured_llm(
     from google import genai
 
     client = genai.Client(api_key=api_key)
-    model_name = model or os.getenv("GEMINI_STRUCTURED_MODEL", "gemini-2.0-flash")
+    model_name = model or os.getenv("GEMINI_STRUCTURED_MODEL", "gemini-3.1-flash-lite-preview")
 
     prompt = (
         STRUCTURED_JSON_INSTRUCTIONS

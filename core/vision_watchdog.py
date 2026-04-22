@@ -4,7 +4,7 @@ Vision Watchdog — Screenshot context for ambiguous commands.
 When a command has low confidence (0.40-0.70), takes a silent screenshot
 and sends it to Gemini Vision to understand what the user is looking at.
 
-Uses: gemini-2.0-flash (vision-capable model)
+Uses: gemini-3.1-flash-lite-preview (vision-capable model)
 """
 
 import os
@@ -19,7 +19,7 @@ load_dotenv()
 
 
 # ── Settings ─────────────────────────────────────────────────
-VISION_MODEL = "gemini-2.0-flash"
+VISION_MODEL = "gemini-3.1-flash-lite-preview"
 SCREENSHOT_DIR = os.path.join(
     os.path.dirname(os.path.dirname(__file__)), "data", "screenshots"
 )
