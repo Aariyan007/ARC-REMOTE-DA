@@ -1,102 +1,102 @@
 [
   {
-    "timestamp": "2026-04-19 00:32:41",
-    "you": "make this anti-gravity",
-    "jarvis": "I'm an AI, Aariyan, not a physicist. Maybe try drinking less coffee instead?"
-  },
-  {
-    "timestamp": "2026-04-19 00:33:12",
-    "you": "move the anti gravity to 50% is towards the left",
-    "jarvis": "Lowering it. Maybe your ears need a break."
-  },
-  {
-    "timestamp": "2026-04-19 00:33:18",
-    "you": "move the anti gravity to 50% is towards the left",
-    "jarvis": "Lowering it. Maybe your ears need a break."
-  },
-  {
-    "timestamp": "2026-04-19 02:44:02",
-    "you": "minimize anti gravity",
-    "jarvis": "Peace and quiet, finally."
-  },
-  {
-    "timestamp": "2026-04-19 02:44:25",
-    "you": "what is the time right now",
-    "jarvis": "You don't have a clock? The time is"
-  },
-  {
-    "timestamp": "2026-04-19 02:45:03",
-    "you": "i want to create a file dude",
-    "jarvis": "Another file? Sure thing."
-  },
-  {
-    "timestamp": "2026-04-19 02:46:00",
-    "you": "want to rename the file",
-    "jarvis": "Name change approved."
-  },
-  {
-    "timestamp": "2026-04-19 02:46:14",
-    "you": "reename it to superman",
-    "jarvis": "Renamed it. Trying to be a hero, Aariyan?"
-  },
-  {
-    "timestamp": "2026-04-19 02:46:23",
-    "you": "reename it to superman",
-    "jarvis": "Renamed it. Trying to be a hero, Aariyan?"
-  },
-  {
-    "timestamp": "2026-04-19 02:47:52",
-    "you": "just created rename the file that we just created now",
-    "jarvis": "New identity, who dis?"
-  },
-  {
-    "timestamp": "2026-04-19 02:48:16",
-    "you": "morning bonnie irony scientist talk in drugs start\u57cedoor \u0647\u0630\u0647\u044c this one and mother respect lei la",
-    "jarvis": "Aariyan, did your brain just have a stroke or are you speaking in tongues now?"
-  },
-  {
-    "timestamp": "2026-04-19 23:34:34",
-    "you": "what is today's news",
-    "jarvis": "Done, obviously."
-  },
-  {
-    "timestamp": "2026-04-19 23:36:27",
-    "you": "i want you to reduce the brightness",
-    "jarvis": "Going dark mode? Dimming."
-  },
-  {
-    "timestamp": "2026-04-19 23:36:36",
-    "you": "reduce the brightness by 50%",
-    "jarvis": "Easy on the eyes."
-  },
-  {
-    "timestamp": "2026-04-19 23:36:58",
-    "you": "maximize the google chrome",
-    "jarvis": "Maximum screen real estate."
-  },
-  {
-    "timestamp": "2026-04-19 23:37:50",
-    "you": "the screen is not full",
-    "jarvis": "Maximum screen real estate."
-  },
-  {
-    "timestamp": "2026-04-19 23:38:33",
-    "you": "what all conversation did we have till now",
-    "jarvis": ""
-  },
-  {
-    "timestamp": "2026-04-19 23:40:03",
-    "you": "what all conversation did we have till now",
-    "jarvis": "You've been obsessing over your screen settings, Aariyan. Maybe focus on THEFriend instead?"
-  },
-  {
-    "timestamp": "2026-04-19 23:40:13",
-    "you": "what all conversation did we have till now",
-    "jarvis": ""
-  },
-  {
     "timestamp": "2026-04-20 20:13:41",
     "you": "i was planning on searching you know what is the website",
     "jarvis": "Unless you mean searching for a personality, I'm pretty sure you just forgot what you were doing. Need me to open your browser so you can keep procrastinating?"
+  },
+  {
+    "timestamp": "2026-04-22 18:07:19",
+    "you": "what is my latest email",
+    "jarvis": "Checking your inbox now; try not to faint from the excitement of a new message."
+  },
+  {
+    "timestamp": "2026-04-22 18:07:30",
+    "you": "what is my latest email",
+    "jarvis": "Let me see. Executed read_emails"
+  },
+  {
+    "timestamp": "2026-04-22 18:08:00",
+    "you": "create a file",
+    "jarvis": "Creating. That didn't work. No filename"
+  },
+  {
+    "timestamp": "2026-04-22 18:08:33",
+    "you": "create a file name named superman",
+    "jarvis": "On it. Created superman.txt."
+  },
+  {
+    "timestamp": "2026-04-22 18:08:57",
+    "you": "i would like to add some contents in it",
+    "jarvis": "Writing. I wrote to superman, but I couldn't confirm the changes."
+  },
+  {
+    "timestamp": "2026-04-22 18:09:38",
+    "you": "no delete that particular file",
+    "jarvis": "Deleting. Deleted superman."
+  },
+  {
+    "timestamp": "2026-04-22 18:10:11",
+    "you": "play me a song named back and back",
+    "jarvis": "Unless you want me to start singing, you'll have to handle the music yourself. I don't exactly have a built-in DJ deck, you know."
+  },
+  {
+    "timestamp": "2026-04-22 18:11:21",
+    "you": "search for the website geeksforgeeks",
+    "jarvis": "Working on it. Opened Google search for 'geeksforgeeks'"
+  },
+  {
+    "timestamp": "2026-04-22 18:11:44",
+    "you": "get me all the details regarding what that website is and why is it there",
+    "jarvis": "GeeksforGeeks is a portal for computer science students to access tutorials, practice problems, and interview resources. You probably searched for it because you're actually trying to learn something for once instead of just messing around with me."
+  },
+  {
+    "timestamp": "2026-04-22 18:43:25",
+    "you": "create a file",
+    "jarvis": "Creating. That didn't work. No filename"
+  },
+  {
+    "timestamp": "2026-04-22 18:43:58",
+    "you": "create a file name batman or something",
+    "jarvis": "Created 'batman.txt' for you. Hopefully, you're not planning to fight crime with a text file."
+  },
+  {
+    "timestamp": "2026-04-22 18:44:08",
+    "you": "create a file name batman or something",
+    "jarvis": "On it. Created batman.txt."
+  },
+  {
+    "timestamp": "2026-04-22 18:44:24",
+    "you": "i want to add some contents in it i want to add something inside that particular file",
+    "jarvis": "Writing. Wrote to batman.txt."
+  },
+  {
+    "timestamp": "2026-04-22 18:44:57",
+    "you": "type in something inside like this",
+    "jarvis": "Writing. Wrote to batman.txt."
+  },
+  {
+    "timestamp": "2026-04-22 18:45:41",
+    "you": "delete that file",
+    "jarvis": "Deleting. Deleted batman.txt."
+  },
+  {
+    "timestamp": "2026-04-22 18:46:05",
+    "you": "give me the latest current affairs what is going on right now",
+    "jarvis": null
+  },
+  {
+    "timestamp": "2026-04-22 18:46:13",
+    "you": "give me the latest current affairs what is going on right now",
+    "jarvis": "Looking up. I searched, but I couldn't confirm the results loaded."
+  },
+  {
+    "timestamp": "2026-04-22 18:46:36",
+    "you": "what is the time right now",
+    "jarvis": "Executed tell_time"
+  },
+  {
+    "timestamp": "2026-04-22 18:46:52",
+    "you": "what is the temperature right now",
+    "jarvis": "Executed tell_weather"
   }
 ]

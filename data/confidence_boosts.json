@@ -22,7 +22,8 @@
     "see i told you to create a file": 1,
     "create a file named superman": 1,
     "let's create a file named as superman.txt": 1,
-    "create a file dude": 1
+    "create a file dude": 1,
+    "create a file name named superman": 1
   },
   "edit_file": {
     "write something in superman.txt i tell you": 1,
@@ -30,7 +31,9 @@
     "and in batman.docx write something": 1,
     "want you to add text in it bro": 1,
     "don't you want contents in it": 1,
-    "i also wanted to add some text in it": 1
+    "i also wanted to add some text in it": 1,
+    "add some contents in it add something inside batman.txt": 1,
+    "type in something inside batman.txt": 1
   },
   "open_gmail": {
     "open email": 1
@@ -59,7 +62,7 @@
   },
   "tell_time": {
     "what time is it": 1,
-    "what is the time": 1
+    "what is the time": 2
   },
   "morning_briefing": {
     "what is today's news man": 1,
@@ -125,5 +128,8 @@
   "brightness_down": {
     "reduce the brightness": 1,
     "reduce the brightness by 50%": 1
+  },
+  "tell_weather": {
+    "what is the temperature": 1
   }
 }

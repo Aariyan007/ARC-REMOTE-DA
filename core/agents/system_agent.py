@@ -140,7 +140,15 @@ class SystemControlAgent(BaseAgent):
     # ── App Control ──────────────────────────────────────────
     def _open_app(self, params: dict) -> AgentResult:
         """Opens an application by name."""
-        target = params.get("target", params.get("name", ""))
+        # Gemini may use any of: target, name, app, application
+        target = (
+            params.get("target")
+            or params.get("name")
+            or params.get("app")
+            or params.get("application")
+            or ""
+        ).strip()
+
         if not target:
             return AgentResult(
                 success=False, action="open_app",

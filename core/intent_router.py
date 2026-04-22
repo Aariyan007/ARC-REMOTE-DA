@@ -561,7 +561,7 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "") ->
 
         if action == "edit_file":
             filename = params.get("filename", "")
-            content  = params.get("content", "")
+            content  = params.get("content") or ""   # treat None as "" (meta-word cleared)
             location = params.get("location")
             if filename and content and "edit_file" in actions:
                 actions["edit_file"](filename, content, location)
@@ -643,6 +643,21 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "") ->
                         return ActionResult.ok(action, f"Created {filename} and wrote content", data={"filename": filename})
                     return ActionResult.ok("create_file", f"Created {filename} (no content)", data={"filename": filename})
             return ActionResult.fail(action, "No filename")
+
+        # ── Computer Use (OpenClaw) ──────────────────────────
+        if action == "computer_use":
+            try:
+                import main as main_module
+                if hasattr(main_module, '_manager_agent') and main_module._manager_agent:
+                    cu_agent = main_module._manager_agent.get_agent("computer_use")
+                    if cu_agent:
+                        result = cu_agent.execute("computer_use", {"instruction": text, "announce": True})
+                        if result.success:
+                            return ActionResult.ok(action, result.result or "Task completed via computer use")
+                        return ActionResult.fail(action, result.error or "Computer use failed")
+            except Exception as e:
+                pass
+            return ActionResult.fail(action, "Computer use agent unavailable")
 
         # ── Knowledge Base ───────────────────────────────────
         if action in ("save_note", "append_note", "search_vault", "read_note_vault"):
@@ -901,7 +916,6 @@ def route(command: str, actions: dict) -> bool:
                     # with the result from step 1.
                     if pending.follow_up_action:
                         print(f"🔗 Chaining to follow-up: {pending.follow_up_action}")
-                        from core.ambiguity_resolver import build_single_slot_question
                         from core.response_policy import get_missing_params as get_mp
 
                         # ── Inject step-1 result into follow-up params ──

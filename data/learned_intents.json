@@ -155,5 +155,42 @@
     "created": "2026-04-18 22:42:42",
     "last_matched": "2026-04-18 22:42:42",
     "match_count": 1
+  },
+  {
+    "normalized_input": "what is my latest email",
+    "action": "read_emails",
+    "params": {},
+    "confidence": 1.0,
+    "source": "gemini",
+    "created": "2026-04-22 18:07:30",
+    "last_matched": "2026-04-22 18:07:30",
+    "match_count": 1
+  },
+  {
+    "normalized_input": "create a file name batman",
+    "action": "create_file",
+    "params": {
+      "filename": "batman.txt",
+      "location": "desktop",
+      "target": "name"
+    },
+    "confidence": 1.0,
+    "source": "gemini",
+    "created": "2026-04-22 18:44:08",
+    "last_matched": "2026-04-22 18:44:08",
+    "match_count": 1
+  },
+  {
+    "normalized_input": "give me the latest current affairs what is going on",
+    "action": "search_google",
+    "params": {
+      "query": "current events today",
+      "filename": "batman.txt"
+    },
+    "confidence": 1.0,
+    "source": "gemini",
+    "created": "2026-04-22 18:46:13",
+    "last_matched": "2026-04-22 18:46:13",
+    "match_count": 1
   }
 ]

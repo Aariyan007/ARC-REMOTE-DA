@@ -428,6 +428,32 @@ INTENT_REGISTRY = {
         "could you play music", "play music please",
         "play a track", "put on a song", "i want to hear music",
         "play blinding lights", "play bohemian rhapsody",
+        # Song-name patterns (Bug 3 fix)
+        "play a song named back in black",
+        "play a song named shape of you",
+        "play a song called thriller",
+        "play the song called perfect",
+        "play the song named believer",
+        "play back in black by ac dc",
+        "play shape of you by ed sheeran",
+        "play blinding lights by the weeknd",
+        "play a song named back and back",
+        "play the song back and back",
+        "i want to listen to back and back",
+        "play me a song named back and back",
+        "play me a song called thriller",
+        "play me the song shape of you",
+        "can you play the song perfect",
+        "play something named believer",
+        "put on the song hotel california",
+        "play hotel california by eagles",
+        "play stay by the kid laroi",
+        "play levitating by dua lipa",
+        "play as it was by harry styles",
+        "i want to hear back and back",
+        "i want to listen to shape of you",
+        "can you play back in black for me",
+        "play me something by ed sheeran",
     ],
     "play_mood_music": [
         "play music according to my mood", "play something for my mood",
@@ -490,6 +516,38 @@ INTENT_REGISTRY = {
         "tile vscode and chrome", "put these side by side",
         "tile these windows", "split screen with",
         "side by side layout", "tile two windows",
+    ],
+
+    # ── Computer Use / UI Control ─────────────────────────────
+    "computer_use": [
+        # WhatsApp
+        "send a whatsapp message to", "message my mom on whatsapp",
+        "whatsapp my mom", "send whatsapp to", "text my mom on whatsapp",
+        "send a message to mom on whatsapp", "whatsapp message",
+        "message my friend on whatsapp", "send whatsapp",
+        "open whatsapp and message", "whatsapp and say",
+        # Gmail UI
+        "open gmail and search", "go to gmail and find",
+        "search for emails from mom in gmail",
+        "find emails from my boss in gmail",
+        "open gmail and look for emails about",
+        "search gmail for", "gmail search for",
+        # Click/Type UI
+        "click the send button", "click on the button",
+        "click the search bar", "click the login button",
+        "type hello in the chat", "type in the search box",
+        "fill in the form", "click submit",
+        # Navigate
+        "go to youtube and search for",
+        "open youtube and search for music",
+        "navigate to the website and click",
+        "go to the website and fill in",
+        # Generic computer use
+        "control my computer and", "use the computer to",
+        "do it on my screen", "do it visually",
+        "use my mouse to", "move the mouse and click",
+        "click and type", "on screen do",
+        "open the browser and go to",
     ],
 }
 
@@ -571,7 +629,7 @@ def _get_model():
                 except Exception as e:
                     print(f"Warning: local model load failed ({e}), trying cache...")
 
-        # 2. Check default HuggingFace cache (no network call if already cached)
+        # 2. Check default HuggingFace cache — skip network if already cached
         cache_dir = os.path.expanduser(
             os.environ.get("HF_HOME",
                 os.path.join(os.path.expanduser("~"), ".cache", "huggingface", "hub"))
@@ -581,13 +639,19 @@ def _get_model():
         if os.path.isdir(os.path.join(cache_dir, hf_cache_name)):
             print(f"Loading sentence-transformer from HuggingFace cache...")
             try:
-                _model = SentenceTransformer(MODEL_NAME, cache_folder=cache_dir)
+                # local_files_only=True: skip the redundant HEAD request to HuggingFace
+                # This prevents startup hangs when offline or when HF is unreachable
+                _model = SentenceTransformer(
+                    MODEL_NAME,
+                    cache_folder=cache_dir,
+                    local_files_only=True,
+                )
                 print("Model loaded (cached).")
                 return _model
             except Exception as e:
-                print(f"Warning: cached model load failed ({e}), attempting download...")
+                print(f"Warning: offline load failed ({e}), attempting live download...")
 
-        # 3. Network download — last resort
+        # 3. Network download — last resort (first-time setup only)
         print(f"Downloading sentence-transformer model '{MODEL_NAME}' (first-time setup)...")
         print("Tip: set SENTENCE_TRANSFORMERS_HOME to a local dir to avoid this.")
         try:
@@ -602,6 +666,7 @@ def _get_model():
                 f"directory containing a pre-downloaded '{MODEL_NAME}' folder."
             ) from e
     return _model
+
 
 
 def _load_intent_patches() -> dict:

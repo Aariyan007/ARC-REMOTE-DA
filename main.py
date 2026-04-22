@@ -269,20 +269,23 @@ def _initialize_agents():
     # Create specialized agents with access to their relevant actions
     # Create specialized agents with access to their relevant actions
     from core.agents.knowledge_agent import KnowledgeAgent
-    fs_agent        = FileSystemAgent(actions_map=ACTIONS)
-    sys_agent       = SystemControlAgent(actions_map=ACTIONS)
-    music_agent     = MusicAgent()
-    companion_agent = CompanionAgent()
-    research_agent  = ResearchAgent()
-    knowledge_agent = KnowledgeAgent()
-    
+    from core.agents.computer_use_agent import ComputerUseAgent
+    fs_agent          = FileSystemAgent(actions_map=ACTIONS)
+    sys_agent         = SystemControlAgent(actions_map=ACTIONS)
+    music_agent       = MusicAgent()
+    companion_agent   = CompanionAgent()
+    research_agent    = ResearchAgent()
+    knowledge_agent   = KnowledgeAgent()
+    computer_use_agent = ComputerUseAgent()
+
     agents_dict = {
-        "filesystem": fs_agent,
-        "system":     sys_agent,
-        "music":      music_agent,
-        "companion":  companion_agent,
-        "research":   research_agent,
-        "knowledge":  knowledge_agent,
+        "filesystem":    fs_agent,
+        "system":        sys_agent,
+        "music":         music_agent,
+        "companion":     companion_agent,
+        "research":      research_agent,
+        "knowledge":     knowledge_agent,
+        "computer_use":  computer_use_agent,
     }
 
     # Add Window Agent (Mac only for now)
