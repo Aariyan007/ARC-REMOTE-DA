@@ -29,7 +29,7 @@ from core.graph.task_graph import TaskGraph, GraphExecutor, NodeStatus
 from core.network.connectivity import require_online
 from core.voice_response import speak_ack, speak_result, speak_chat
 from core.memory import get_context_for_gemini, save_exchange, update_context, get_last_file, get_last_context
-from mood.mood_engine import get_mood_for_prompt
+
 from core.logger import log_interaction
 from core.response_policy import get_ack, get_result as get_result_text, get_failure as get_failure_text
 from core.action_result import ActionResult
@@ -112,7 +112,7 @@ class ManagerAgent:
     def _build_plan_prompt(self, command: str) -> str:
         """Builds the Gemini prompt for task planning."""
         user_context = get_context_for_gemini()
-        mood_context = get_mood_for_prompt()
+        mood_context = ""
         agent_desc   = self._get_agent_descriptions()
 
         # ── Inject working memory (last file + last action) ──

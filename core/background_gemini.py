@@ -171,13 +171,12 @@ def generate_followup(
             import os
             from google import genai
             from dotenv import load_dotenv
-            from mood.mood_engine import get_mood_for_prompt
             from core.memory import get_context_for_gemini
 
             load_dotenv()
             client = genai.Client(api_key=os.getenv("API_KEY"))
 
-            mood_context = get_mood_for_prompt()
+            mood_context = ""
 
             prompt = _build_personality_prompt(
                 action=action,

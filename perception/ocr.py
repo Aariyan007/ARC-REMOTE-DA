@@ -144,12 +144,17 @@ def ocr_screen(region: Optional[tuple] = None) -> OCRResult:
     """
     try:
         from perception.screen_capture import capture_primary_display_to_file
-        img_path = capture_primary_display_to_file()
+        img_path, err = capture_primary_display_to_file()
+        if err == "permission_needed":
+            return OCRResult(error="permission_needed", source="screen")
+        if err or not img_path:
+            return OCRResult(error=f"Screen capture failed: {err}", source="screen")
+
         result = ocr_image_file_structured(img_path)
         result.source = f"screen:{result.source}"
         return result
     except Exception as e:
-        return OCRResult(error=f"Screen capture failed: {e}", source="screen")
+        return OCRResult(error=f"Screen capture exception: {e}", source="screen")
 
 
 def ocr_focused_window() -> OCRResult:
@@ -159,12 +164,17 @@ def ocr_focused_window() -> OCRResult:
     """
     try:
         from perception.screen_capture import capture_focused_window_to_file
-        img_path = capture_focused_window_to_file()
+        img_path, err = capture_focused_window_to_file()
+        if err == "permission_needed":
+            return OCRResult(error="permission_needed", source="window")
+        if err or not img_path:
+            return OCRResult(error=f"Window capture failed: {err}", source="window")
+
         result = ocr_image_file_structured(img_path)
         result.source = f"window:{result.source}"
         return result
     except Exception as e:
-        return OCRResult(error=f"Window capture failed: {e}", source="window")
+        return OCRResult(error=f"Window capture exception: {e}", source="window")
 
 
 # ─── Quick Test ──────────────────────────────────────────────

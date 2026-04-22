@@ -262,8 +262,7 @@ class ProactiveLoop:
 
         # Update mood engine
         try:
-            from mood.mood_engine import clear_mood_override
-            clear_mood_override()  # Let time-based mood take over
+            pass # Let time-based mood take over
         except Exception:
             pass
 

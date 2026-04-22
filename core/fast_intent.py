@@ -598,12 +598,31 @@ def _get_cross_encoder():
     global _cross_encoder
     if _cross_encoder is None:
         try:
+            import os
             from sentence_transformers import CrossEncoder
-            print("Loading cross-encoder for reranking...")
-            _cross_encoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
-            print("Cross-encoder ready")
+            
+            MODEL_NAME = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+            cache_dir = os.path.expanduser(
+                os.environ.get("HF_HOME", os.path.join(os.path.expanduser("~"), ".cache", "huggingface", "hub"))
+            )
+            hf_cache_name = f"models--cross-encoder--ms-marco-MiniLM-L-6-v2"
+            cache_path = os.path.join(cache_dir, hf_cache_name, "snapshots")
+            
+            if os.path.isdir(cache_path):
+                snapshots = [d for d in os.listdir(cache_path) if os.path.isdir(os.path.join(cache_path, d))]
+                if snapshots:
+                    local_path = os.path.join(cache_path, snapshots[0])
+                    print(f"Loading cross-encoder from local cache: {local_path}")
+                    _cross_encoder = CrossEncoder(local_path, local_files_only=True)
+                    print("Cross-encoder ready")
+                    return _cross_encoder
+            
+            print("Warning: Cross-encoder not available locally (skipping reranking).")
+            print("To enable precision reranking, download the model first.")
+            _cross_encoder = False  # Sentinel: tried but failed
         except Exception as e:
-            print(f"Warning: Cross-encoder not available: {e}")
+            print(f"Warning: Cross-encoder not available locally (skipping reranking): {e}")
+            print("To enable precision reranking, download the model first.")
             _cross_encoder = False  # Sentinel: tried but failed
     return _cross_encoder if _cross_encoder is not False else None
 
@@ -650,32 +669,24 @@ def _get_model():
         if os.path.isdir(os.path.join(cache_dir, hf_cache_name)):
             print(f"Loading sentence-transformer from HuggingFace cache...")
             try:
-                # local_files_only=True: skip the redundant HEAD request to HuggingFace
-                # This prevents startup hangs when offline or when HF is unreachable
-                _model = SentenceTransformer(
-                    MODEL_NAME,
-                    cache_folder=cache_dir,
-                    local_files_only=True,
-                )
-                print("Model loaded (cached).")
-                return _model
+                cache_path = os.path.join(cache_dir, hf_cache_name, "snapshots")
+                if os.path.isdir(cache_path):
+                    snapshots = [d for d in os.listdir(cache_path) if os.path.isdir(os.path.join(cache_path, d))]
+                    if snapshots:
+                        local_path = os.path.join(cache_path, snapshots[0])
+                        _model = SentenceTransformer(local_path, local_files_only=True)
+                        print("Model loaded (cached).")
+                        return _model
+                print("No valid snapshots found in cache.")
             except Exception as e:
-                print(f"Warning: offline load failed ({e}), attempting live download...")
+                print(f"Warning: offline load failed ({e})")
 
-        # 3. Network download — last resort (first-time setup only)
-        print(f"Downloading sentence-transformer model '{MODEL_NAME}' (first-time setup)...")
-        print("Tip: set SENTENCE_TRANSFORMERS_HOME to a local dir to avoid this.")
-        try:
-            _model = SentenceTransformer(MODEL_NAME)
-            print("Model loaded (downloaded).")
-        except Exception as e:
-            raise RuntimeError(
-                f"Could not load sentence-transformer model '{MODEL_NAME}'.\n"
-                f"Reason: {e}\n"
-                f"Fix: run `pip install sentence-transformers` and ensure network "
-                f"access on first run, or set SENTENCE_TRANSFORMERS_HOME to a "
-                f"directory containing a pre-downloaded '{MODEL_NAME}' folder."
-            ) from e
+        # 3. Fail fast if not cached
+        raise RuntimeError(
+            f"Could not load sentence-transformer model '{MODEL_NAME}' locally.\n"
+            f"Network downloads are disabled to prevent cold-start hangs.\n"
+            f"Fix: Download the model manually first or set SENTENCE_TRANSFORMERS_HOME."
+        )
     return _model
 
 
@@ -796,6 +807,7 @@ def classify(text: str) -> IntentResult:
     Returns:
         IntentResult with action, confidence, source, and matched_example
     """
+    global _cross_encoder
     if not text or not text.strip():
         return IntentResult(action="", confidence=0.0, source="none")
 
@@ -836,7 +848,9 @@ def classify(text: str) -> IntentResult:
         pairs = [(text, c[2]) for c in top5]
 
         try:
-            scores = cross_enc.predict(pairs)
+            scores = np.asarray(cross_enc.predict(pairs), dtype=float)
+            if not np.all(np.isfinite(scores)):
+                raise ValueError("Cross-encoder produced non-finite scores (NaN/Inf)")
 
             # Apply negative example penalties
             for i, (action, _, example, _) in enumerate(top5):
@@ -862,6 +876,8 @@ def classify(text: str) -> IntentResult:
             )
         except Exception as e:
             print(f"Warning: Cross-encoder rerank failed: {e}")
+            # Disable cross-encoder for this run to avoid repeated slow failures
+            _cross_encoder = False
             # Fall through to bi-encoder result
 
     # ── Fallback: use bi-encoder top result ───────────────────

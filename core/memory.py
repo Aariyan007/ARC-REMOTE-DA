@@ -37,10 +37,50 @@ MAX_FILE_HISTORY = 10
 
 # ── User Profile ─────────────────────────────────────────────
 
+def _default_profile() -> dict:
+    return {
+        "name": "aariyan",
+        "identity": [],
+        "works_with": [],
+        "current_projects": [],
+        "personality_preference": "casual and concise",
+        "notes": [],
+    }
+
+
 def load_profile() -> dict:
     """Loads Aariyan's personal profile."""
-    with open(PROFILE_PATH, "r") as f:
-        return json.load(f)
+    try:
+        with open(PROFILE_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if not isinstance(data, dict):
+            return _default_profile()
+
+        profile = _default_profile()
+        profile.update(data)
+
+        # Ensure expected shapes
+        for key in ("identity", "works_with", "current_projects", "notes"):
+            if not isinstance(profile.get(key), list):
+                profile[key] = []
+        if not isinstance(profile.get("name"), str) or not profile["name"].strip():
+            profile["name"] = "aariyan"
+        if not isinstance(profile.get("personality_preference"), str):
+            profile["personality_preference"] = "casual and concise"
+
+        return profile
+    except FileNotFoundError:
+        # Degrade cleanly: profile is optional for most paths.
+        profile = _default_profile()
+        try:
+            os.makedirs(os.path.dirname(PROFILE_PATH), exist_ok=True)
+            with open(PROFILE_PATH, "w", encoding="utf-8") as f:
+                json.dump(profile, f, indent=2)
+        except Exception:
+            pass
+        return profile
+    except Exception:
+        return _default_profile()
 
 
 def update_profile(key: str, value) -> None:

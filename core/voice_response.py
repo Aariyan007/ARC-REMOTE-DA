@@ -33,6 +33,8 @@ _speech_process = None
 def _speak_mac(text: str, rate: int = MAC_RATE_NORMAL) -> bool:
     """Speaks using Mac built-in say command."""
     global _speech_process, is_speaking
+    if os.environ.get("ARC_SILENT", "").strip().lower() in ("1", "true", "yes", "on"):
+        return True
     if sys.platform != "darwin":
         return _speak_fallback(text)
 
@@ -53,6 +55,8 @@ def _speak_mac(text: str, rate: int = MAC_RATE_NORMAL) -> bool:
 def _speak_fallback(text: str) -> bool:
     """Fallback TTS for non-Mac platforms."""
     global is_speaking
+    if os.environ.get("ARC_SILENT", "").strip().lower() in ("1", "true", "yes", "on"):
+        return True
     try:
         import pyttsx3
         engine = pyttsx3.init()

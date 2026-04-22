@@ -12,7 +12,7 @@ The INSTANT_CACHE has been removed — replaced by fast_intent.py
 
 import json
 import time
-from mood.mood_engine import get_mood_for_prompt
+
 from core.memory import get_context_for_gemini, save_exchange
 import os
 try:
@@ -179,7 +179,7 @@ def ask_gemini(command: str) -> dict:
     Gemini fallback — called when fast intent engine can't resolve.
     Understands intent + generates personal response.
     """
-    mood_context = get_mood_for_prompt()
+    mood_context = ""
     user_context = get_context_for_gemini()
 
     prompt = SYSTEM_PROMPT.format(

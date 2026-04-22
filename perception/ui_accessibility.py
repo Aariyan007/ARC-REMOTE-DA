@@ -94,13 +94,15 @@ def _run_osascript(script: str, timeout: float = 3.0) -> tuple[str, str]:
         return "", f"exception: {e}"
 
 
-def _run_osascript_list(script: str, timeout: float = 4.0) -> List[str]:
-    """Run AppleScript that returns a comma-separated list."""
-    raw, _ = _run_osascript(script, timeout)
+def _run_osascript_list(script: str, timeout: float = 4.0) -> tuple[List[str], str]:
+    """Run AppleScript that returns a comma-separated list, returns (list, error)."""
+    raw, err = _run_osascript(script, timeout)
+    if err:
+        return [], err
     if not raw:
-        return []
+        return [], ""
     # AppleScript returns lists like: "item1, item2, item3"
-    return [item.strip() for item in raw.split(",") if item.strip()]
+    return [item.strip() for item in raw.split(",") if item.strip()], ""
 
 
 
@@ -119,36 +121,41 @@ def get_frontmost_app() -> tuple[str, str]:
     )
 
 
-def get_focused_window_title() -> str:
-    """Returns the title of the focused window of the frontmost app."""
+def get_focused_window_title() -> tuple[str, str]:
+    """Returns the title of the focused window of the frontmost app as (title, error)."""
     app, err = get_frontmost_app()
+    if err:
+        return "", err
     if not app:
-        return ""
-    val, _ = _run_osascript(
+        return "", ""
+    return _run_osascript(
         f'tell application "System Events" to tell process "{app}" '
         f'to name of front window'
     )
-    return val
 
 
-def get_focused_element_info() -> dict:
+def get_focused_element_info() -> tuple[dict, str]:
     """
-    Returns role, title, and value of the currently focused UI element.
+    Returns role, title, and value of the currently focused UI element as (dict, error).
     Uses System Events accessibility.
     """
-    app, _ = get_frontmost_app()
+    app, err = get_frontmost_app()
+    if err:
+        return {"role": "", "title": "", "value": ""}, err
     if not app:
-        return {"role": "", "title": "", "value": ""}
+        return {"role": "", "title": "", "value": ""}, ""
 
-    role, _ = _run_osascript(
+    role, r_err = _run_osascript(
         f'tell application "System Events" to tell process "{app}" '
         f'to role of focused UI element of front window'
     )
-    title, _ = _run_osascript(
+    if r_err: return {"role": "", "title": "", "value": ""}, r_err
+
+    title, t_err = _run_osascript(
         f'tell application "System Events" to tell process "{app}" '
         f'to description of focused UI element of front window'
     )
-    value, _ = _run_osascript(
+    value, v_err = _run_osascript(
         f'tell application "System Events" to tell process "{app}" '
         f'to value of focused UI element of front window'
     )
@@ -157,64 +164,72 @@ def get_focused_element_info() -> dict:
         "role": role or "",
         "title": title or "",
         "value": value or "",
-    }
+    }, ""
 
 
-def get_menu_bar_items() -> List[str]:
-    """Returns names of the menu bar items of the frontmost app."""
-    app, _ = get_frontmost_app()
+def get_menu_bar_items() -> tuple[List[str], str]:
+    """Returns names of the menu bar items of the frontmost app as (list, error)."""
+    app, err = get_frontmost_app()
+    if err:
+        return [], err
     if not app:
-        return []
+        return [], ""
     return _run_osascript_list(
         f'tell application "System Events" to tell process "{app}" '
         f'to name of every menu bar item of menu bar 1'
     )
 
 
-def get_window_buttons() -> List[str]:
-    """Returns titles/names of visible buttons in the front window (shallow)."""
-    app, _ = get_frontmost_app()
+def get_window_buttons() -> tuple[List[str], str]:
+    """Returns titles/names of visible buttons in the front window (shallow) as (list, error)."""
+    app, err = get_frontmost_app()
+    if err:
+        return [], err
     if not app:
-        return []
-    raw, _ = _run_osascript(
+        return [], ""
+    raw, err = _run_osascript(
         f'tell application "System Events" to tell process "{app}" '
         f'to name of every button of front window',
         timeout=4.0,
     )
+    if err:
+        return [], err
     if not raw or raw == "missing value":
-        return []
-    return [b.strip() for b in raw.split(",") if b.strip() and b.strip() != "missing value"]
+        return [], ""
+    return [b.strip() for b in raw.split(",") if b.strip() and b.strip() != "missing value"], ""
 
 
-def get_window_text_fields() -> List[str]:
-    """Returns values of visible text fields in the front window (shallow)."""
-    app, _ = get_frontmost_app()
+def get_window_text_fields() -> tuple[List[str], str]:
+    """Returns values of visible text fields in the front window (shallow) as (list, error)."""
+    app, err = get_frontmost_app()
+    if err:
+        return [], err
     if not app:
-        return []
-    raw, _ = _run_osascript(
+        return [], ""
+    raw, err = _run_osascript(
         f'tell application "System Events" to tell process "{app}" '
         f'to value of every text field of front window',
         timeout=4.0,
     )
+    if err:
+        return [], err
     if not raw or raw == "missing value":
-        return []
-    return [t.strip() for t in raw.split(",") if t.strip() and t.strip() != "missing value"]
+        return [], ""
+    return [t.strip() for t in raw.split(",") if t.strip() and t.strip() != "missing value"], ""
 
 
-def is_app_running(app_name: str) -> bool:
-    """Check if an app is currently running (by process name)."""
+def is_app_running(app_name: str) -> tuple[bool, str]:
+    """Check if an app is currently running (by process name), returning (bool, error)."""
     result, err = _run_osascript(
         f'tell application "System Events" to (name of every process) contains "{app_name}"'
     )
     if err:
-        # Can't distinguish 'not running' from 'permission denied' — surface False
-        # but the caller can check is_app_running via get_ax_snapshot().error
-        return False
-    return result.lower() == "true"
+        return False, err
+    return result.lower() == "true", ""
 
 
-def get_running_apps() -> List[str]:
-    """Returns list of all running application names."""
+def get_running_apps() -> tuple[List[str], str]:
+    """Returns list of all running application names as (list, error)."""
     return _run_osascript_list(
         'tell application "System Events" to name of every process whose background only is false'
     )
@@ -245,12 +260,13 @@ def get_ax_snapshot() -> AXSnapshot:
 
         title = ""
         if app:
-            title = get_focused_window_title()
+            title, _ = get_focused_window_title()
 
         # Focused element info (may fail for some apps)
         focused = {"role": "", "title": "", "value": ""}
         try:
-            focused = get_focused_element_info()
+            f_info, _ = get_focused_element_info()
+            focused = f_info
         except Exception:
             pass
 
@@ -258,11 +274,13 @@ def get_ax_snapshot() -> AXSnapshot:
         buttons: List[str] = []
         text_fields: List[str] = []
         try:
-            buttons = get_window_buttons()
+            b_list, _ = get_window_buttons()
+            buttons = b_list
         except Exception:
             pass
         try:
-            text_fields = get_window_text_fields()
+            t_list, _ = get_window_text_fields()
+            text_fields = t_list
         except Exception:
             pass
 
@@ -325,9 +343,10 @@ if __name__ == "__main__":
     snap = get_ax_snapshot()
     print(f"\n{snapshot_to_text(snap)}")
 
-    print(f"\nApp running check (Finder): {is_app_running('Finder')}")
+    running, r_err = is_app_running('Finder')
+    print(f"\nApp running check (Finder): {running}")
 
-    running = get_running_apps()
-    print(f"Running apps: {', '.join(running[:10])}")
+    running_apps, _ = get_running_apps()
+    print(f"Running apps: {', '.join(running_apps[:10])}")
 
     print("\n✅ AX test passed!")

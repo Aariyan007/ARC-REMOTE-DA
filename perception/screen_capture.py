@@ -17,37 +17,24 @@ from typing import Optional
 from core.platform_utils import is_mac, is_windows
 
 
-def capture_primary_display_to_file(path: Optional[str] = None) -> str:
+def capture_primary_display_to_file(path: Optional[str] = None) -> tuple[Optional[str], str]:
     """
     Write a screenshot of the main display to ``path`` (PNG).
     If ``path`` is None, uses a temp file.
-
-    macOS: ``screencapture`` (requires screen-recording permission when sandboxed).
-    Windows: PowerShell + .NET System.Drawing (best-effort; replace with DXGI/WGC later).
-
-    Raises:
-        PermissionError  — screen-recording permission not granted (macOS)
-        NotImplementedError — unsupported platform
-        RuntimeError     — capture failed for another reason
+    Returns (path, error).
+    If missing Screen Recording permission, returns (None, "permission_needed").
     """
     out = path or str(Path(tempfile.gettempdir()) / "startup_screen_capture.png")
 
     if is_mac():
         try:
             subprocess.run(["screencapture", "-x", out], check=True, capture_output=True)
-            return out
+            return out, ""
         except subprocess.CalledProcessError as e:
             stderr = (e.stderr or b"").decode(errors="replace").lower()
             if "permission" in stderr or "not permitted" in stderr or e.returncode in (1, 255):
-                raise PermissionError(
-                    "Screen capture failed — Screen Recording permission may not be granted. "
-                    "Go to System Settings > Privacy & Security > Screen Recording and enable "
-                    "access for this application."
-                ) from e
-            raise RuntimeError(
-                f"screencapture exited with code {e.returncode}: "
-                f"{(e.stderr or b'').decode(errors='replace').strip()}"
-            ) from e
+                return None, "permission_needed"
+            return None, f"screencapture exited with code {e.returncode}: {(e.stderr or b'').decode(errors='replace').strip()}"
 
     if is_windows():
         path_lit = json.dumps(out)
@@ -68,22 +55,16 @@ $g.Dispose(); $bmp.Dispose()
                 text=True,
             )
         except subprocess.CalledProcessError as e:
-            raise RuntimeError(
-                f"Windows screen capture failed (exit {e.returncode}): {e.stderr.strip()}"
-            ) from e
-        return out
+            return None, f"Windows screen capture failed (exit {e.returncode}): {e.stderr.strip()}"
+        return out, ""
 
-    raise NotImplementedError("Screen capture not implemented for this platform.")
+    return None, "Screen capture not implemented for this platform."
 
 
-def capture_focused_window_to_file(path: Optional[str] = None) -> str:
+def capture_focused_window_to_file(path: Optional[str] = None) -> tuple[Optional[str], str]:
     """
     Capture only the frontmost window on macOS.
-    Falls back to full display capture if window capture fails.
-
-    Raises:
-        PermissionError  — screen-recording permission not granted
-        RuntimeError     — capture failed for another reason
+    Returns (path, error).
     """
     out = path or str(Path(tempfile.gettempdir()) / "startup_window_capture.png")
 
@@ -104,7 +85,7 @@ def capture_focused_window_to_file(path: Optional[str] = None) -> str:
                     check=True, capture_output=True, timeout=10,
                 )
                 if Path(out).is_file():
-                    return out
+                    return out, ""
         except subprocess.CalledProcessError:
             # Window capture failed (permission or no window) — fall through to full display
             pass

@@ -399,7 +399,7 @@ def run_agent(command: str, actions: dict) -> None:
         print(f"⚠️  WorkflowEngine check failed: {e} — falling back to LLM agent")
 
     from core.memory import get_context_for_gemini
-    from mood.mood_engine import get_mood_for_prompt
+    # from mood.mood_engine import get_mood_for_prompt
     from core.logger import log_interaction
 
     print(f"\n🤖 Agent starting: '{command}'")
@@ -420,7 +420,7 @@ def run_agent(command: str, actions: dict) -> None:
             history        = history,
             observation    = observation,
             user_context   = get_context_for_gemini(),
-            mood_context   = get_mood_for_prompt()
+            mood_context   = ""
         )
 
         # Think
