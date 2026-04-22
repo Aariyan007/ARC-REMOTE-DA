@@ -29,14 +29,16 @@
     "and in batman.docx write something": 1,
     "want you to add text in it bro": 1,
     "don't you want contents in it": 1,
-    "i also wanted to add some text in it": 1
+    "i also wanted to add some text in it": 1,
+    "create a file abc.txt in documents": 1
   },
   "open_gmail": {
     "open email": 1
   },
   "create_and_edit_file": {
     "create a file name superman.txt and also add some contents in it you are doing": 1,
-    "also kind of make a file named as batman.txt and also write contents hi how are you in it": 1
+    "also kind of make a file named as batman.txt and also write contents hi how are you in it": 1,
+    "create a file": 2
   },
   "send_email": {
     "send an email send an email send an email": 1,

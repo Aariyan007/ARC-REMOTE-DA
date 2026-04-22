@@ -157,5 +157,15 @@
     "created": "2026-04-18 22:49:04",
     "last_matched": "2026-04-18 22:49:04",
     "match_count": 1
+  },
+  {
+    "normalized_input": "open that file",
+    "action": "get_recent_files",
+    "params": {},
+    "confidence": 1.0,
+    "source": "gemini",
+    "created": "2026-04-19 00:23:36",
+    "last_matched": "2026-04-19 00:23:36",
+    "match_count": 1
   }
 ]

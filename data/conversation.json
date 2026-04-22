@@ -1,35 +1,5 @@
 [
   {
-    "timestamp": "2026-04-17 16:17:45",
-    "you": "no you didn't switch me to the chrome what the fuck",
-    "jarvis": "Jumping to it."
-  },
-  {
-    "timestamp": "2026-04-17 16:19:28",
-    "you": "find me my screenshot which i took yesterday there are a lot of screenshots which i took yesterday find me with",
-    "jarvis": "Snapped."
-  },
-  {
-    "timestamp": "2026-04-17 16:20:53",
-    "you": "which all files did i create yesterday",
-    "jarvis": "Checking."
-  },
-  {
-    "timestamp": "2026-04-17 16:21:16",
-    "you": "by the way what am i looking at right now",
-    "jarvis": "Done, obviously."
-  },
-  {
-    "timestamp": "2026-04-17 16:21:42",
-    "you": "what am i looking right now check check",
-    "jarvis": "Let's see what the world wants from you."
-  },
-  {
-    "timestamp": "2026-04-17 16:21:54",
-    "you": "what screen am i looking at right now",
-    "jarvis": "Maximum screen real estate."
-  },
-  {
     "timestamp": "2026-04-17 16:23:00",
     "you": "what did we do do tell now you remember anything",
     "jarvis": "Your command, executed."
@@ -98,5 +68,35 @@
     "timestamp": "2026-04-18 22:49:04",
     "you": "this app by 50%",
     "jarvis": "Turning it down, Aariyan. Your music taste stinks."
+  },
+  {
+    "timestamp": "2026-04-19 00:21:57",
+    "you": "beautiful you",
+    "jarvis": "Flattery won't make your code compile, Aariyan. Nice try though."
+  },
+  {
+    "timestamp": "2026-04-19 00:22:17",
+    "you": "create a file",
+    "jarvis": "Your command, executed."
+  },
+  {
+    "timestamp": "2026-04-19 00:22:28",
+    "you": "create a file",
+    "jarvis": "Done, obviously."
+  },
+  {
+    "timestamp": "2026-04-19 00:22:59",
+    "you": "open that file",
+    "jarvis": "Which one? You\u2019ve got a mountain of clutter."
+  },
+  {
+    "timestamp": "2026-04-19 00:23:36",
+    "you": "open that file",
+    "jarvis": "Which one? You\u2019ve got a mountain of clutter."
+  },
+  {
+    "timestamp": "2026-04-19 00:24:50",
+    "you": "create a file abc.txt in documents",
+    "jarvis": "Scribbling away."
   }
 ]

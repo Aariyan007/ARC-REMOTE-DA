@@ -1,90 +1,35 @@
 [
   {
-    "action": "play_song",
-    "params": {},
-    "hour": 12,
-    "weekday": -1,
-    "occurrences": 4,
-    "confidence": 1.0,
-    "last_seen": "2026-04-18 22:41:32",
-    "description": "play_song usually at 12:00 (4 times, 100% confidence)"
-  },
-  {
-    "action": "minimise_all",
+    "action": "open_terminal",
     "params": {},
     "hour": 22,
     "weekday": -1,
-    "occurrences": 4,
-    "confidence": 0.667,
-    "last_seen": "2026-04-18 22:41:32",
-    "description": "minimise_all usually at 22:00 (4 times, 67% confidence)"
-  },
-  {
-    "action": "lock_screen",
-    "params": {},
-    "hour": 23,
-    "weekday": -1,
     "occurrences": 2,
     "confidence": 0.667,
-    "last_seen": "2026-04-18 22:41:32",
-    "description": "lock_screen usually at 23:00 (2 times, 67% confidence)"
+    "last_seen": "2026-04-15 13:55:17",
+    "description": "open_terminal usually at 22:00 (2 times, 67% confidence)"
   },
   {
     "action": "open_app",
     "params": {
-      "name": "vscode",
-      "target": "vscode"
+      "name": "command",
+      "target": "command"
     },
-    "hour": 11,
+    "hour": 10,
     "weekday": -1,
-    "occurrences": 2,
-    "confidence": 0.667,
-    "last_seen": "2026-04-13 18:04:49",
-    "description": "open_app usually at 11:00 (2 times, 67% confidence)"
-  },
-  {
-    "action": "create_and_edit_file",
-    "params": {},
-    "hour": 17,
-    "weekday": -1,
-    "occurrences": 4,
-    "confidence": 0.667,
-    "last_seen": "2026-04-18 22:41:32",
-    "description": "create_and_edit_file usually at 17:00 (4 times, 67% confidence)"
-  },
-  {
-    "action": "delete_file_cancelled",
-    "params": {},
-    "hour": 23,
-    "weekday": -1,
-    "occurrences": 2,
-    "confidence": 0.667,
-    "last_seen": "2026-04-18 22:41:32",
-    "description": "delete_file_cancelled usually at 23:00 (2 times, 67% confidence)"
-  },
-  {
-    "action": "search_google",
-    "params": {
-      "query": "Batman movie soundtrack playlist"
-    },
-    "hour": 8,
-    "weekday": -1,
-    "occurrences": 5,
+    "occurrences": 10,
     "confidence": 0.625,
-    "last_seen": "2026-04-15 23:22:33",
-    "description": "search_google usually at 8:00 (5 times, 62% confidence)"
+    "last_seen": "2026-04-15 00:22:36",
+    "description": "open_app usually at 10:00 (10 times, 62% confidence)"
   },
   {
-    "action": "switch_to_app",
-    "params": {
-      "name": "vscode",
-      "target": "vscode"
-    },
-    "hour": 16,
+    "action": "general_chat",
+    "params": {},
+    "hour": 10,
     "weekday": -1,
-    "occurrences": 5,
-    "confidence": 0.625,
-    "last_seen": "2026-04-13 19:23:02",
-    "description": "switch_to_app usually at 16:00 (5 times, 62% confidence)"
+    "occurrences": 3,
+    "confidence": 0.6,
+    "last_seen": "2026-04-15 13:55:17",
+    "description": "general_chat usually at 10:00 (3 times, 60% confidence)"
   }
 ]
