@@ -212,6 +212,11 @@ INTENT_REGISTRY = {
     "send_email": [
         "send email", "compose email", "write email",
         "email to", "send a message", "compose mail",
+        "send an email to my boss", "send email to my boss",
+        "email my boss", "send an email to", "email someone",
+        "send an email to my friend", "send mail to",
+        "write an email to my boss", "compose an email to",
+        "draft an email", "send an email about",
     ],
     "open_gmail": [
         "open gmail", "open my email", "open mail",
@@ -577,6 +582,12 @@ NEGATIVE_EXAMPLES = {
         "move this to the left", "move this to the right",
         "resize this", "this app by 50%",
         "make this half the screen",
+    ],
+    "computer_use": [
+        "send email", "send an email", "compose email",
+        "send an email to my boss", "email my boss",
+        "write an email", "send mail to",
+        "compose an email to", "draft an email",
     ],
 }
 
