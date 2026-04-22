@@ -18,6 +18,21 @@ class ActionResult:
     data: dict = field(default_factory=dict) # Structured payload for chaining
     user_message: str = ""                  # Optional override for what to speak
     verified: bool = False                  # Was outcome verified post-execution
+    request_id: str = ""                   # Traces back to the CommandRequest
+    step_id: int = 0                        # Position in a multi-step plan
+
+    def to_step_result(self):
+        """Convert to StepResult for embedding in a CommandResponse."""
+        from core.command_models import StepResult
+        return StepResult(
+            step_id=self.step_id,
+            action=self.action,
+            status="done" if self.success else "failed",
+            summary=self.summary,
+            error=self.error,
+            data=self.data,
+            verified=self.verified,
+        )
 
     @staticmethod
     def ok(action: str, summary: str, **kwargs) -> "ActionResult":

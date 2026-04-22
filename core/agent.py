@@ -375,7 +375,29 @@ def run_agent(command: str, actions: dict) -> None:
     """
     ReAct agent loop:
     Think → Act → Observe → Think again → repeat
+
+    Checks WorkflowEngine first for deterministic compound workflows.
+    Falls back to Gemini LLM loop only for unmatched commands.
     """
+    # ── WorkflowEngine first — no LLM needed for known workflows ──
+    try:
+        from core.workflow_engine import get_workflow_engine
+        import uuid
+        engine = get_workflow_engine()
+        workflow_name = engine.match(command)
+        if workflow_name:
+            print(f"⚙️  WorkflowEngine matched '{workflow_name}' — skipping LLM agent")
+            response = engine.run(workflow_name, command, str(uuid.uuid4()), source="voice")
+            LAST_AGENT_RESULT = {
+                "command": command,
+                "workflow": workflow_name,
+                "status": response.status,
+                "result": response.final_result,
+            }
+            return
+    except Exception as e:
+        print(f"⚠️  WorkflowEngine check failed: {e} — falling back to LLM agent")
+
     from core.memory import get_context_for_gemini
     from mood.mood_engine import get_mood_for_prompt
     from core.logger import log_interaction

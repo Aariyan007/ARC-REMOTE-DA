@@ -1,9 +1,11 @@
 import os
 import json
 import time
-from google import genai
 
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    def load_dotenv(): pass
 from core.voice_response import speak
 # ─── Settings ────────────────────────────────────────────────
 load_dotenv()
@@ -11,7 +13,16 @@ GEMINI_API_KEY = os.getenv("API_KEY")
 MODEL          = "gemini-3.1-flash-lite-preview"
 # ─────────────────────────────────────────────────────────────
 
-client = genai.Client(api_key=GEMINI_API_KEY)
+_client = None
+
+def _get_client():
+    """Lazy Gemini client — not created until first PDF summary call."""
+    global _client
+    if _client is None:
+        from google import genai
+        _client = genai.Client(api_key=GEMINI_API_KEY)
+    return _client
+
 
 
 def extract_text_from_pdf(pdf_path: str) -> str:
@@ -61,7 +72,7 @@ def summarise_pdf(pdf_path: str) -> str:
 
     try:
         speak("Summarising now.")
-        response = client.models.generate_content(
+        response = _get_client().models.generate_content(
             model=MODEL,
             contents=f"""
 Summarise this document in 3-5 sentences.

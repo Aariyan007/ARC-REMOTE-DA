@@ -53,11 +53,13 @@ atexit.register(_shutdown)
 def _running_context():
     """Return the live BrowserContext if Playwright is already running, else None (no launch)."""
     with _lock:
-        if _context is None or _browser is None:
+        if _context is None:
             return None
+        # In persistent mode, _context is the browser, so we just check if it's open.
+        # Playwright contexts don't have is_connected(), but they throw if closed.
         try:
-            if not _browser.is_connected():
-                return None
+            # Check if there are any pages to verify it's still alive
+            _ = _context.pages
         except Exception:
             return None
         return _context
@@ -74,19 +76,40 @@ def _ensure_browser():
         from playwright.sync_api import sync_playwright
 
         _pw = sync_playwright().start()
+        
+        # Use a persistent profile so logins (like Gmail) are saved across runs
+        profile_dir = os.path.expanduser("~/.friend/chrome_profile")
+        os.makedirs(profile_dir, exist_ok=True)
+
         launch_kwargs: Dict[str, Any] = {
             "headless": _headless(),
+            "viewport": {"width": 1280, "height": 800},
+            "ignore_https_errors": True,
+            # Hide the "Chrome is being controlled by automated software" banner
+            # and bypass basic bot detection that blocks Google login
+            "args": ["--disable-blink-features=AutomationControlled"],
         }
+        
         try:
-            _browser = _pw.chromium.launch(channel="chrome", **launch_kwargs)
+            # First try local Chrome installation
+            _context = _pw.chromium.launch_persistent_context(
+                user_data_dir=profile_dir,
+                channel="chrome",
+                **launch_kwargs
+            )
         except Exception:
-            _browser = _pw.chromium.launch(**launch_kwargs)
-
-        _context = _browser.new_context(
-            viewport={"width": 1280, "height": 800},
-            ignore_https_errors=True,
-        )
-        page = _context.new_page()
+            # Fallback to Playwright's bundled Chromium
+            _context = _pw.chromium.launch_persistent_context(
+                user_data_dir=profile_dir,
+                **launch_kwargs
+            )
+            
+        # launch_persistent_context creates a default page, grab it
+        if _context.pages:
+            page = _context.pages[0]
+        else:
+            page = _context.new_page()
+            
         page.set_default_timeout(30_000)
         return _context
 
@@ -248,6 +271,98 @@ def dispatch(action: str, params: Optional[Dict[str, Any]] = None) -> Any:
     if a in ("search", "search_google"):
         return search_google_in_browser(str(p.get("query") or p.get("q") or ""))
     raise ValueError(f"Unknown browser action: {action}")
+
+
+# ─── Gmail compose + attachment ──────────────────────────────
+
+def open_gmail_compose_with_attachment(
+    to: str,
+    subject: str = "",
+    body: str = "",
+    file_path: str = None,
+    timeout_ms: int = 30_000,
+) -> dict:
+    """
+    Opens Gmail compose in the Playwright browser (using the existing
+    logged-in session) and optionally attaches a file.
+
+    The browser MUST already be logged into Gmail — no OAuth needed.
+    Uses the file input element triggered by the attachment button.
+
+    Returns:
+        { "draft_opened": bool, "attachment_verified": bool, "error": str }
+    """
+    from urllib.parse import urlencode, quote
+    import os
+
+    result = {"draft_opened": False, "attachment_verified": False, "error": ""}
+
+    try:
+        ctx = _ensure_browser()
+        page = ctx.new_page()
+        page.set_default_timeout(timeout_ms)
+
+        # Build Gmail compose URL
+        params = urlencode(
+            {"to": to, "su": subject, "body": body},
+            quote_via=quote,
+        )
+        compose_url = f"https://mail.google.com/mail/?view=cm&fs=1&{params}"
+        print(f"  ➡️  Navigating to Gmail compose...")
+        page.goto(compose_url, wait_until="domcontentloaded")
+
+        # Wait for the compose window to appear
+        try:
+            page.wait_for_selector('[aria-label="To"]', timeout=15_000)
+            result["draft_opened"] = True
+            print("  ✔ Gmail compose window loaded")
+        except Exception:
+            result["error"] = "Gmail compose window did not load. Check if you're logged in."
+            return result
+
+        # ── Attach file ──────────────────────────────────────
+        if file_path and os.path.exists(file_path):
+            abs_path = os.path.abspath(file_path)
+            file_name = os.path.basename(file_path)
+            print(f"  📎 Attaching: {abs_path}")
+
+            try:
+                with page.expect_file_chooser() as fc_info:
+                    # Click the paperclip / attach button
+                    attach_btn = page.locator(
+                        '[data-tooltip="Attach files"], [aria-label="Attach files"], '
+                        '[data-tooltip="Attach"], .a1.aaA.aMZ'
+                    ).first
+                    attach_btn.click(timeout=10_000)
+
+                file_chooser = fc_info.value
+                file_chooser.set_files(abs_path)
+
+                # Wait for the attachment chip to appear in the compose window
+                try:
+                    page.wait_for_selector(
+                        f'[aria-label*="{file_name}"], .aQH .aV3, .aQj',
+                        timeout=15_000,
+                    )
+                    result["attachment_verified"] = True
+                    print(f"  ✔ Attachment '{file_name}' confirmed")
+                except Exception:
+                    print(f"  ⚠️  Couldn't confirm attachment chip for '{file_name}'")
+
+            except Exception as e:
+                result["error"] = f"Attachment failed: {e}"
+                print(f"  ❌ Attachment error: {e}")
+
+        elif file_path and not os.path.exists(file_path):
+            result["error"] = f"File not found: {file_path}"
+
+        result["draft_opened"] = True
+        return result
+
+    except Exception as e:
+        result["error"] = str(e)
+        print(f"  ❌ Gmail compose error: {e}")
+        return result
 
 
 # ── Zero-arg shims for main.ACTIONS generic dispatch ─────────
