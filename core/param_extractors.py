@@ -506,7 +506,6 @@ def is_compound_file_command(text: str) -> bool:
     Quick check: does this command contain both create AND edit keywords
     joined by a connector word?
     """
-    # Accept "create file", "create a file called", "create superman.txt", etc.
     has_create = bool(re.search(
         r'\b(?:create|make|new)\b.*?(?:\b(?:file|document|note|named|called)\b|\w+\.\w+)',
         text
@@ -514,6 +513,40 @@ def is_compound_file_command(text: str) -> bool:
     has_edit   = bool(re.search(r'\b(?:write|add|put|type|insert|append)\b', text))
     has_join   = bool(re.search(r'\b(?:and|then|after that|and then)\b', text))
     return has_create and has_edit and has_join
+
+
+# ─── Compound Search and Send Extraction ─────────────────────
+def is_find_and_send_command(text: str) -> bool:
+    """
+    Quick check: does this command contain find/search AND send to email?
+    """
+    has_find = bool(re.search(r'\b(?:find|search|get|look for)\b', text))
+    has_send = bool(re.search(r'\b(?:send|email)\b', text))
+    has_join = bool(re.search(r'\b(?:and|then|to)\b', text))
+    return has_find and has_send and has_join
+
+def extract_find_and_send_params(text: str) -> dict:
+    """
+    Extracts filename and email from "find X and send it to Y"
+    """
+    result = {"filename": None, "to": None}
+    
+    # Try splitting into find part and send part
+    split_match = re.split(r'\b(?:and\s+)?(?:then\s+)?(?:send|email)\b', text, maxsplit=1)
+    if len(split_match) == 2:
+        find_part = split_match[0].strip()
+        send_part = split_match[1].strip()
+        
+        # 1. Get filename from find_part
+        file_info = extract_filename(find_part)
+        # If extract_filename failed, fallback to extract_query
+        result["filename"] = file_info.get("filename") or extract_query(find_part)
+        
+        # 2. Get email from send_part
+        email_info = extract_email_params("send " + send_part)
+        result["to"] = email_info.get("to")
+        
+    return result
 
 
 def extract_url(text: str) -> Optional[str]:

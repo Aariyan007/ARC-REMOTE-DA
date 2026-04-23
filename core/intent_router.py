@@ -11,6 +11,7 @@ If fast engine fails → Gemini fallback → learn from result.
 """
 
 import time
+import os
 import sys
 import threading
 import uuid
@@ -21,6 +22,7 @@ from core.param_extractors import (
     extract_filename, extract_email_params, extract_folder_target,
     extract_file_edit_params, is_compound_file_command,
     extract_compound_file_params,
+    is_find_and_send_command, extract_find_and_send_params,
     extract_url,
 )
 from core.response_policy import (
@@ -508,7 +510,13 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "", _s
 
         if action == "search_file":
             query = params.get("query", "")
-            if query and "search_file" in actions:
+            if query and "search_files_advanced" in actions:
+                best_match = actions["search_files_advanced"](query)
+                if best_match:
+                    return ActionResult.ok(action, f"Found file: {os.path.basename(best_match)}", data={"filename": best_match})
+                return ActionResult.fail(action, f"Could not find a file matching '{query}'", data={"query": query})
+            # fallback to old search
+            elif query and "search_file" in actions:
                 actions["search_file"](query)
                 return ActionResult.ok(action, f"Searched for file {query}", data={"query": query})
 
@@ -524,7 +532,9 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "", _s
                 actions["send_email"](
                     params.get("to", ""),
                     params.get("subject", ""),
-                    params.get("body", "")
+                    params.get("body", ""),
+                    _source=_source,
+                    _request_id=_request_id
                 )
                 return ActionResult.ok(action, "Email composed")
 
@@ -813,6 +823,62 @@ def _handle_terminal_preroute(command: str, actions: dict, start_time: float) ->
     return False
 
 
+def _handle_find_and_send_command(command: str, cleaned: str, actions: dict, start_time: float, _source: str, _request_id: str) -> bool:
+    """
+    Handles the compound 'find X and send to Y' workflow.
+    """
+    from core.param_extractors import extract_find_and_send_params
+    from control.email_control import find_and_send_file
+
+    params = extract_find_and_send_params(cleaned)
+    filename = params.get("filename")
+    to_email = params.get("to")
+    
+    update_thinking(command=command, intent="find_and_send", stage="Compound Execution")
+    
+    # We call find_and_send_file which has its own ask_user logic
+    result_text = find_and_send_file(filename=filename, to=to_email, _source=_source, _request_id=_request_id)
+    
+    latency_ms = (time.time() - start_time) * 1000
+    
+    # Log it
+    log_interaction(
+        you_said=command, action_taken="find_and_send",
+        was_understood=True, intent_source="compound_rule",
+        confidence=1.0, latency_ms=latency_ms,
+        normalized_text=cleaned, params=params,
+        spoken_text=result_text,
+    )
+    save_exchange(command, result_text)
+    
+    # Store API result
+    try:
+        from core.command_models import CommandResponse, ExecutionStatus, StepResult
+        from core.runtime import store_result
+
+        step = StepResult(
+            step_id=0, action="find_and_send", status="success",
+            summary=result_text, data=params
+        )
+        
+        resp = CommandResponse(
+            request_id=_request_id,
+            status=ExecutionStatus.COMPLETED if "Failed" not in result_text else ExecutionStatus.FAILED,
+            interpreted_action="find_and_send",
+            final_result=result_text,
+            steps=[step],
+            data={"params": params},
+            errors=[result_text] if "Failed" in result_text else [],
+            elapsed_ms=latency_ms,
+            source=_source,
+        )
+        store_result(resp)
+    except Exception as e:
+        print(f"Error storing compound result: {e}")
+        
+    return True
+
+
 def route(command: str, actions: dict, _source: str = "voice", _request_id: str = "") -> bool:
     """
     Speed-first intent routing pipeline.
@@ -1015,7 +1081,12 @@ def route(command: str, actions: dict, _source: str = "voice", _request_id: str 
     # ── Step 2: Compound command? (create + write in one) ────
     if is_compound_file_command(cleaned):
         print(f"⚙️  Compound file command detected")
-        return _handle_compound_file(command, cleaned, actions, start_time)
+        return _handle_compound_file(command, cleaned, actions, start_time, _source, _request_id)
+
+    # ── Step 2.5: Search and Send? ───────────────────────────
+    if is_find_and_send_command(cleaned):
+        print(f"⚙️  Compound search and send detected")
+        return _handle_find_and_send_command(command, cleaned, actions, start_time, _source, _request_id)
 
     # ── Step 3: Check learned intents (exact match) ──────────
     learned = find_exact_match(cleaned)
