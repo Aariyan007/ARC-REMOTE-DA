@@ -116,6 +116,16 @@ def get_frontmost_app() -> tuple[str, str]:
     - ("", "")              — no frontmost app (unusual but valid)
     - ("", "permission_denied: ...")  — Accessibility not granted
     """
+    if sys.platform == "win32":
+        try:
+            import pygetwindow as gw
+            active = gw.getActiveWindow()
+            if active:
+                return active.title, ""
+            return "", ""
+        except Exception as e:
+            return "", f"win32_error: {e}"
+
     return _run_osascript(
         'tell application "System Events" to name of first process whose frontmost is true'
     )
@@ -220,6 +230,14 @@ def get_window_text_fields() -> tuple[List[str], str]:
 
 def is_app_running(app_name: str) -> tuple[bool, str]:
     """Check if an app is currently running (by process name), returning (bool, error)."""
+    if sys.platform == "win32":
+        try:
+            import pygetwindow as gw
+            windows = gw.getWindowsWithTitle(app_name)
+            return len(windows) > 0, ""
+        except Exception as e:
+            return False, f"win32_error: {e}"
+
     result, err = _run_osascript(
         f'tell application "System Events" to (name of every process) contains "{app_name}"'
     )

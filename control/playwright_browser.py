@@ -18,6 +18,7 @@ _lock = threading.RLock()
 _pw = None
 _browser = None
 _context = None
+_owner_thread_id = None
 
 
 def _headless() -> bool:
@@ -25,7 +26,7 @@ def _headless() -> bool:
 
 
 def _shutdown() -> None:
-    global _pw, _browser, _context
+    global _pw, _browser, _context, _owner_thread_id
     with _lock:
         try:
             if _context:
@@ -45,6 +46,7 @@ def _shutdown() -> None:
         _context = None
         _browser = None
         _pw = None
+        _owner_thread_id = None
 
 
 atexit.register(_shutdown)
@@ -52,11 +54,17 @@ atexit.register(_shutdown)
 
 def _running_context():
     """Return the live BrowserContext if Playwright is already running, else None (no launch)."""
+    global _owner_thread_id
     with _lock:
         if _context is None:
             return None
-        # In persistent mode, _context is the browser, so we just check if it's open.
-        # Playwright contexts don't have is_connected(), but they throw if closed.
+        
+        # If the thread that created the Playwright instance has changed or exited,
+        # Playwright's sync_api will crash. We must detect this.
+        if _owner_thread_id != threading.get_ident():
+            print(f"  ⚠️ Playwright thread mismatch (Owner: {_owner_thread_id}, Current: {threading.get_ident()}). Restarting...")
+            return None
+
         try:
             # Check if there are any pages to verify it's still alive
             _ = _context.pages
@@ -67,15 +75,23 @@ def _running_context():
 
 def _ensure_browser():
     """Start Playwright + browser + context on first automation call."""
-    global _pw, _browser, _context
+    global _pw, _browser, _context, _owner_thread_id
     with _lock:
         ctx = _running_context()
         if ctx is not None:
             return ctx
 
+        # If we got here, either it's not started or the thread changed.
+        # Clean up old dead references first.
+        if _pw:
+            try: _shutdown()
+            except: pass
+
         from playwright.sync_api import sync_playwright
 
+        print(f"  🚀 Starting Playwright in thread {threading.get_ident()}...")
         _pw = sync_playwright().start()
+        _owner_thread_id = threading.get_ident()
         
         # Use a persistent profile so logins (like Gmail) are saved across runs
         profile_dir = os.path.expanduser("~/.friend/chrome_profile")
@@ -85,8 +101,6 @@ def _ensure_browser():
             "headless": _headless(),
             "viewport": {"width": 1280, "height": 800},
             "ignore_https_errors": True,
-            # Hide the "Chrome is being controlled by automated software" banner
-            # and bypass basic bot detection that blocks Google login
             "args": ["--disable-blink-features=AutomationControlled"],
         }
         
@@ -97,7 +111,8 @@ def _ensure_browser():
                 channel="chrome",
                 **launch_kwargs
             )
-        except Exception:
+        except Exception as e:
+            print(f"  ⚠️ Chrome launch failed, falling back to bundled Chromium: {e}")
             # Fallback to Playwright's bundled Chromium
             _context = _pw.chromium.launch_persistent_context(
                 user_data_dir=profile_dir,
@@ -281,6 +296,7 @@ def open_gmail_compose_with_attachment(
     body: str = "",
     file_path: str = None,
     timeout_ms: int = 30_000,
+    auto_send: bool = False,
 ) -> dict:
     """
     Opens Gmail compose in the Playwright browser (using the existing
@@ -290,16 +306,18 @@ def open_gmail_compose_with_attachment(
     Uses the file input element triggered by the attachment button.
 
     Returns:
-        { "draft_opened": bool, "attachment_verified": bool, "error": str }
+        { "draft_opened": bool, "attachment_verified": bool, "sent": bool, "error": str }
     """
     from urllib.parse import urlencode, quote
     import os
 
-    result = {"draft_opened": False, "attachment_verified": False, "error": ""}
+    result = {"draft_opened": False, "attachment_verified": False, "sent": False, "error": ""}
 
     try:
         ctx = _ensure_browser()
-        page = ctx.new_page()
+        # Reuse existing page (persistent context always starts with one) to avoid about:blank tab
+        pages = ctx.pages
+        page = pages[0] if pages else ctx.new_page()
         page.set_default_timeout(timeout_ms)
 
         # Build Gmail compose URL
@@ -312,49 +330,118 @@ def open_gmail_compose_with_attachment(
         page.goto(compose_url, wait_until="domcontentloaded")
 
         # Wait for the compose window to appear
+        # Gmail's "To" field is a hidden div — we wait for it to be attached (not visible)
         try:
-            page.wait_for_selector('[aria-label="To"]', timeout=15_000)
+            page.wait_for_selector(
+                '[aria-label="To"], input[name="to"], .Am.Al.editable, [role="textbox"]',
+                state="attached",
+                timeout=20_000
+            )
             result["draft_opened"] = True
             print("  ✔ Gmail compose window loaded")
-        except Exception:
-            result["error"] = "Gmail compose window did not load. Check if you're logged in."
+        except Exception as e:
+            result["error"] = f"Gmail compose window did not load: {e}"
+            print(f"  ❌ Gmail compose selector not found: {e}")
             return result
 
+        # Give Gmail a moment to stabilize (don't use networkidle — Gmail never reaches it)
+        import time
+        time.sleep(3)
+        print("  ✔ Waited 3s for Gmail to stabilize")
+
         # ── Attach file ──────────────────────────────────────
-        if file_path and os.path.exists(file_path):
+        print(f"  🔍 file_path = {repr(file_path)}")
+        if file_path:
             abs_path = os.path.abspath(file_path)
-            file_name = os.path.basename(file_path)
+            file_name = os.path.basename(abs_path)
+            print(f"  🔍 abs_path = {repr(abs_path)}, exists = {os.path.exists(abs_path)}")
+            
+            if not os.path.exists(abs_path):
+                result["error"] = f"File not found: {abs_path}"
+                print(f"  ❌ File not found: {abs_path}")
+                return result
+
             print(f"  📎 Attaching: {abs_path}")
 
+            # Strategy 1: Direct file input (most reliable for Gmail)
             try:
-                with page.expect_file_chooser() as fc_info:
-                    # Click the paperclip / attach button
-                    attach_btn = page.locator(
-                        '[data-tooltip="Attach files"], [aria-label="Attach files"], '
-                        '[data-tooltip="Attach"], .a1.aaA.aMZ'
-                    ).first
-                    attach_btn.click(timeout=10_000)
-
-                file_chooser = fc_info.value
-                file_chooser.set_files(abs_path)
-
-                # Wait for the attachment chip to appear in the compose window
-                try:
-                    page.wait_for_selector(
-                        f'[aria-label*="{file_name}"], .aQH .aV3, .aQj',
-                        timeout=15_000,
-                    )
+                file_inputs = page.locator('input[type="file"]')
+                count = file_inputs.count()
+                print(f"  🔍 Found {count} file input(s) on page")
+                
+                if count > 0:
+                    file_inputs.first.set_input_files(abs_path, timeout=10_000)
                     result["attachment_verified"] = True
-                    print(f"  ✔ Attachment '{file_name}' confirmed")
-                except Exception:
-                    print(f"  ⚠️  Couldn't confirm attachment chip for '{file_name}'")
+                    print(f"  ✔ Attached '{file_name}' via direct file input")
+                else:
+                    # Strategy 2: Click attach button to trigger file chooser
+                    print("  🖱️ No file inputs found. Trying button click...")
+                    with page.expect_file_chooser(timeout=15_000) as fc_info:
+                        attach_btn = page.locator(
+                            '[data-tooltip*="Attach"], [aria-label*="Attach"]'
+                        ).first
+                        attach_btn.click(force=True, timeout=10_000)
+                    
+                    file_chooser = fc_info.value
+                    file_chooser.set_files(abs_path)
+                    result["attachment_verified"] = True
+                    print(f"  ✔ Attached '{file_name}' via file chooser")
 
             except Exception as e:
-                result["error"] = f"Attachment failed: {e}"
                 print(f"  ❌ Attachment error: {e}")
+                result["error"] = f"Attachment failed: {e}"
 
-        elif file_path and not os.path.exists(file_path):
-            result["error"] = f"File not found: {file_path}"
+            # Wait for the upload to fully complete before proceeding
+            if result["attachment_verified"]:
+                print("  ⏳ Waiting for upload to complete...")
+                try:
+                    # Wait for the filename to appear as text (upload complete indicator)
+                    page.wait_for_selector(
+                        f'text="{file_name}"',
+                        state="visible",
+                        timeout=30_000
+                    )
+                    print(f"  ✔ Upload confirmed: '{file_name}' visible in compose")
+                except Exception:
+                    # Fallback: just wait a generous amount of time
+                    print("  ⏳ Could not confirm upload visually, waiting 8s...")
+                    time.sleep(8)
+            else:
+                time.sleep(2)
+
+        else:
+            print("  ⚠️ No file_path provided, skipping attachment")
+
+        # ── Auto-send ────────────────────────────────────────
+        if auto_send:
+            print("  📤 Auto-send enabled, using Ctrl+Enter...")
+            try:
+                # Use Gmail's keyboard shortcut — far more reliable than finding the Send button
+                # Focus the compose body first (use focus() instead of click() for better reliability)
+                body_area = page.locator('[aria-label*="Message Body"], [role="textbox"], .Am.Al.editable, textarea[name="body"]').first
+                try:
+                    body_area.focus(timeout=5_000)
+                except Exception:
+                    # Fallback: Just press Tab a few times to ensure some input is focused
+                    page.keyboard.press("Tab")
+                    page.keyboard.press("Tab")
+                
+                time.sleep(0.5)
+                
+                # Ctrl+Enter = Send in Gmail
+                page.keyboard.press("Control+Enter")
+                
+                # Wait for Gmail to process the send
+                time.sleep(5)
+                result["sent"] = True
+                print("  ✔ Email sent via Ctrl+Enter")
+                
+                # Close the whole browser window after sending
+                _shutdown()
+                print("  ✔ Gmail window and Playwright closed.")
+            except Exception as e:
+                print(f"  ⚠️ Auto-send failed: {e}. Draft is still open for manual send.")
+                result["error"] = f"Auto-send failed: {e}"
 
         result["draft_opened"] = True
         return result
