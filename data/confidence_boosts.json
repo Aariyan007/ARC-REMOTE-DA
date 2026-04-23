@@ -1,8 +1,19 @@
 {
   "tell_time": {
-    "what time is it": 2
+    "what time is it": 4,
+    "what time is chrome": 1
   },
   "search_file": {
     "search file": 1
+  },
+  "open_app": {
+    "open chrome": 10,
+    "open spotify": 3
+  },
+  "unmute": {
+    "find dog voice": 1
+  },
+  "take_screenshot": {
+    "take a screenshot": 1
   }
 }

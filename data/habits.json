@@ -1,1 +1,35 @@
-[]
+[
+  {
+    "action": "chat_response",
+    "params": {},
+    "hour": 12,
+    "weekday": -1,
+    "occurrences": 11,
+    "confidence": 0.917,
+    "last_seen": "2026-04-23 16:24:24",
+    "description": "chat_response usually at 12:00 (11 times, 92% confidence)"
+  },
+  {
+    "action": "find_and_send",
+    "params": {
+      "filename": "doc1wire.pdf",
+      "to": "laasya2279@gmail.com"
+    },
+    "hour": 15,
+    "weekday": -1,
+    "occurrences": 19,
+    "confidence": 0.679,
+    "last_seen": "2026-04-23 13:08:38",
+    "description": "find_and_send usually at 15:00 (19 times, 68% confidence)"
+  },
+  {
+    "action": "tell_time",
+    "params": {},
+    "hour": 3,
+    "weekday": -1,
+    "occurrences": 2,
+    "confidence": 0.667,
+    "last_seen": "2026-04-23 16:24:24",
+    "description": "tell_time usually at 3:00 (2 times, 67% confidence)"
+  }
+]

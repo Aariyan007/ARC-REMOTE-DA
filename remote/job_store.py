@@ -1,10 +1,11 @@
 import threading
 import time
 from typing import Dict, List, Optional, Any
+from remote.db import save_job_event, save_job
 
 class JobEvent:
     def __init__(self, type: str, message: str, data: dict = None):
-        self.type = type       # "ack", "clarify", "confirm", "executing", "verify", "result", "error"
+        self.type = type       # "ack", "clarify", "confirm", "executing", "verify", "result", "error", "progress"
         self.message = message
         self.data = data or {}
         self.timestamp = time.time()
@@ -29,10 +30,15 @@ class JobState:
         # Event for blocking the runtime thread until user replies
         self.reply_event = threading.Event()
         self.reply_data: Any = None
+        
+        # General purpose per-job memory for multi-step workflows
+        self.memory: Dict[str, Any] = {}
 
     def add_event(self, event: JobEvent):
         with self.new_event_cond:
             self.events.append(event)
+            # Persist to SQLite
+            save_job_event(self.job_id, event.type, event.message, event.data, event.timestamp)
             self.new_event_cond.notify_all()
 
     def set_reply(self, data: Any):
@@ -67,7 +73,7 @@ _job_store = JobStore()
 def get_job_store() -> JobStore:
     return _job_store
 
-def ask_user(job_id: str, prompt: str, event_type: str = "clarify") -> str:
+def ask_user(job_id: str, prompt: str, event_type: str = "clarify", data: dict = None) -> str:
     """
     Emit a clarify/confirm event to the job stream and block until the user replies.
     """
@@ -76,6 +82,6 @@ def ask_user(job_id: str, prompt: str, event_type: str = "clarify") -> str:
     if not job:
         return ""
     
-    job.add_event(JobEvent(event_type, prompt))
+    job.add_event(JobEvent(event_type, prompt, data=data))
     reply = job.wait_for_reply(timeout=120.0)
     return reply or ""
