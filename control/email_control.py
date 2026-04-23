@@ -5,12 +5,27 @@ import subprocess
 import urllib.parse
 import webbrowser
 import re
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
-from core.voice_response import speak
-from core.speech_to_text import listen, listen_long
+
+# ─── Gmail API imports are LAZY (deferred to function scope) ──
+# google_auth_oauthlib may not be installed; deferring prevents
+# ImportError from blocking the entire control layer boot.
+# voice imports are also lazy to avoid circular import issues.
+
+def _get_speak():
+    from core.voice_response import speak
+    return speak
+
+def _get_listen():
+    from core.speech_to_text import listen
+    return listen
+
+def _get_listen_long():
+    from core.speech_to_text import listen_long
+    return listen_long
+
+def speak(msg):
+    """Proxy to voice_response.speak — lazy loaded."""
+    _get_speak()(msg)
 
 # ─── Settings ────────────────────────────────────────────────
 SCOPES           = ["https://www.googleapis.com/auth/gmail.modify"]
@@ -96,10 +111,13 @@ def _voice_input_with_retry(
     long_max_seconds: int = 30,
     long_silence_seconds: float = 2.5,
     gemini_field: str = "",
+    _source: str = "voice",
+    _request_id: str = "",
 ) -> str:
     """
     Ask a voice question, listen for the answer, optionally confirm,
     and retry up to `max_retries` times if the input is empty or rejected.
+    If _source is "api", it uses headless job stream for input instead.
 
     Args:
         gemini_field: If set (e.g. 'subject', 'recipient'), uses Gemini
@@ -107,14 +125,21 @@ def _voice_input_with_retry(
 
     Returns the confirmed text, or "" if all retries exhausted.
     """
+    if _source == "api" and _request_id:
+        from remote.job_store import ask_user
+        # Headless mode: ask the client via job stream
+        reply = ask_user(_request_id, prompt, event_type="clarify")
+        # For text UI, we assume what they typed is what they meant; skip confirmation.
+        return reply or ""
+
     for attempt in range(max_retries + 1):
         speak(prompt if attempt == 0 else f"Let me try again. {prompt}")
 
         if use_long_listen:
-            raw = listen_long(max_seconds=long_max_seconds,
-                              silence_seconds=long_silence_seconds)
+            raw = _get_listen_long()(max_seconds=long_max_seconds,
+                                     silence_seconds=long_silence_seconds)
         else:
-            raw = listen()
+            raw = _get_listen()()
 
         text = _safe(raw)
         if not text:
@@ -132,7 +157,7 @@ def _voice_input_with_retry(
         # ── Confirmation step ────────────────────────────────
         if confirm_label:
             speak(f"Did you say {confirm_label}: {text}?")
-            confirmation = listen()
+            confirmation = _get_listen()()
             if confirmation and any(
                 w in confirmation.lower()
                 for w in ["yes", "yeah", "yep", "correct", "right", "sure", "that's right"]
@@ -147,7 +172,7 @@ def _voice_input_with_retry(
                     corrected = _extract_meaning_with_gemini(confirmation, gemini_field)
                     if corrected and corrected.lower() != confirmation.lower():
                         speak(f"Got it. {confirm_label}: {corrected}. Correct?")
-                        second_confirm = listen()
+                        second_confirm = _get_listen()()
                         if second_confirm and any(
                             w in second_confirm.lower()
                             for w in ["yes", "yeah", "yep", "correct", "right", "sure"]
@@ -170,7 +195,12 @@ def _voice_input_with_retry(
 # ─── Gmail Service ───────────────────────────────────────────
 
 def get_gmail_service():
-    """Authenticates and returns Gmail API service."""
+    """Authenticates and returns Gmail API service. Imports are lazy."""
+    from google.auth.transport.requests import Request
+    from google.oauth2.credentials import Credentials
+    from google_auth_oauthlib.flow import InstalledAppFlow
+    from googleapiclient.discovery import build
+
     creds = None
     if os.path.exists(TOKEN_FILE):
         creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
@@ -306,8 +336,8 @@ def search_emails(query: str) -> None:
 
 # ─── Send Email (Voice-Driven Multi-Step) ────────────────────
 
-def send_email(to: str = "", subject: str = "", body: str = "") -> None:
-    """Opens Gmail compose window pre-filled via a multi-step voice conversation."""
+def send_email(to: str = "", subject: str = "", body: str = "", _source: str = "voice", _request_id: str = "") -> str:
+    """Opens Gmail compose window pre-filled via a multi-step voice conversation or API."""
 
     # Step 1: Who to send to
     to = _safe(to)
@@ -317,9 +347,11 @@ def send_email(to: str = "", subject: str = "", body: str = "") -> None:
             confirm_label="recipient",
             max_retries=2,
             gemini_field="recipient",
+            _source=_source,
+            _request_id=_request_id,
         )
         if not to:
-            speak("Cancelled. No recipient provided.")
+            if _source != "api": speak("Cancelled. No recipient provided.")
             return "Cancelled — missing recipient"
 
     # ── Resolve contact name to email address ────────────────
@@ -333,9 +365,11 @@ def send_email(to: str = "", subject: str = "", body: str = "") -> None:
             confirm_label="subject",
             max_retries=2,
             gemini_field="subject",
+            _source=_source,
+            _request_id=_request_id,
         )
         if not subject:
-            speak("Cancelled. No subject provided.")
+            if _source != "api": speak("Cancelled. No subject provided.")
             return "Cancelled — missing subject"
 
     # Step 3: Body (use long listen for extended speech)
@@ -348,20 +382,27 @@ def send_email(to: str = "", subject: str = "", body: str = "") -> None:
             use_long_listen=True,
             long_max_seconds=30,
             long_silence_seconds=2.5,
+            _source=_source,
+            _request_id=_request_id,
         )
         if not body:
-            speak("Cancelled. No message provided.")
+            if _source != "api": speak("Cancelled. No message provided.")
             return "Cancelled — missing body"
 
     # Step 4: Final confirmation
-    speak(f"Ready to compose email to {to}, subject: {subject}. Should I open it?")
-    confirmation = listen()
+    if _source == "api":
+        from remote.job_store import ask_user
+        reply = ask_user(_request_id, f"Ready to compose email to {to}, subject: '{subject}'. Should I open it?", event_type="confirm")
+        confirmation = reply
+    else:
+        speak(f"Ready to compose email to {to}, subject: {subject}. Should I open it?")
+        confirmation = _get_listen()()
 
     if confirmation and any(
         word in confirmation.lower()
         for word in ["yes", "yeah", "yep", "sure", "do it", "send", "open", "go"]
     ):
-        speak("Opening Gmail to compose.")
+        if _source != "api": speak("Opening Gmail to compose.")
 
         # ── Proper URL construction — fixes Issue 1 ──────────
         params = urllib.parse.urlencode(
@@ -376,12 +417,104 @@ def send_email(to: str = "", subject: str = "", body: str = "") -> None:
         url = f"https://mail.google.com/mail/?view=cm&fs=1&{params}"
         print(f"📧 Gmail URL: {url[:120]}...")
         webbrowser.open(url)
-        speak("Review and send when you're ready.")
+        if _source != "api": speak("Review and send when you're ready.")
         return "Draft opened in Gmail"
-    else:
-        speak("Alright, email cancelled.")
-        return "Email cancelled by user"
+from control.file_search import search_files_advanced_multiple
+from remote.job_store import ask_user, get_job_store, JobEvent
 
+def find_and_send_file(filename: str = "", to: str = "", _source: str = "voice", _request_id: str = "") -> str:
+    """Finds a file, asks for disambiguation if multiple match, confirms, and sends via email attachment."""
+
+    if not filename:
+        return "Failed — no filename provided to search for."
+
+    matches = search_files_advanced_multiple(filename, top_k=5)
+    
+    if not matches:
+        if _source != "api": speak(f"I couldn't find any file matching {filename}.")
+        return f"Failed — could not find file matching '{filename}'"
+
+    selected_file = matches[0]
+
+    if len(matches) > 1:
+        if _source == "api":
+            prompt = f"Found multiple matches for '{filename}'. Which one do you want to send?\n"
+            for i, match in enumerate(matches):
+                prompt += f"{i+1}. {os.path.basename(match)}\n"
+            
+            reply = ask_user(_request_id, prompt, event_type="clarify")
+            # Parse numeric reply (e.g. "1" or "number 2")
+            match_idx = re.search(r'\b([1-5])\b', str(reply))
+            if match_idx:
+                idx = int(match_idx.group(1)) - 1
+                if 0 <= idx < len(matches):
+                    selected_file = matches[idx]
+        else:
+            # For voice, just take the first match or ask to clarify (simplified here)
+            speak(f"Found {len(matches)} files matching {filename}. I'll use {os.path.basename(matches[0])}.")
+
+    # Step 2: Recipient
+    to = _safe(to)
+    if not to:
+        to = _voice_input_with_retry(
+            prompt="Who do you want to send the file to?",
+            confirm_label="recipient",
+            max_retries=2,
+            gemini_field="recipient",
+            _source=_source,
+            _request_id=_request_id,
+        )
+        if not to:
+            if _source != "api": speak("Cancelled. No recipient provided.")
+            return "Cancelled — missing recipient"
+
+    to = _resolve_contact(to)
+
+    # Step 3: Confirmation
+    file_basename = os.path.basename(selected_file)
+    confirm_msg = f"Ready to open Gmail draft to send '{file_basename}' to {to}. Proceed?"
+    
+    if _source != "api":
+        speak(confirm_msg)
+        
+    # Always ask UI (Remote) but also allow local voice reply if applicable
+    # We use a helper to wait for either
+    confirmation = ask_user(
+        _request_id, 
+        confirm_msg, 
+        event_type="confirm",
+        data={
+            "filename": file_basename,
+            "recipient": to,
+            "path": selected_file,
+            "action": "email_send"
+        }
+    )
+
+    if confirmation and any(word in str(confirmation).lower() for word in ["yes", "yeah", "yep", "sure", "do it", "send", "open", "go"]):
+        if _source != "api":
+            speak("Opening Gmail with attachment.")
+        else:
+            # If confirmed via UI, have Jarvis acknowledge it on the PC too if desired
+            speak(f"Confirmed. Sending {file_basename} to {to}.")
+        
+        # Add a progress event so the UI shows activity
+        get_job_store().get(_request_id).add_event(
+            JobEvent("executing", f"Attaching {file_basename} and drafting email...")
+        )
+        
+        # Use playwright to open draft and attach
+        res = draft_email_with_attachment(to=to, subject=f"Sending: {file_basename}", body="", attachment_path=selected_file, announce=(_source != "api"))
+        if res.get("success"):
+            if res.get("sent"):
+                return f"Sent! {file_basename} has been emailed to {to}. You can check your sent mail for confirmation."
+            else:
+                return f"Draft opened with {file_basename} attached."
+        else:
+            return f"Failed to send email: {res.get('error')}"
+    else:
+        if _source != "api": speak("Alright, cancelled.")
+        return "Cancelled by user"
 
 # ─── Attachment-capable email draft ──────────────────────────────
 
@@ -446,18 +579,20 @@ def draft_email_with_attachment(
                 subject=subject,
                 body=body,
                 file_path=attachment_path,
+                auto_send=True,
             )
             result["draft_opened"] = True
             result["attachment_verified"] = attach_result.get("attachment_verified", False)
+            result["sent"] = attach_result.get("sent", False)
             result["success"] = True
             if announce:
-                if result["attachment_verified"]:
-                    if announce:
-                        speak(f"Done. Gmail compose opened with attachment.")
+                if result.get("sent"):
+                    speak(f"Done. Email sent to {to} with {os.path.basename(attachment_path)} attached.")
+                elif result["attachment_verified"]:
+                    speak(f"Draft opened with attachment. Please click send manually.")
                 else:
-                    if announce:
-                        speak("Gmail opened. Please verify the attachment.")
-            print(f"  ✔ Draft opened. Attachment verified: {result['attachment_verified']}")
+                    speak("Gmail opened. Please verify the attachment and send manually.")
+            print(f"  ✔ Draft opened. Attachment: {result['attachment_verified']}, Sent: {result.get('sent', False)}")
             return result
         except Exception as e:
             print(f"  ⚠️  Playwright attach failed ({e}), falling back to URL open.")

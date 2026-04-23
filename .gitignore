@@ -1,15 +1,15 @@
-# Virtual Environment
-venv/
-env/
-ENV/
-.venv
-
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
+.venv
+venv/
+env/
+.env
 *.so
-.Python
+.pytest_cache/
+.coverage
+htmlcov/
 build/
 develop-eggs/
 dist/
@@ -22,78 +22,39 @@ parts/
 sdist/
 var/
 wheels/
-pip-wheel-metadata/
-share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-MANIFEST
-hf_cache/
-*.ckpt
-*.npy
-# Data files
-# Data files
-data/voice_samples/
-data/voice_profile/
-data/users/
-# Models
-models/
 
-# IDE
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+.pnp*
+.pnp.js
+
+# ARC Specific
+credentials.json
+token.json
+hf_cache/
+.friend/
+temp_*.wav
+data/voice_samples/
+logs/
+data/remote.db
+
+# OS / IDE
+.DS_Store
+Thumbs.db
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
-.DS_Store
-*.sublime-project
-*.sublime-workspace
 
-# OS
-.DS_Store
-Thumbs.db
-.env
-.env.local
-
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-
-# Jupyter
-.ipynb_checkpoints/
-*.ipynb
-
-# Logs
-*.log
-log/
-
-# HuggingFace cache accidentally committed
-C:\hf_cache/hub
-C:\\hf_cache/"
-C:\\hf_cache
-
-# Logs folder
-logs/
-
-# User data
-data/users/
-
-# Temp audio files
-temp_*.wav
-
-# Google API credentials
-credentials.json
-token.json
-hf_cache/
-C:\hf_cache/
-
-# Large binary files
-*.so
-*.dylib
-*.abi3.so
-pretrained_models/
-data/voice_samples/
-
-.venv*
-
+# Project specific caches
+.next/
+out/
+.parcel-cache/
+.cache/

@@ -46,3 +46,4 @@ from control.web_search import search_google
 from control.time_utils import tell_time, tell_date
 from control.email_control import read_emails, search_emails, send_email, open_gmail
 from control.pdf_summariser import summarise_latest_pdf
+from control.file_search import search_files_advanced

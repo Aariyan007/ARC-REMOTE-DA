@@ -25,11 +25,11 @@ from core.command_models import (
 # ─── Workflow matching patterns ────────────────────────────────
 
 _WORKFLOW_PATTERNS: list[tuple[str, list[str]]] = [
-    ("find_and_email_file", [
-        r"(?:find|search|locate)\s+.+\s+(?:and\s+)?(?:email|send|mail)\s+(?:it\s+)?(?:to\s+)",
-        r"(?:email|send|mail)\s+.+(?:\.txt|\.pdf|\.docx|\.csv|\.xlsx|\.py|\.json)\s+to\s+",
-        r"(?:find|search)\s+file\s+.+\s+(?:and\s+)?(?:email|send)\s+",
-    ]),
+    # ("find_and_email_file", [
+    #     r"(?:find|search|locate)\s+.+\s+(?:and\s+)?(?:email|send|mail)\s+(?:it\s+)?(?:to\s+)",
+    #     r"(?:email|send|mail)\s+.+(?:\.txt|\.pdf|\.docx|\.csv|\.xlsx|\.py|\.json)\s+to\s+",
+    #     r"(?:find|search)\s+file\s+.+\s+(?:and\s+)?(?:email|send)\s+",
+    # ]),
     ("find_and_open_file", [
         r"(?:find|search|locate)\s+.+\s+(?:and\s+)?(?:open|show|read)\s+(?:it\b|the\s+file\b)",
     ]),

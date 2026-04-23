@@ -12,10 +12,20 @@ from __future__ import annotations
 
 import sys
 import os
+
+# Prevent sentence_transformers from importing TensorFlow (we use PyTorch only).
+# Without this, Keras 3 vs tf-keras conflict crashes the import chain.
+os.environ.setdefault("USE_TF", "0")
+os.environ.setdefault("TRANSFORMERS_NO_TF", "1")
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
 import time
 import uuid
 import threading
 from typing import Optional
+
+if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
 
 from core.command_models import (
     CommandRequest, CommandResponse, ExecutionStatus, StepResult
@@ -100,38 +110,71 @@ def _initialize_actions() -> bool:
         )
         from core.daily_greeting import read_news
     except ImportError as e:
-        print(f"⚠️  Control layer unavailable: {e}")
-        return False
+        # Partial failure — log but continue with whatever loaded
+        print(f"⚠️  Some control modules unavailable: {e}")
+        print("   Boot will continue with reduced action set.")
+        # Try to import each module individually to salvage what works
+        try:
+            from control import (
+                open_vscode, open_safari, open_terminal,
+                search_google, tell_time, tell_date,
+                lock_screen, shutdown_pc, restart_pc, sleep_mac,
+                open_folder, create_folder, search_file,
+                volume_up, volume_down, mute, unmute, get_volume,
+                brightness_up, brightness_down, take_screenshot,
+                minimise_all, minimise_app, show_desktop, close_window,
+                get_battery, start_work_day, end_work_day,
+                close_app, switch_to_app, fullscreen, mission_control,
+                close_tab, new_tab,
+                read_file, create_file, delete_file,
+                rename_file, get_recent_files, copy_file, edit_file,
+                search_files_advanced,
+            )
+        except ImportError as e2:
+            print(f"⚠️  Control layer fully unavailable: {e2}")
+            return False
 
-    ACTIONS = {
-        "open_vscode": open_vscode, "open_safari": open_safari,
-        "open_terminal": open_terminal, "search_google": search_google,
-        "tell_time": tell_time, "tell_date": tell_date,
-        "lock_screen": lock_screen, "shutdown_pc": shutdown_pc,
-        "restart_pc": restart_pc, "sleep_mac": sleep_mac,
-        "morning_briefing": morning_briefing, "tell_weather": tell_weather,
-        "read_news": read_news,
-        "open_folder": open_folder, "create_folder": create_folder,
-        "search_file": search_file,
-        "read_emails": read_emails, "search_emails": search_emails,
-        "send_email": send_email, "open_gmail": open_gmail,
-        "summarise_pdf": summarise_latest_pdf,
-        "volume_up": volume_up, "volume_down": volume_down,
-        "mute": mute, "unmute": unmute, "get_volume": get_volume,
-        "brightness_up": brightness_up, "brightness_down": brightness_down,
-        "take_screenshot": take_screenshot,
-        "minimise_all": minimise_all, "minimise_app": minimise_app,
-        "show_desktop": show_desktop, "close_window": close_window,
-        "close_tab": close_tab, "new_tab": new_tab,
-        "fullscreen": fullscreen, "mission_control": mission_control,
-        "close_app": close_app, "switch_to_app": switch_to_app,
-        "get_battery": get_battery,
-        "start_work_day": start_work_day, "end_work_day": end_work_day,
-        "read_file": read_file, "create_file": create_file,
-        "edit_file": edit_file, "delete_file": delete_file,
-        "rename_file": rename_file, "get_recent_files": get_recent_files,
-        "copy_file": copy_file,
+    # Build ACTIONS from whatever loaded — missing funcs are skipped
+    _action_candidates = {
+        "open_vscode": "open_vscode", "open_safari": "open_safari",
+        "open_terminal": "open_terminal", "search_google": "search_google",
+        "tell_time": "tell_time", "tell_date": "tell_date",
+        "lock_screen": "lock_screen", "shutdown_pc": "shutdown_pc",
+        "restart_pc": "restart_pc", "sleep_mac": "sleep_mac",
+        "morning_briefing": "morning_briefing", "tell_weather": "tell_weather",
+        "read_news": "read_news",
+        "open_folder": "open_folder", "create_folder": "create_folder",
+        "search_file": "search_file",
+        "read_emails": "read_emails", "search_emails": "search_emails",
+        "send_email": "send_email", "open_gmail": "open_gmail",
+        "summarise_pdf": "summarise_latest_pdf",
+        "volume_up": "volume_up", "volume_down": "volume_down",
+        "mute": "mute", "unmute": "unmute", "get_volume": "get_volume",
+        "brightness_up": "brightness_up", "brightness_down": "brightness_down",
+        "take_screenshot": "take_screenshot",
+        "minimise_all": "minimise_all", "minimise_app": "minimise_app",
+        "show_desktop": "show_desktop", "close_window": "close_window",
+        "close_tab": "close_tab", "new_tab": "new_tab",
+        "fullscreen": "fullscreen", "mission_control": "mission_control",
+        "close_app": "close_app", "switch_to_app": "switch_to_app",
+        "get_battery": "get_battery",
+        "start_work_day": "start_work_day", "end_work_day": "end_work_day",
+        "read_file": "read_file", "create_file": "create_file",
+        "edit_file": "edit_file", "delete_file": "delete_file",
+        "rename_file": "rename_file", "get_recent_files": "get_recent_files",
+        "copy_file": "copy_file",
+        "search_files_advanced": "search_files_advanced",
     }
+    _locals = locals()
+    for action_name, var_name in _action_candidates.items():
+        if var_name in _locals:
+            ACTIONS[action_name] = _locals[var_name]
+    
+    if ACTIONS:
+        print(f"✅ Loaded {len(ACTIONS)} actions")
+    else:
+        print("⚠️  No actions loaded!")
+        return False
 
     # Playwright browser actions
     try:

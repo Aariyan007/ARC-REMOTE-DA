@@ -166,7 +166,12 @@ class SystemControlAgent(BaseAgent):
 
         # Try generic open
         try:
-            from control.mac.open_apps import open_any_app
+            import sys
+            if sys.platform == "darwin":
+                from control.mac.open_apps import open_any_app
+            else:
+                from control.windows.open_apps import open_any_app
+                
             open_any_app(target)
             return AgentResult(
                 success=True, action="open_app",
@@ -226,28 +231,40 @@ class SystemControlAgent(BaseAgent):
 
     def _get_battery(self, params: dict) -> AgentResult:
         """Returns current battery percentage."""
-        import subprocess, re
-        try:
-            result = subprocess.run(
-                ["pmset", "-g", "batt"],
-                capture_output=True, text=True,
-            )
-            match = re.search(r'(\d+)%', result.stdout)
-            if match:
-                pct = match.group(1)
+        if "get_battery" in self._actions:
+            try:
+                res = self._actions["get_battery"]()
                 return AgentResult(
                     success=True, action="get_battery",
-                    result=f"Battery is at {pct}%",
-                    data={"battery_percent": int(pct)},
+                    result=str(res) if res else "Battery status requested.",
                 )
-            return AgentResult(
-                success=False, action="get_battery",
-                error="Couldn't read battery",
-            )
-        except Exception as e:
-            return AgentResult(
-                success=False, action="get_battery", error=str(e),
-            )
+            except Exception as e:
+                return AgentResult(success=False, action="get_battery", error=str(e))
+        
+        # Fallback for Mac if not in ACTIONS map
+        import sys
+        if sys.platform == "darwin":
+            import subprocess, re
+            try:
+                result = subprocess.run(
+                    ["pmset", "-g", "batt"],
+                    capture_output=True, text=True,
+                )
+                match = re.search(r'(\d+)%', result.stdout)
+                if match:
+                    pct = match.group(1)
+                    return AgentResult(
+                        success=True, action="get_battery",
+                        result=f"Battery is at {pct}%",
+                        data={"battery_percent": int(pct)},
+                    )
+            except Exception:
+                pass
+        
+        return AgentResult(
+            success=False, action="get_battery",
+            error="Couldn't read battery",
+        )
 
     # ── Simple Actions (no params needed) ────────────────────
     def _simple_action(self, params: dict) -> AgentResult:
