@@ -64,13 +64,19 @@ from core.task_state import (
 from core.ambiguity_resolver import build_single_slot_question
 from core.instant_responses import get_instant_response, get_confirmation_prompt
 
+def _is_headless_source(source: str) -> bool:
+    """
+    Treat every non-voice caller as a remote/headless controller.
+    """
+    return (source or "").lower() != "voice"
+
 def ask_user_input(prompt: str, source: str, request_id: str, event_type: str = "clarify") -> str:
-    if source == "api":
+    if _is_headless_source(source):
         try:
             from remote.job_store import ask_user
             return ask_user(request_id, prompt, event_type)
         except Exception as e:
-            print(f"Warning: api ask_user failed: {e}")
+            print(f"Warning: headless ask_user failed: {e}")
             return ""
     else:
         speak_result(prompt)
@@ -529,14 +535,31 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "", _s
 
         if action == "send_email":
             if "send_email" in actions:
-                actions["send_email"](
+                result_text = actions["send_email"](
                     params.get("to", ""),
                     params.get("subject", ""),
                     params.get("body", ""),
                     _source=_source,
                     _request_id=_request_id
                 )
-                return ActionResult.ok(action, "Email composed")
+                result_text = (result_text or "Email composed").strip()
+                if result_text.lower().startswith("cancelled"):
+                    return ActionResult.fail(action, result_text, user_message=result_text)
+                if result_text.lower().startswith("failed"):
+                    return ActionResult.fail(action, result_text, user_message=result_text)
+                return ActionResult.ok(action, result_text, user_message=result_text)
+
+        if action == "tell_time":
+            if "tell_time" in actions:
+                result = actions["tell_time"]()
+                message = (result or "I checked the time.").strip()
+                return ActionResult.ok(action, message, data={"time": message}, user_message=message)
+
+        if action == "tell_date":
+            if "tell_date" in actions:
+                result = actions["tell_date"]()
+                message = (result or "I checked the date.").strip()
+                return ActionResult.ok(action, message, data={"date": message}, user_message=message)
 
         # ── File operations ─────────────────────────────────
         if action == "read_file":
@@ -742,6 +765,15 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "", _s
         # ── Generic action ──────────────────────────────────
         if action in actions:
             result = actions[action]()
+            if isinstance(result, str) and result.strip():
+                message = result.strip()
+                direct_answer_actions = {"tell_time", "tell_date", "tell_weather", "get_battery"}
+                return ActionResult.ok(
+                    action,
+                    message,
+                    user_message=message if action in direct_answer_actions else "",
+                )
+
             summary = f"Executed {action}" + (f": {result}" if result else "")
             return ActionResult.ok(action, summary)
 
@@ -955,8 +987,28 @@ def route(command: str, actions: dict, _source: str = "voice", _request_id: str 
                 )
                 if safety.decision == SafetyDecision.CONFIRM:
                     prompt = get_confirmation(action, params)
-                    confirmed = ask_voice_confirmation(prompt)
+                    if _is_headless_source(_source):
+                        confirmed_resp = ask_user_input(prompt, _source, _request_id, event_type="confirm")
+                        confirmed = confirmed_resp.strip().lower() in ("yes", "y", "confirm", "ok", "sure", "do it")
+                    else:
+                        confirmed = ask_voice_confirmation(prompt)
                     if not confirmed:
+                        if _is_headless_source(_source):
+                            try:
+                                from core.command_models import CommandResponse, ExecutionStatus
+                                from core.runtime import store_result
+
+                                store_result(CommandResponse(
+                                    request_id=_request_id,
+                                    status=ExecutionStatus.CANCELLED,
+                                    interpreted_action=action,
+                                    final_result="Cancelled by user.",
+                                    elapsed_ms=(time.time() - start_time) * 1000,
+                                    source=_source,
+                                    data={"params": dict(params or {})},
+                                ))
+                            except Exception:
+                                pass
                         latency_ms = (time.time() - start_time) * 1000
                         log_interaction(
                             you_said=command, action_taken=f"{action}_cancelled",
@@ -1201,14 +1253,17 @@ def route(command: str, actions: dict, _source: str = "voice", _request_id: str 
     )
 
     if decision_result.decision == BrainDecision.PLAN_AND_EXECUTE:
-        print("🤖 ManagerBrain: Complex command detected — routing to ManagerAgent")
-        update_thinking(command=command, stage="Planning Task Graph")
-        if brain._manager:
-            brain._manager.run(command)
+        if _is_headless_source(_source):
+            print("🤖 ManagerBrain: headless source detected — using deterministic action path")
         else:
-            print("⚠️ ManagerAgent not available — falling back to old logic")
-            # Let it fall through to execution if no manager
-        return True
+            print("🤖 ManagerBrain: Complex command detected — routing to ManagerAgent")
+            update_thinking(command=command, stage="Planning Task Graph")
+            if brain._manager:
+                brain._manager.run(command)
+            else:
+                print("⚠️ ManagerAgent not available — falling back to old logic")
+                # Let it fall through to execution if no manager
+            return True
 
     elif decision_result.decision == BrainDecision.CHAT:
         print("💬 ManagerBrain: Conversational input detected")
@@ -1365,7 +1420,7 @@ def route(command: str, actions: dict, _source: str = "voice", _request_id: str 
     elif safety.decision == SafetyDecision.CONFIRM:
         # Use response_policy for confirmation prompt
         prompt = get_confirmation(intent.action, params)
-        if _source == "api":
+        if _is_headless_source(_source):
             confirmed_resp = ask_user_input(prompt, _source, _request_id, event_type="confirm")
             confirmed = confirmed_resp.strip().lower() in ("yes", "y", "confirm", "ok", "sure", "do it")
         else:
@@ -1486,7 +1541,7 @@ def route(command: str, actions: dict, _source: str = "voice", _request_id: str 
             question = get_clarification(intent.action, params)
             missing_param = missing_params[0] if missing_params else "target"
 
-        if _source == "api":
+        if _is_headless_source(_source):
             resp = ask_user_input(question, _source, _request_id, event_type="clarify")
             if resp:
                 from core.runtime import store_result
@@ -1530,7 +1585,7 @@ def route(command: str, actions: dict, _source: str = "voice", _request_id: str 
 
     # ── DECISION: GEMINI FALLBACK ────────────────────────────
     elif safety.decision == SafetyDecision.GEMINI:
-        if _source == "api":
+        if _is_headless_source(_source):
             # Remote/API mode should never hard-depend on voice/Gemini loops.
             # Fail closed with a clear message so the controller can rephrase.
             msg = "I couldn't understand that well enough to act. Please rephrase."

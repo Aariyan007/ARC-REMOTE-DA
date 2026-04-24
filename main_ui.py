@@ -69,9 +69,30 @@ app.add_middleware(
 )
 
 try:
-    app.mount("/ui", StaticFiles(directory="ui"), name="ui")
+    app.mount("/assets", StaticFiles(directory="ui/assets"), name="assets")
 except Exception:
-    pass  # ui directory may not exist in all environments
+    pass
+
+@app.get("/manifest.json")
+def manifest():
+    import os
+    if os.path.exists("ui/manifest.json"):
+        return FileResponse("ui/manifest.json")
+    return JSONResponse({"status": "not found"}, status_code=404)
+
+@app.get("/sw.js")
+def sw():
+    import os
+    if os.path.exists("ui/sw.js"):
+        return FileResponse("ui/sw.js")
+    return JSONResponse({"status": "not found"}, status_code=404)
+
+@app.get("/favicon.svg")
+def favicon():
+    import os
+    if os.path.exists("ui/favicon.svg"):
+        return FileResponse("ui/favicon.svg")
+    return JSONResponse({"status": "not found"}, status_code=404)
 
 
 # ── Request / Response models ─────────────────────────────────

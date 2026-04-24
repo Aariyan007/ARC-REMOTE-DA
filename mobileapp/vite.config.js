@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   root: '.',
+  base: '/',
   server: {
     port: 5173,
     proxy: {
@@ -37,7 +38,7 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: 'dist',
+    outDir: '../ui',
     emptyOutDir: true,
   },
 });

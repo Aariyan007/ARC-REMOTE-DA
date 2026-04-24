@@ -27,6 +27,9 @@ def speak(msg):
     """Proxy to voice_response.speak — lazy loaded."""
     _get_speak()(msg)
 
+def _is_headless_source(source: str) -> bool:
+    return (source or "").lower() != "voice"
+
 # ─── Settings ────────────────────────────────────────────────
 SCOPES           = ["https://www.googleapis.com/auth/gmail.modify"]
 CREDENTIALS_FILE = os.path.join(os.path.dirname(__file__), '..', 'credentials.json')
@@ -117,7 +120,7 @@ def _voice_input_with_retry(
     """
     Ask a voice question, listen for the answer, optionally confirm,
     and retry up to `max_retries` times if the input is empty or rejected.
-    If _source is "api", it uses headless job stream for input instead.
+    If _source is non-voice, it uses the headless job stream for input instead.
 
     Args:
         gemini_field: If set (e.g. 'subject', 'recipient'), uses Gemini
@@ -125,7 +128,7 @@ def _voice_input_with_retry(
 
     Returns the confirmed text, or "" if all retries exhausted.
     """
-    if _source == "api" and _request_id:
+    if _is_headless_source(_source) and _request_id:
         from remote.job_store import ask_user
         # Headless mode: ask the client via job stream
         reply = ask_user(_request_id, prompt, event_type="clarify")
@@ -351,7 +354,8 @@ def send_email(to: str = "", subject: str = "", body: str = "", _source: str = "
             _request_id=_request_id,
         )
         if not to:
-            if _source != "api": speak("Cancelled. No recipient provided.")
+            if not _is_headless_source(_source):
+                speak("Cancelled. No recipient provided.")
             return "Cancelled — missing recipient"
 
     # ── Resolve contact name to email address ────────────────
@@ -369,7 +373,8 @@ def send_email(to: str = "", subject: str = "", body: str = "", _source: str = "
             _request_id=_request_id,
         )
         if not subject:
-            if _source != "api": speak("Cancelled. No subject provided.")
+            if not _is_headless_source(_source):
+                speak("Cancelled. No subject provided.")
             return "Cancelled — missing subject"
 
     # Step 3: Body (use long listen for extended speech)
@@ -386,11 +391,12 @@ def send_email(to: str = "", subject: str = "", body: str = "", _source: str = "
             _request_id=_request_id,
         )
         if not body:
-            if _source != "api": speak("Cancelled. No message provided.")
+            if not _is_headless_source(_source):
+                speak("Cancelled. No message provided.")
             return "Cancelled — missing body"
 
     # Step 4: Final confirmation
-    if _source == "api":
+    if _is_headless_source(_source):
         from remote.job_store import ask_user
         reply = ask_user(_request_id, f"Ready to compose email to {to}, subject: '{subject}'. Should I open it?", event_type="confirm")
         confirmation = reply
@@ -402,7 +408,8 @@ def send_email(to: str = "", subject: str = "", body: str = "", _source: str = "
         word in confirmation.lower()
         for word in ["yes", "yeah", "yep", "sure", "do it", "send", "open", "go"]
     ):
-        if _source != "api": speak("Opening Gmail to compose.")
+        if not _is_headless_source(_source):
+            speak("Opening Gmail to compose.")
 
         # ── Proper URL construction — fixes Issue 1 ──────────
         params = urllib.parse.urlencode(
@@ -417,7 +424,8 @@ def send_email(to: str = "", subject: str = "", body: str = "", _source: str = "
         url = f"https://mail.google.com/mail/?view=cm&fs=1&{params}"
         print(f"📧 Gmail URL: {url[:120]}...")
         webbrowser.open(url)
-        if _source != "api": speak("Review and send when you're ready.")
+        if not _is_headless_source(_source):
+            speak("Review and send when you're ready.")
         return "Draft opened in Gmail"
 from control.file_search import search_files_advanced_multiple
 from remote.job_store import ask_user, get_job_store, JobEvent
@@ -431,13 +439,14 @@ def find_and_send_file(filename: str = "", to: str = "", _source: str = "voice",
     matches = search_files_advanced_multiple(filename, top_k=5)
     
     if not matches:
-        if _source != "api": speak(f"I couldn't find any file matching {filename}.")
+        if not _is_headless_source(_source):
+            speak(f"I couldn't find any file matching {filename}.")
         return f"Failed — could not find file matching '{filename}'"
 
     selected_file = matches[0]
 
     if len(matches) > 1:
-        if _source == "api":
+        if _is_headless_source(_source):
             prompt = f"Found multiple matches for '{filename}'. Which one do you want to send?\n"
             for i, match in enumerate(matches):
                 prompt += f"{i+1}. {os.path.basename(match)}\n"
@@ -465,7 +474,8 @@ def find_and_send_file(filename: str = "", to: str = "", _source: str = "voice",
             _request_id=_request_id,
         )
         if not to:
-            if _source != "api": speak("Cancelled. No recipient provided.")
+            if not _is_headless_source(_source):
+                speak("Cancelled. No recipient provided.")
             return "Cancelled — missing recipient"
 
     to = _resolve_contact(to)
@@ -474,7 +484,7 @@ def find_and_send_file(filename: str = "", to: str = "", _source: str = "voice",
     file_basename = os.path.basename(selected_file)
     confirm_msg = f"Ready to open Gmail draft to send '{file_basename}' to {to}. Proceed?"
     
-    if _source != "api":
+    if not _is_headless_source(_source):
         speak(confirm_msg)
         
     # Always ask UI (Remote) but also allow local voice reply if applicable
@@ -492,7 +502,7 @@ def find_and_send_file(filename: str = "", to: str = "", _source: str = "voice",
     )
 
     if confirmation and any(word in str(confirmation).lower() for word in ["yes", "yeah", "yep", "sure", "do it", "send", "open", "go"]):
-        if _source != "api":
+        if not _is_headless_source(_source):
             speak("Opening Gmail with attachment.")
         else:
             # If confirmed via UI, have Jarvis acknowledge it on the PC too if desired
@@ -504,7 +514,13 @@ def find_and_send_file(filename: str = "", to: str = "", _source: str = "voice",
         )
         
         # Use playwright to open draft and attach
-        res = draft_email_with_attachment(to=to, subject=f"Sending: {file_basename}", body="", attachment_path=selected_file, announce=(_source != "api"))
+        res = draft_email_with_attachment(
+            to=to,
+            subject=f"Sending: {file_basename}",
+            body="",
+            attachment_path=selected_file,
+            announce=(not _is_headless_source(_source)),
+        )
         if res.get("success"):
             if res.get("sent"):
                 return f"Sent! {file_basename} has been emailed to {to}. You can check your sent mail for confirmation."
@@ -513,7 +529,8 @@ def find_and_send_file(filename: str = "", to: str = "", _source: str = "voice",
         else:
             return f"Failed to send email: {res.get('error')}"
     else:
-        if _source != "api": speak("Alright, cancelled.")
+        if not _is_headless_source(_source):
+            speak("Alright, cancelled.")
         return "Cancelled by user"
 
 # ─── Attachment-capable email draft ──────────────────────────────

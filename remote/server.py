@@ -63,6 +63,42 @@ def get_code():
     # Only for testing/local UI. Real setup would display on desktop screen.
     return {"code": generate_pairing_code()}
 
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, JSONResponse
+
+try:
+    app.mount("/assets", StaticFiles(directory="ui/assets"), name="assets")
+except Exception:
+    pass
+
+@app.get("/")
+def home():
+    import os
+    if os.path.exists("ui/index.html"):
+        return FileResponse("ui/index.html")
+    return JSONResponse({"status": "ARC Remote Daemon", "version": "1.0.0"})
+
+@app.get("/manifest.json")
+def manifest():
+    import os
+    if os.path.exists("ui/manifest.json"):
+        return FileResponse("ui/manifest.json")
+    raise HTTPException(status_code=404)
+
+@app.get("/sw.js")
+def sw():
+    import os
+    if os.path.exists("ui/sw.js"):
+        return FileResponse("ui/sw.js")
+    raise HTTPException(status_code=404)
+
+@app.get("/favicon.svg")
+def favicon():
+    import os
+    if os.path.exists("ui/favicon.svg"):
+        return FileResponse("ui/favicon.svg")
+    raise HTTPException(status_code=404)
+
 @app.get("/health")
 def health_check():
     """

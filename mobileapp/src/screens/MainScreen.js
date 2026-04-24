@@ -33,6 +33,21 @@ async function onCommandSubmit(text) {
 async function handleRealCommand(text) {
   try {
     const res = await sendCommand(text);
+
+    // Gracefully handle legacy/direct backends that return CommandResponse JSON
+    // instead of the Phase 1 job protocol.
+    if (!res?.job_id) {
+      const jobId = `direct-${Date.now()}`;
+      jobStore.createJob(jobId, text);
+      handleEvent(jobId, {
+        type: res?.status === 'completed' ? 'result' : 'error',
+        message: res?.final_result || 'The backend did not return a job id.',
+        data: res || {},
+        timestamp: Date.now() / 1000,
+      });
+      return;
+    }
+
     const jobId = res.job_id;
 
     // Create job in store

@@ -137,10 +137,10 @@ def assistant_loop():
 def start_api_server_in_background():
     import subprocess
     import sys
-    print("🌐 Starting background API server for remote phone commands (Port 8000)...")
+    print("🌐 Starting ARC remote daemon for controller access (Port 8000)...")
     try:
         return subprocess.Popen(
-            [sys.executable, "-m", "uvicorn", "main_ui:app", "--host", "0.0.0.0", "--port", "8000"],
+            [sys.executable, "-m", "uvicorn", "remote.server:app", "--host", "0.0.0.0", "--port", "8000"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         )
