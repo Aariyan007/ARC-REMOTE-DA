@@ -1,310 +1,325 @@
-<div align="center">
+# ARC Remote
 
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:ff7a00,50:ff9a2f,100:ff7a00&height=200&section=header&text=ARC&fontSize=86&fontColor=ffffff&fontAlignY=38&desc=AI-Operated%20Computer&descAlignY=58&descSize=18&descColor=ffffff&animation=twinkling" />
-<br/>
+ARC Remote is a dispatcher-style desktop automation system.
 
-![Python](https://img.shields.io/badge/Python-3.10+-ff7a00?style=for-the-badge&logo=python&logoColor=white&labelColor=1a1a1a)
-![Gemini](https://img.shields.io/badge/Gemini-3.1%20Flash%20Lite-ff9a2f?style=for-the-badge&logo=google&logoColor=white&labelColor=1a1a1a)
-![Whisper](https://img.shields.io/badge/Whisper-STT-ff7a00?style=for-the-badge&logo=openai&logoColor=white&labelColor=1a1a1a)
-![Platform](https://img.shields.io/badge/Platform-macOS%20First-silver?style=for-the-badge&logo=apple&logoColor=white&labelColor=1a1a1a)
-![Status](https://img.shields.io/badge/Status-Active%20Development-22c55e?style=for-the-badge&labelColor=1a1a1a)
+Think of the product direction as "Claude Dispatcher for your own machine": a paired client submits natural-language jobs, the desktop runtime executes them locally, and the client stays in the loop through live job events, clarification prompts, and confirmations.
 
-```text
-   █████╗ ██████╗  ██████╗
-  ██╔══██╗██╔══██╗██╔════╝
-  ███████║██████╔╝██║
-  ██╔══██║██╔══██╗██║
-  ██║  ██║██║  ██║╚██████╗
-  ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝
-        A R C   S Y S T E M
-```
+This repo is currently a mix of:
 
-*Build the computer that can actually understand, operate, verify, and recover.*
+- the newer remote dispatcher stack
+- a shared desktop automation runtime
+- older voice-first ARC/Jarvis code that still powers some execution paths
 
-</div>
+The dispatcher path is the part to build around.
 
----
+## What ARC Remote Does
 
-## Overview
+- Pairs a phone or browser client to a desktop daemon with a 6-digit code
+- Issues natural-language commands to the desktop over HTTP
+- Streams job state back over WebSocket, with HTTP polling fallback
+- Asks for clarification or confirmation when a command is ambiguous
+- Executes desktop actions through a shared runtime
+- Persists jobs and job events to SQLite
+- Logs remote activity for auditing
 
-**ARC** is a local-first voice assistant for operating your computer like an AI-controlled system, not just a chatbot with tools. It is built around a deterministic execution loop:
+The current repo already contains the core dispatcher loop:
 
-`normalize -> interpret -> clarify -> execute -> verify -> respond -> learn`
+`pair -> submit job -> ack -> clarify/confirm -> execute -> verify -> result`
 
-The focus is not just “talk to the computer.” The goal is:
+## Current Product Shape
 
-- better command grounding
-- better OS control
-- stronger verification
-- fewer fake confirmations
-- a path to perception-driven desktop automation
+The remote flow in this repo is centered on:
 
-Some older internals and prompts still use the legacy `Jarvis` name, but the product name is **ARC**.
+- `remote/server.py`
+  FastAPI daemon for pairing, auth, job submission, replies, polling, and event streaming.
+- `core/runtime.py`
+  Shared boot + execution entry point used by both the remote server and older voice entry points.
+- `remote/job_store.py`
+  In-memory job state, event queueing, and blocking user-reply handoff for multi-step jobs.
+- `remote/db.py`
+  SQLite persistence for jobs and events.
+- `mobileapp/`
+  Vite-based paired client with a pairing screen, command input, event timeline, and reply UI.
 
----
+This makes the system closer to a dispatcher/orchestrator than a single-turn assistant:
 
-## Current Architecture
+- the client submits work
+- the server assigns a job ID immediately
+- the runtime keeps working after the request returns
+- the UI watches the job stream
+- the user only steps in when the runtime needs a decision
 
-```text
-┌────────────────────────────────────────────────────────────────────┐
-│                               ARC                                  │
-├────────────────┬───────────────────────────────┬───────────────────┤
-│ INPUT          │ INTELLIGENCE                  │ OUTPUT            │
-│                │                               │                   │
-│ Whisper STT    │ fast_intent.py               │ macOS say TTS     │
-│ PyAudio        │ command_interpreter.py       │ response_policy   │
-│ Wake word      │ intent_router.py             │ logger.py         │
-│ Voice auth     │ safety.py                    │ grounded results  │
-│                │ action_verifier.py           │                   │
-│                │ working_memory.py            │                   │
-│                │ manager_agent.py             │                   │
-└────────────────┴───────────────────────────────┴───────────────────┘
-                         │
-                         ▼
-                 perception_engine.py
-                 browser_state.py
-                 screen_capture.py
-                 ocr.py
-                 ui_accessibility.py
-```
+## What It Can Do Today
 
-### What is already true
+The exact behavior still depends on environment and installed integrations, but the repo is already set up for:
 
-- Commands no longer rely on one fragmented response path.
-- User-facing action speech is deterministic and grounded in actual outcomes.
-- The live router now calls the structured interpreter.
-- Missing parameters trigger clarification instead of blind guessing.
-- Post-action verification exists for part of the runtime.
-- Startup now degrades more gracefully when optional dependencies are missing.
+- file search and file-open flows
+- find-and-send / find-and-email style workflows
+- browser automation through Playwright
+- Gmail draft / attachment automation
+- desktop actions such as opening apps, switching apps, file operations, and basic system controls
+- clarification and confirmation prompts inside the remote job flow
+- optional voice, OCR, perception, and accessibility-based subsystems
 
-### What is still being built
+Some code paths still use the older `Jarvis` naming internally. The current product direction and docs should be treated as `ARC Remote`.
 
-- deeper browser verification
-- full file verification
-- accessibility-tree grounding
-- richer short-term memory
-- messy-command eval datasets
+## Dispatcher Flow
 
----
+1. Start the desktop daemon.
+2. Pair a client using the short-lived 6-digit code.
+3. Submit a command like `find resume.pdf and send it to me@example.com`.
+4. Receive a `job_id` immediately.
+5. Subscribe to the job stream.
+6. If the runtime needs input, it emits `clarify` or `confirm`.
+7. The client replies with `/reply/{job_id}`.
+8. The job ends with `result` or `error`.
 
-## What ARC Can Do Today
+Event types currently used in the repo:
 
-- Open, close, switch, and minimize apps.
-- Create, edit, rename, copy, and delete files.
-- Search the web and open URLs.
-- Handle direct system controls like volume, brightness, screenshot, and lock.
-- Use a cleaner response loop: `ack -> execute -> verify -> speak result`.
-- Ask better follow-up questions when command parameters are missing.
-- Run a manager/orchestrator path for more complex multi-step commands.
+- `ack`
+- `clarify`
+- `confirm`
+- `progress`
+- `executing`
+- `verify`
+- `result`
+- `error`
 
-### Big improvement already shipped
+## Security Model Right Now
 
-ARC now behaves much less like:
+The remote path has a few important safety layers already:
 
-`"I heard something, let me guess and say something cool."`
+- device pairing via a one-time 6-digit code
+- bearer token auth after pairing
+- a command allowlist / dangerous-pattern filter in `remote/allowlist.py`
+- audit logging in `remote/security.py`
+- per-job persistence in SQLite
 
-And much more like:
+This is not a full sandbox yet. It is a practical first-pass control plane for a trusted personal setup on a local network or tightly controlled environment.
 
-`"I know what action this is, I know what is missing, I will do it, then I will confirm what actually happened."`
-
----
-
-## Repository Layout
+## Architecture
 
 ```text
-Startup/
-├── main.py
-├── chat.py
-├── requirements.txt
-├── README.md
-│
-├── core/
-│   ├── intent_router.py
-│   ├── command_interpreter.py
-│   ├── command_schema.py
-│   ├── response_policy.py
-│   ├── action_result.py
-│   ├── action_verifier.py
-│   ├── voice_response.py
-│   ├── speech_to_text.py
-│   ├── fast_intent.py
-│   ├── working_memory.py
-│   ├── llm_brain.py
-│   └── agents/
-│
-├── control/
-│   ├── mac/
-│   ├── windows/
-│   ├── playwright_browser.py
-│   └── web_search.py
-│
-├── perception/
-│   ├── browser_state.py
-│   ├── screen_capture.py
-│   ├── ocr.py
-│   └── ui_accessibility.py
-│
-├── evals/
-│   ├── command_benchmark.json
-│   └── run_command_eval.py
-│
-├── data/
-├── ui/
-└── _archive/
+mobile client
+  -> pair with 6-digit code
+  -> POST /command
+  -> WS /stream/{job_id}
+  -> POST /reply/{job_id}
+
+remote/server.py
+  -> auth + allowlist + audit log
+  -> enqueue command
+  -> persistent worker thread
+
+core/runtime.py
+  -> boot shared actions / agents / subsystems
+  -> execute_text_command(...)
+  -> workflow engine or intent router
+
+job state
+  -> remote/job_store.py
+  -> remote/db.py
+  -> data/remote.db
 ```
 
----
+## Project Layout
 
-## Getting Started
+```text
+ARC-REMOTE-DA/
+  README.md
+  requirements.txt
+  main.py
+  main_ui.py
+  test_phase1.py
+  test_phase2.py
+  core/
+  control/
+  perception/
+  remote/
+  actions/
+  mobileapp/
+  data/
+```
 
-### Prerequisites
+Important directories:
 
-- macOS is the primary target right now
-- Python 3.10+
-- Homebrew recommended
-- Gemini API key for fallback/planning flows
+- `remote/` - dispatcher server, auth, allowlist, job store, persistence
+- `mobileapp/` - paired client UI
+- `core/` - shared runtime, routing, workflows, agents, memory, safety
+- `control/` - desktop, browser, file, email, and OS action implementations
+- `perception/` - OCR, screen capture, browser state, accessibility hooks
 
-### Install
+## Local Development
+
+### Backend
+
+Create a virtual environment and install the Python dependencies:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+pip install fastapi uvicorn pyjwt
+```
+
+On macOS/Linux:
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
+pip install fastapi uvicorn pyjwt
+```
+
+If you want browser automation:
+
+```bash
+playwright install chrome
+```
+
+### Frontend
+
+```bash
+cd mobileapp
+npm install
 ```
 
 ### Environment
 
-Set your Gemini key in the shell or in `.env`:
+Common environment variables used by the repo:
 
 ```bash
-export API_KEY="your_key_here"
+API_KEY=your_gemini_api_key
+ARC_SECRET_KEY=your_stable_jwt_secret
 ```
 
-### Optional system dependencies
+Notes:
 
-These improve functionality but are not required for every code path:
+- `API_KEY` is used by Gemini-backed extraction / planning paths.
+- `ARC_SECRET_KEY` is strongly recommended so device tokens stay stable across restarts.
+
+## Running The Dispatcher
+
+Start the desktop daemon:
 
 ```bash
-brew install tesseract
-brew install ffmpeg
+python -m uvicorn remote.server:app --host 0.0.0.0 --port 8000
 ```
 
-### Run
+You should see ARC print a fresh pairing code in the terminal.
+
+Then start the client:
 
 ```bash
-python3 main.py
+cd mobileapp
+npm run dev -- --host
 ```
 
-If some optional dependencies are missing, ARC should now fail more cleanly and tell you what needs to be installed instead of crashing immediately on import.
+Open the Vite URL on your phone or desktop browser, enter the pairing code, and submit commands.
 
----
+## Production-ish Single-Port Setup
 
-## Testing
-
-### Quick module checks
+If you build the frontend first, `remote/server.py` will serve `mobileapp/dist` directly:
 
 ```bash
-python3 -m core.response_policy
-python3 -m core.action_result
+cd mobileapp
+npm run build
+cd ..
+python -m uvicorn remote.server:app --host 0.0.0.0 --port 8000
 ```
 
-### Intent benchmark
+## API Surface
+
+Main endpoints in the current dispatcher server:
+
+- `POST /pair`
+  Exchange pairing code + device name for a bearer token.
+- `GET /pairing-code`
+  Returns the current pairing code for local testing.
+- `GET /health`
+  Health and boot status.
+- `POST /command`
+  Submit a command and receive a `job_id`.
+- `POST /reply/{job_id}`
+  Answer a clarify or confirm event for a running job.
+- `GET /jobs/{job_id}`
+  Poll job events over HTTP.
+- `GET /jobs/health_check_ping`
+  Authenticated token validity check for the client.
+- `WS /stream/{job_id}`
+  Real-time event stream for a job.
+
+## Example Commands
+
+- `find resume.pdf and send it to me@example.com`
+- `find invoice and open it`
+- `open chrome and go to github.com`
+- `turn the volume up`
+- `open gmail`
+- `search for my latest tax file`
+
+When the runtime cannot safely continue, it should ask instead of guessing.
+
+## Gmail / Browser Automation Notes
+
+The browser automation layer uses a persistent Chrome profile so you do not need to hardcode account passwords in the repo.
+
+The current Playwright setup stores profile data under:
+
+```text
+~/.friend/chrome_profile
+```
+
+Typical first-time flow:
+
+1. Start ARC Remote.
+2. Trigger a browser or Gmail command.
+3. Log into Gmail manually in the opened Chrome window once.
+4. Reuse that session on later runs.
+
+## Tests
+
+The repo currently includes two smoke-style test scripts:
 
 ```bash
-python3 evals/run_command_eval.py
+python test_phase1.py
+python test_phase2.py
 ```
 
-### Smoke tests to try manually
+They focus on:
 
-- `open chrome`
-- `what time is it`
-- `create a file`
-- `rename it to ideas`
-- `open url`
-- `volume up`
+- perception / accessibility degradation behavior
+- runtime boot
+- fast intent cold start
+- verifier fail-closed behavior
 
-What you should observe:
+## Current Reality
 
-- fast ack
-- action executes
-- grounded result is spoken
-- missing info triggers a focused clarification question
+What is solid enough to build on:
 
----
+- the remote daemon
+- the paired client flow
+- job IDs and job-event streaming
+- reply-driven clarification / confirmation
+- shared runtime execution
+- audit log and SQLite persistence
 
-## Roadmap
+What is still in-progress or uneven:
 
-### Done
+- some legacy voice-first architecture is still mixed into the repo
+- environment setup is still a little manual
+- platform-specific actions are not equally mature
+- perception and verification are present but not complete across every action family
+- the safety layer is useful, but not yet a hardened multi-tenant sandbox
 
-- Centralized response system
-- Structured action result layer
-- Mac-say response flow
-- Live structured interpreter wiring
-- Initial action verification hooks
-- Better startup dependency handling
+## Direction
 
-### Next priorities
+The repo should keep moving toward a clean dispatcher architecture:
 
-1. Finish action verification for files, browser, and desktop actions
-2. Make accessibility and OCR first-class perception inputs
-3. Expand working memory for tabs, clipboard, selected items, and task chains
-4. Build real messy-command and ambiguity eval datasets
-5. Improve browser automation depth to make ARC stronger than OpenClaw on OS control quality
+- remote-first control plane
+- explicit job lifecycle
+- better execution verification
+- stronger human-in-the-loop recovery
+- clearer separation between dispatcher, runtime, and action workers
 
-### Long-term goal
-
-Beat broad assistant platforms by being narrower and better:
-
-- better command grounding
-- better clarification
-- better verification
-- better desktop control
-
----
-
-## Known Limits
-
-- Some optional dependencies are still environment-sensitive.
-- macOS is the best-supported platform today.
-- `ui_accessibility.py` is still a placeholder, not full native grounding yet.
-- `run_command_eval.py --no-init` still needs improvement if you want a truly lightweight no-embedding smoke mode.
-- The perception stack exists, but it is not yet complete enough to claim full screen-aware control.
-
----
-
-## Why This Project Exists
-
-Most assistants stop at:
-
-- answer a question
-- call one tool
-- say something polished
-
-ARC is trying to go further:
-
-- understand casual commands
-- ask the right clarification
-- operate the machine
-- verify the result
-- recover if it fails
-
-That is the difference between a voice chatbot and an AI-operated computer.
-
----
-
-## Author
-
-**Aariyan**  
-Backend Engineer · AI Builder · Full Stack Developer
-
-[![GitHub](https://img.shields.io/badge/GitHub-Aariyan007-ff7a00?style=for-the-badge&logo=github&logoColor=white&labelColor=1a1a1a)](https://github.com/Aariyan007)
-
----
-
-<div align="center">
-
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:ff7a00,50:ff9a2f,100:ff7a00&height=100&section=footer" />
-
-**ARC is not meant to sound smart. It is meant to control the computer well.**
-
-</div>
+That is the right frame for this project now.
