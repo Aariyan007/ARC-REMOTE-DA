@@ -96,6 +96,8 @@ INTENT_REGISTRY = {
     "brightness_up": [
         "brightness up", "increase brightness", "brighter",
         "make it brighter", "screen brighter", "more brightness",
+        "full brightness", "max brightness", "maximum brightness",
+        "turn brightness to full", "brightness up 100",
     ],
     "brightness_down": [
         "brightness down", "decrease brightness", "dimmer",
@@ -197,6 +199,8 @@ INTENT_REGISTRY = {
     "search_file": [
         "search file", "find file", "look for file",
         "where is my file", "locate file", "find my",
+        "find a file named", "find file named",
+        "find a text file named", "search for a text file",
     ],
 
     # ── Email ────────────────────────────────────────────────

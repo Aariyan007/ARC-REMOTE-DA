@@ -74,20 +74,29 @@ def check_safety(action: str, confidence: float, has_context_reference: bool = F
         has_context_reference: True if command contains pronouns like "it", "that"
         word_count:            Number of words in the command (for garbage detection)
     """
-    # Very short input (1-2 words) with low confidence → garbage, skip
-    if word_count <= 2 and confidence < HIGH_CONFIDENCE:
-        return SafetyDecision(
-            SafetyDecision.GEMINI,
-            "Too short to be meaningful — needs Gemini",
-            action,
-            confidence
-        )
-
     # Absolute confidence floor — below this, nothing should execute
     if confidence < CONFIDENCE_FLOOR:
         return SafetyDecision(
             SafetyDecision.GEMINI,
             "Below minimum confidence floor — needs Gemini",
+            action,
+            confidence
+        )
+
+    # Destructive short commands like "sleep" are valid if the action is clear.
+    if action in DESTRUCTIVE_ACTIONS and confidence >= 0.60:
+        return SafetyDecision(
+            SafetyDecision.CONFIRM,
+            f"'{action}' is destructive — confirmation required",
+            action,
+            confidence
+        )
+
+    # Very short input (1-2 words) with low confidence → garbage, skip
+    if word_count <= 2 and confidence < HIGH_CONFIDENCE:
+        return SafetyDecision(
+            SafetyDecision.GEMINI,
+            "Too short to be meaningful — needs Gemini",
             action,
             confidence
         )

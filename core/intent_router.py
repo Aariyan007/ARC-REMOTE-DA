@@ -45,7 +45,7 @@ from core.llm_brain import ask_gemini
 from core.reinforcement import track_action, boost_confidence, get_penalty, get_boost
 from core.thinking_ui import update_thinking
 from core.interrupt_manager import is_interrupt, get_interrupt_manager
-from core.confidence import evaluate_confidence
+from core.confidence import evaluate_confidence, ConfidenceTier
 from core.brain import get_brain, BrainDecision
 from core.working_memory import get_working_memory
 from core.continuous_memory import get_continuous_memory
@@ -70,6 +70,16 @@ def _is_headless_source(source: str) -> bool:
     """
     return (source or "").lower() != "voice"
 
+
+REMOTE_DETERMINISTIC_ACTIONS = {
+    "open_app", "close_app", "switch_to_app", "minimise_app",
+    "open_folder", "create_folder", "search_file", "search_google", "open_url",
+    "send_email", "search_emails", "tell_time", "tell_date", "read_news",
+    "get_battery", "tell_weather", "volume_up", "volume_down",
+    "brightness_up", "brightness_down", "mute", "unmute",
+    "sleep_mac", "lock_screen", "take_screenshot",
+}
+
 def ask_user_input(prompt: str, source: str, request_id: str, event_type: str = "clarify") -> str:
     if _is_headless_source(source):
         try:
@@ -82,6 +92,74 @@ def ask_user_input(prompt: str, source: str, request_id: str, event_type: str = 
         speak_result(prompt)
         res = stt_listen()
         return res if res else ""
+
+
+def _apply_slot_reply(params: dict, action: str, slot: str, reply: str) -> dict:
+    """Fill the clarified slot without re-routing the reply as a brand-new command."""
+    updated = dict(params or {})
+    value = (reply or "").strip()
+    if not value:
+        return updated
+
+    updated[slot] = value
+
+    if slot == "target":
+        updated.setdefault("name", value)
+    elif slot == "name":
+        updated.setdefault("target", value)
+
+    if action == "search_file" and slot in {"target", "filename", "query"}:
+        updated["query"] = value
+    elif action == "send_email" and slot in {"target", "recipient", "to"}:
+        updated["to"] = value
+
+    return updated
+
+
+def _store_command_response(
+    request_id: str,
+    source: str,
+    action: str,
+    params: dict,
+    result: ActionResult,
+    spoken_text: str,
+    start_time: float,
+    ack_text: str = "",
+) -> None:
+    """Store one structured response for API/remote controllers."""
+    try:
+        from core.command_models import CommandResponse, ExecutionStatus
+        from core.runtime import store_result
+
+        data = dict(result.data or {})
+        data.setdefault("params", dict(params or {}))
+        if ack_text:
+            data.setdefault("ack", ack_text)
+
+        store_result(CommandResponse(
+            request_id=request_id,
+            status=ExecutionStatus.COMPLETED if result.success else ExecutionStatus.FAILED,
+            interpreted_action=action,
+            final_result=spoken_text,
+            steps=[result.to_step_result()],
+            data=data,
+            errors=[spoken_text] if not result.success else [],
+            elapsed_ms=(time.time() - start_time) * 1000,
+            source=source,
+        ))
+    except Exception:
+        pass
+
+
+def _remote_confidence_floor(action: str, params: dict, missing_params: list) -> float:
+    """Minimum confidence for deterministic remote actions that have usable params."""
+    if action not in REMOTE_DETERMINISTIC_ACTIONS or missing_params:
+        return 0.0
+    if action in DESTRUCTIVE_ACTIONS:
+        return 0.65
+    if action in {"search_file", "send_email", "search_google", "open_url", "open_app"}:
+        return 0.62
+    return 0.60
 
 # ── Format Keywords → Extensions ───────────────────────────────
 FORMAT_MAP = {
@@ -348,7 +426,8 @@ def _extract_params(action: str, text: str) -> dict:
             params["target"] = target
 
     elif action == "search_file":
-        query = extract_query(text)
+        file_params = extract_filename(text)
+        query = file_params.get("filename") or extract_query(text)
         if query:
             params["query"] = query
 
@@ -483,6 +562,24 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "", _s
                 actions["volume_down"](amount)
                 return ActionResult.ok(action, f"Volume down by {amount}", data={"amount": amount})
 
+        if action == "brightness_up":
+            amount = params.get("amount") or 10
+            if "brightness_up" in actions:
+                steps = max(1, min(16, round(float(amount) / 10)))
+                for _ in range(steps):
+                    actions["brightness_up"]()
+                message = f"Brightness up by {amount}"
+                return ActionResult.ok(action, message, data={"amount": amount}, user_message=f"{message}.")
+
+        if action == "brightness_down":
+            amount = params.get("amount") or 10
+            if "brightness_down" in actions:
+                steps = max(1, min(16, round(float(amount) / 10)))
+                for _ in range(steps):
+                    actions["brightness_down"]()
+                message = f"Brightness down by {amount}"
+                return ActionResult.ok(action, message, data={"amount": amount}, user_message=f"{message}.")
+
         # ── Search Google ───────────────────────────────────
         if action == "search_google":
             query = params.get("query", "")
@@ -560,6 +657,12 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "", _s
                 result = actions["tell_date"]()
                 message = (result or "I checked the date.").strip()
                 return ActionResult.ok(action, message, data={"date": message}, user_message=message)
+
+        if action == "read_news":
+            if "read_news" in actions:
+                result = actions["read_news"]()
+                message = (result or "I checked the news.").strip()
+                return ActionResult.ok(action, message, data={"news": message}, user_message=message)
 
         # ── File operations ─────────────────────────────────
         if action == "read_file":
@@ -755,6 +858,9 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "", _s
 
         # ── Conversational intents → Gemini for answer ─────────
         if action in ("answer_question", "general_chat"):
+            if _is_headless_source(_source):
+                response_text = "I'm ARC — built to help control this laptop. Ask me to open apps, search files, send drafts, change volume, or check things."
+                return ActionResult.ok(action, response_text, user_message=response_text)
             try:
                 result = ask_gemini(text)
                 response_text = result.get("response", "I'm not sure about that.")
@@ -1237,6 +1343,19 @@ def route(command: str, actions: dict, _source: str = "voice", _request_id: str 
         has_context_ref=has_ctx,
         context_resolved=was_resolved if has_ctx else False,
     )
+    missing_params = get_missing_params(intent.action, params)
+    if _is_headless_source(_source):
+        confidence_floor = _remote_confidence_floor(intent.action, params, missing_params)
+        if confidence_floor and conf_result.score < confidence_floor:
+            conf_result.score = confidence_floor
+            conf_result.tier = (
+                ConfidenceTier.HIGH if confidence_floor > 0.8 else ConfidenceTier.MEDIUM
+            )
+            conf_result.should_execute = True
+            conf_result.should_confirm = intent.action in DESTRUCTIVE_ACTIONS
+            conf_result.recommendation = (
+                f"Remote deterministic action ({confidence_floor:.2f}) — using local executor."
+            )
     print(f"🎯 Confidence: {conf_result.score:.2f} ({conf_result.tier.value}) — {conf_result.recommendation}")
     update_thinking(command=command, intent=intent.action, confidence=conf_result.score, stage="Confidence")
 
@@ -1406,7 +1525,7 @@ def route(command: str, actions: dict, _source: str = "voice", _request_id: str 
 
         # ── Background Gemini: gated, only for interesting successes ─
         result_str = result.summary if result.success else f"Error: {result.error}"
-        if should_enhance(intent.action, result_str):
+        if not _is_headless_source(_source) and should_enhance(intent.action, result_str):
             generate_followup(
                 action=intent.action,
                 command=command,
@@ -1544,8 +1663,59 @@ def route(command: str, actions: dict, _source: str = "voice", _request_id: str 
         if _is_headless_source(_source):
             resp = ask_user_input(question, _source, _request_id, event_type="clarify")
             if resp:
-                from core.runtime import store_result
-                return route(f"{command} {resp}", actions, _source=_source, _request_id=_request_id)
+                params = _apply_slot_reply(params, intent.action, missing_param or "target", resp)
+
+                for _ in range(5):
+                    remaining = get_missing_params(intent.action, params)
+                    if not remaining:
+                        break
+                    next_question, next_param = build_single_slot_question(
+                        intent.action, params, remaining
+                    )
+                    if not next_question:
+                        next_question = get_clarification(intent.action, params)
+                        next_param = remaining[0]
+                    next_resp = ask_user_input(next_question, _source, _request_id, event_type="clarify")
+                    if not next_resp:
+                        from core.command_models import CommandResponse
+                        from core.runtime import store_result
+                        store_result(CommandResponse.fail(_request_id, intent.action, "Clarification cancelled.", source=_source))
+                        return True
+                    params = _apply_slot_reply(params, intent.action, next_param or "target", next_resp)
+
+                ack_text = get_ack(intent.action)
+                if ack_text:
+                    speak_ack(ack_text)
+
+                before_state = _capture_before_state(intent.action, params)
+                result = _execute_action(intent.action, params, actions, text=cleaned, _source=_source, _request_id=_request_id)
+                result = _verify_action_result(intent.action, params, result, before_state, actions=actions, text=cleaned)
+                spoken_text = get_result_text(result)
+                if intent.action not in {"volume_up", "volume_down", "brightness_up", "brightness_down"}:
+                    speak_result(spoken_text)
+
+                update_context(
+                    action=intent.action,
+                    target=params.get("target", params.get("name", params.get("query", ""))),
+                    result=result.summary,
+                    command=cleaned,
+                )
+
+                latency_ms = (time.time() - start_time) * 1000
+                full_spoken = f"{ack_text} {spoken_text}".strip() if ack_text else spoken_text
+                log_interaction(
+                    you_said=command, action_taken=intent.action,
+                    was_understood=True, intent_source=intent.source,
+                    confidence=intent.confidence, latency_ms=latency_ms,
+                    normalized_text=cleaned, params=params,
+                    spoken_text=full_spoken,
+                )
+                save_exchange(command, full_spoken)
+                _store_command_response(
+                    _request_id, _source, intent.action, params,
+                    result, spoken_text, start_time, ack_text,
+                )
+                return True
             else:
                 from core.runtime import store_result
                 from core.command_models import CommandResponse
@@ -1586,6 +1756,15 @@ def route(command: str, actions: dict, _source: str = "voice", _request_id: str 
     # ── DECISION: GEMINI FALLBACK ────────────────────────────
     elif safety.decision == SafetyDecision.GEMINI:
         if _is_headless_source(_source):
+            if intent.action in ("general_chat", "answer_question"):
+                result = _execute_action(intent.action, params, actions, text=cleaned, _source=_source, _request_id=_request_id)
+                spoken_text = get_result_text(result)
+                _store_command_response(
+                    _request_id, _source, intent.action, params,
+                    result, spoken_text, start_time,
+                )
+                return True
+
             # Remote/API mode should never hard-depend on voice/Gemini loops.
             # Fail closed with a clear message so the controller can rephrase.
             msg = "I couldn't understand that well enough to act. Please rephrase."
@@ -1617,21 +1796,25 @@ def _handle_compound_file(
     normalized_command: str,
     actions: dict,
     start_time: float,
+    _source: str = "voice",
+    _request_id: str = "",
 ) -> bool:
     """
     Handles compound create+write commands like:
     'create a file called notes.txt and write hello world in it'
     """
-    from core.speech_to_text import listen as stt_listen
-
     params = extract_compound_file_params(normalized_command)
     filename = params.get("filename", "")
     location = params.get("location") or "desktop"
     content  = params.get("content")
 
     if not filename:
-        speak_result("What do you want me to name the file?")
-        name_response = stt_listen()
+        name_response = ask_user_input(
+            "What do you want me to name the file?",
+            _source,
+            _request_id,
+            event_type="clarify",
+        )
         if name_response and name_response.strip():
             # Use param extractor to clean up user's response like "name it hello"
             from core.param_extractors import extract_filename
@@ -1651,8 +1834,12 @@ def _handle_compound_file(
             filename = filename + detected_fmt
             print(f"📄 Auto-detected format: {detected_fmt}")
         else:
-            speak_result(f"What format should {filename} be? Like text, document, python?")
-            fmt_response = stt_listen()
+            fmt_response = ask_user_input(
+                f"What format should {filename} be? Like text, document, python?",
+                _source,
+                _request_id,
+                event_type="clarify",
+            )
             if fmt_response:
                 ext = _resolve_format(fmt_response)
                 filename = filename + ext
@@ -1668,8 +1855,12 @@ def _handle_compound_file(
 
     # Step 2: Write content (or ask for it)
     if not content:
-        speak_result("What do you want me to write in it?")
-        content_response = stt_listen()
+        content_response = ask_user_input(
+            "What do you want me to write in it?",
+            _source,
+            _request_id,
+            event_type="clarify",
+        )
         if content_response and content_response.strip():
             # Check if user is rejecting / correcting
             response_lower = content_response.strip().lower()
@@ -1726,7 +1917,24 @@ def _handle_compound_file(
     )
     save_exchange(raw_command, spoken_text)
 
-    if should_enhance("create_file", result_summary):
+    if _is_headless_source(_source):
+        _store_command_response(
+            _request_id,
+            _source,
+            "create_and_edit_file",
+            {"filename": filename, "content": content, "location": location},
+            ActionResult.ok(
+                "create_and_edit_file",
+                result_summary,
+                data={"filename": filename, "content": content, "location": location},
+                user_message=spoken_text,
+            ),
+            spoken_text,
+            start_time,
+            "Creating and writing.",
+        )
+
+    if not _is_headless_source(_source) and should_enhance("create_file", result_summary):
         generate_followup(
             action="create_file",
             command=raw_command,

@@ -427,6 +427,9 @@ def send_email(to: str = "", subject: str = "", body: str = "", _source: str = "
         if not _is_headless_source(_source):
             speak("Review and send when you're ready.")
         return "Draft opened in Gmail"
+
+    return "Cancelled — email draft not opened"
+
 from control.file_search import search_files_advanced_multiple
 from remote.job_store import ask_user, get_job_store, JobEvent
 
