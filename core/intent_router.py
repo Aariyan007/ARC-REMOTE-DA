@@ -428,6 +428,16 @@ def _extract_params(action: str, text: str) -> dict:
     elif action == "search_file":
         file_params = extract_filename(text)
         query = file_params.get("filename") or extract_query(text)
+        if not query:
+            # Last resort: strip common filler words and grab the last meaningful word
+            import re as _re
+            _noise = {"a", "an", "the", "my", "file", "find", "search", "for", "in",
+                       "on", "this", "that", "laptop", "computer", "mac", "desktop",
+                       "nono", "please", "can", "you", "i", "want", "to", "look",
+                       "serach", "seach", "it", "me", "some"}
+            words = [w for w in _re.findall(r'\w+', text.lower()) if w not in _noise and len(w) > 1]
+            if words:
+                query = words[-1]  # Use the last significant word
         if query:
             params["query"] = query
 
@@ -613,11 +623,18 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "", _s
 
         if action == "search_file":
             query = params.get("query", "")
+            if not query:
+                # No filename extracted — ask the user
+                return ActionResult.fail(
+                    action, "No filename specified",
+                    user_message="What file are you looking for? Tell me the name."
+                )
             if query and "search_files_advanced" in actions:
                 best_match = actions["search_files_advanced"](query)
                 if best_match:
-                    return ActionResult.ok(action, f"Found file: {os.path.basename(best_match)}", data={"filename": best_match})
-                return ActionResult.fail(action, f"Could not find a file matching '{query}'", data={"query": query})
+                    return ActionResult.ok(action, f"Found file: {os.path.basename(best_match)}", data={"filename": best_match, "path": best_match})
+                return ActionResult.fail(action, f"Could not find a file matching '{query}'", data={"query": query},
+                                         user_message=f"I couldn't find any file matching '{query}' on your Desktop, Documents, or Downloads.")
             # fallback to old search
             elif query and "search_file" in actions:
                 actions["search_file"](query)
@@ -858,15 +875,13 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "", _s
 
         # ── Conversational intents → Gemini for answer ─────────
         if action in ("answer_question", "general_chat"):
-            if _is_headless_source(_source):
-                response_text = "I'm ARC — built to help control this laptop. Ask me to open apps, search files, send drafts, change volume, or check things."
-                return ActionResult.ok(action, response_text, user_message=response_text)
             try:
                 result = ask_gemini(text)
                 response_text = result.get("response", "I'm not sure about that.")
                 return ActionResult.ok(action, response_text, user_message=response_text)
             except Exception as e:
-                return ActionResult.fail(action, str(e), user_message="My brain is a bit slow right now.")
+                fallback = "I'm ARC — I can help control this laptop. Ask me to open apps, find files, or send emails."
+                return ActionResult.ok(action, fallback, user_message=fallback)
 
         # ── Generic action ──────────────────────────────────
         if action in actions:
@@ -1756,17 +1771,57 @@ def route(command: str, actions: dict, _source: str = "voice", _request_id: str 
     # ── DECISION: GEMINI FALLBACK ────────────────────────────
     elif safety.decision == SafetyDecision.GEMINI:
         if _is_headless_source(_source):
-            if intent.action in ("general_chat", "answer_question"):
-                result = _execute_action(intent.action, params, actions, text=cleaned, _source=_source, _request_id=_request_id)
-                spoken_text = get_result_text(result)
-                _store_command_response(
-                    _request_id, _source, intent.action, params,
-                    result, spoken_text, start_time,
-                )
-                return True
+            # Try Gemini for all headless commands — chat, questions, and ambiguous intents
+            try:
+                gemini_result = ask_gemini(command)
+                gemini_type = gemini_result.get("type", "chat")
+                gemini_action = gemini_result.get("action")
+                gemini_response = gemini_result.get("response", "")
 
-            # Remote/API mode should never hard-depend on voice/Gemini loops.
-            # Fail closed with a clear message so the controller can rephrase.
+                if gemini_type == "chat" or gemini_action in ("answer_question", "general_chat", None):
+                    # Conversational response — return as result
+                    response_text = gemini_response or "I'm not sure about that."
+                    result = ActionResult.ok(
+                        intent.action, response_text, user_message=response_text
+                    )
+                    _store_command_response(
+                        _request_id, _source, intent.action, params,
+                        result, response_text, start_time,
+                    )
+                    return True
+
+                elif gemini_type == "action" and gemini_action:
+                    # Gemini resolved an action — execute it
+                    ack_text = get_ack(gemini_action)
+                    merged_params = _merge_gemini_params(gemini_result, params)
+                    before_state = _capture_before_state(gemini_action, merged_params)
+                    exec_result = _execute_action(
+                        gemini_action, merged_params, actions,
+                        text=command, _source=_source, _request_id=_request_id,
+                    )
+                    exec_result = _verify_action_result(
+                        gemini_action, merged_params, exec_result,
+                        before_state, actions=actions, text=command,
+                    )
+                    spoken_text = get_result_text(exec_result)
+                    _store_command_response(
+                        _request_id, _source, gemini_action, merged_params,
+                        exec_result, spoken_text, start_time, ack_text or "",
+                    )
+                    # Learn from Gemini resolution
+                    if gemini_action not in ("answer_question", "chat_response"):
+                        learn(
+                            normalized_input=cleaned,
+                            action=gemini_action,
+                            params=merged_params,
+                            confidence=1.0,
+                            source="gemini",
+                        )
+                    return True
+            except Exception as e:
+                print(f"⚠️  Gemini fallback error for headless: {e}")
+
+            # Gemini failed — return a clear error
             msg = "I couldn't understand that well enough to act. Please rephrase."
             try:
                 from core.command_models import CommandResponse, ExecutionStatus

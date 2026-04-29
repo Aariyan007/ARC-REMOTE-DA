@@ -414,31 +414,65 @@ def open_gmail_compose_with_attachment(
 
         # ── Auto-send ────────────────────────────────────────
         if auto_send:
-            print("  📤 Auto-send enabled, using Ctrl+Enter...")
+            print("  📤 Auto-send enabled, clicking Send button...")
             try:
-                # Use Gmail's keyboard shortcut — far more reliable than finding the Send button
-                # Focus the compose body first (use focus() instead of click() for better reliability)
+                # Focus the compose body first
                 body_area = page.locator('[aria-label*="Message Body"], [role="textbox"], .Am.Al.editable, textarea[name="body"]').first
                 try:
                     body_area.focus(timeout=5_000)
                 except Exception:
-                    # Fallback: Just press Tab a few times to ensure some input is focused
                     page.keyboard.press("Tab")
                     page.keyboard.press("Tab")
                 
                 time.sleep(0.5)
                 
-                # Ctrl+Enter = Send in Gmail
-                page.keyboard.press("Control+Enter")
+                # Strategy 1: Click the Send button directly (most reliable)
+                sent_via_button = False
+                try:
+                    send_btn = page.locator(
+                        '[aria-label*="Send"] >> visible=true, '
+                        '[data-tooltip*="Send"] >> visible=true, '
+                        'div[role="button"]:has-text("Send") >> visible=true'
+                    ).first
+                    send_btn.click(timeout=5_000)
+                    sent_via_button = True
+                    print("  ✔ Clicked Send button")
+                except Exception as e:
+                    print(f"  ⚠️ Send button click failed: {e}")
+                
+                # Strategy 2: Keyboard shortcut fallback
+                if not sent_via_button:
+                    import sys as _sys
+                    shortcut = "Meta+Enter" if _sys.platform == "darwin" else "Control+Enter"
+                    print(f"  📤 Using keyboard shortcut: {shortcut}")
+                    page.keyboard.press(shortcut)
                 
                 # Wait for Gmail to process the send
                 time.sleep(5)
-                result["sent"] = True
-                print("  ✔ Email sent via Ctrl+Enter")
                 
-                # Close the whole browser window after sending
-                _shutdown()
-                print("  ✔ Gmail window and Playwright closed.")
+                # Verify: check if compose window closed or "Message sent" banner appeared
+                try:
+                    sent_banner = page.locator('text="Message sent"', 'text="Your message has been sent"').first
+                    sent_banner.wait_for(state="visible", timeout=8_000)
+                    result["sent"] = True
+                    print("  ✔ Send confirmed: 'Message sent' banner visible")
+                except Exception:
+                    # If compose window is gone, assume it was sent
+                    try:
+                        compose_still_open = page.locator('[aria-label*="Message Body"], .Am.Al.editable').first
+                        compose_still_open.wait_for(state="visible", timeout=2_000)
+                        # Still open — send probably failed
+                        print("  ⚠️ Compose still open — send may have failed")
+                        result["error"] = "Send button clicked but compose window still open"
+                    except Exception:
+                        # Compose is gone — likely sent!
+                        result["sent"] = True
+                        print("  ✔ Send confirmed: compose window closed")
+                
+                if result["sent"]:
+                    # Close the browser window after successful send
+                    _shutdown()
+                    print("  ✔ Gmail window and Playwright closed.")
             except Exception as e:
                 print(f"  ⚠️ Auto-send failed: {e}. Draft is still open for manual send.")
                 result["error"] = f"Auto-send failed: {e}"

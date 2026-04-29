@@ -100,7 +100,7 @@ def extract_query(text: str) -> Optional[str]:
     """
     # "search for X", "search X", "look up X", "google X", "find X"
     patterns = [
-        r'(?:search|google|look up|find|look for|search for|browse)\s+(?:for\s+)?(.+)',
+        r'(?:search|google|look up|find|look for|search for|browse|serach|seach)\s+(?:for\s+)?(.+)',
         r'(?:what is|what are|who is|how to|why does|when did)\s+(.+)',
     ]
     for pattern in patterns:
@@ -109,6 +109,8 @@ def extract_query(text: str) -> Optional[str]:
             query = match.group(1).strip()
             # Clean trailing noise
             query = re.sub(r'\b(on google|on the web|online|on safari|on chrome)\b', '', query).strip()
+            # Clean leading noise words like "the file", "a document", "my"
+            query = re.sub(r'^(?:the\s+)?(?:file|document|folder|a\s+file|my\s+file|my)\s+(?:named?|called)?\s*', '', query, flags=re.IGNORECASE).strip()
             if query:
                 return query
 
@@ -221,9 +223,9 @@ def extract_filename(text: str) -> dict:
     bare_patterns = [
         r'(?:called|named)\s+(\S+)',                                   # "file called ideas"
         r'(?:contents?\s+(?:of|in|from))\s+(?:the\s+)?(\w+)',         # "contents of superman", "contents in resume"
-        r'(?:create|make|delete|read|open|copy)\s+(?:a\s+)?(?:my\s+)?(?:file\s+)?(?:called\s+|named\s+)?(\w+)(?:\s+file)?',  # "create superman file", "read my notes"
+        r'(?:create|make|delete|read|open|copy|search|find|look)\s+(?:a\s+)?(?:my\s+)?(?:file\s+)?(?:called\s+|named\s+)?(\w+)(?:\s+file)?',  # "create superman file", "search my notes"
         r'(?:create|make)\s+(\w+)\s+(?:file|document|note)',           # "create superman file"
-        r'(?:create|make|read|delete|open|copy)\s+(?:a\s+)?(\w+)$',   # "create ideas" / "read notes" (at end)
+        r'(?:create|make|read|delete|open|copy|search|find)\s+(?:a\s+)?(\w+)$',   # "create ideas" / "find notes" (at end)
     ]
     for pattern in bare_patterns:
         match = re.search(pattern, text)

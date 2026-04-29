@@ -409,9 +409,26 @@ def send_email(to: str = "", subject: str = "", body: str = "", _source: str = "
         for word in ["yes", "yeah", "yep", "sure", "do it", "send", "open", "go"]
     ):
         if not _is_headless_source(_source):
-            speak("Opening Gmail to compose.")
+            speak("Sending the email now.")
 
-        # ── Proper URL construction — fixes Issue 1 ──────────
+        # ── Try Playwright auto-send first ───────────────────
+        try:
+            res = draft_email_with_attachment(
+                to=to,
+                subject=subject,
+                body=body,
+                attachment_path=None,
+                announce=(not _is_headless_source(_source)),
+                auto_send=True,
+            )
+            if res.get("sent"):
+                return f"Email sent to {to} with subject '{subject}'."
+            elif res.get("draft_opened"):
+                return "Draft opened in Gmail — please click send manually."
+        except Exception as e:
+            print(f"⚠️  Playwright send failed ({e}), falling back to URL open.")
+
+        # ── Fallback: open compose URL in default browser ────
         params = urllib.parse.urlencode(
             {
                 "to":      _safe(to),
@@ -420,13 +437,12 @@ def send_email(to: str = "", subject: str = "", body: str = "", _source: str = "
             },
             quote_via=urllib.parse.quote,
         )
-
         url = f"https://mail.google.com/mail/?view=cm&fs=1&{params}"
-        print(f"📧 Gmail URL: {url[:120]}...")
+        print(f"📧 Gmail URL (fallback): {url[:120]}...")
         webbrowser.open(url)
         if not _is_headless_source(_source):
-            speak("Review and send when you're ready.")
-        return "Draft opened in Gmail"
+            speak("Draft opened. Please click send manually.")
+        return "Draft opened in Gmail — auto-send was not available."
 
     return "Cancelled — email draft not opened"
 

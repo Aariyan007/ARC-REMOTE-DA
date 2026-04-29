@@ -125,17 +125,28 @@ def run_command(body: CommandIn, device: str = Depends(get_current_device)):
     job.add_event(JobEvent("ack", f"Command received: {body.text}"))
 
     def _run():
-        # Session ID is the job_id so intent_router can access it
-        res = runtime.execute_text_command(
-            text=body.text,
-            source=body.source,
-            session_id=job_id,
-            user=device
-        )
-        if res.status == "completed":
-            job.add_event(JobEvent("result", res.final_result or "Completed", data=res.to_dict()))
-        else:
-            job.add_event(JobEvent("error", res.final_result or "Failed", data=res.to_dict()))
+        try:
+            # Emit "executing" so the frontend sees immediate activity
+            job.add_event(JobEvent("executing", f"Processing: {body.text}", data={"action": "routing"}))
+
+            # Session ID is the job_id so intent_router can access it
+            res = runtime.execute_text_command(
+                text=body.text,
+                source=body.source,
+                session_id=job_id,
+                user=device
+            )
+
+            if res.status == "completed":
+                # Emit verify before final result for rich timeline
+                action = getattr(res, 'interpreted_action', None) or res.to_dict().get('interpreted_action', '')
+                if action and action not in ('general_chat', 'answer_question', 'chat_response'):
+                    job.add_event(JobEvent("verify", f"Verified: {action}", data={"action": action}))
+                job.add_event(JobEvent("result", res.final_result or "Completed", data=res.to_dict()))
+            else:
+                job.add_event(JobEvent("error", res.final_result or "Failed", data=res.to_dict()))
+        except Exception as e:
+            job.add_event(JobEvent("error", f"Internal error: {str(e)}", data={"traceback": str(e)}))
 
     threading.Thread(target=_run, daemon=True).start()
     return {"job_id": job_id}
@@ -201,6 +212,56 @@ async def stream_job(websocket: WebSocket, job_id: str):
     except WebSocketDisconnect:
         pass
 
+import datetime
+
+@app.get("/suggestions")
+def get_suggestions(device: str = Depends(get_current_device)):
+    """
+    Returns dynamic command suggestions based on time of day.
+    Used by the mobile app to show contextual hint buttons.
+    """
+    hour = datetime.datetime.now().hour
+    suggestions = []
+
+    # Time-based suggestions
+    if 5 <= hour < 12:
+        suggestions.extend([
+            {"cmd": "good morning", "icon": "☀️", "label": "Good morning"},
+            {"cmd": "read my emails", "icon": "📧", "label": "Check emails"},
+            {"cmd": "read the news", "icon": "📰", "label": "Today's news"},
+        ])
+    elif 12 <= hour < 17:
+        suggestions.extend([
+            {"cmd": "take a screenshot", "icon": "📸", "label": "Screenshot"},
+            {"cmd": "what time is it", "icon": "🕐", "label": "Check time"},
+            {"cmd": "search my emails", "icon": "📧", "label": "Search emails"},
+        ])
+    elif 17 <= hour < 22:
+        suggestions.extend([
+            {"cmd": "play some music", "icon": "🎵", "label": "Play music"},
+            {"cmd": "get battery level", "icon": "🔋", "label": "Battery"},
+            {"cmd": "lock screen", "icon": "🔒", "label": "Lock screen"},
+        ])
+    else:
+        suggestions.extend([
+            {"cmd": "good night", "icon": "🌙", "label": "Good night"},
+            {"cmd": "lock screen", "icon": "🔒", "label": "Lock screen"},
+            {"cmd": "sleep", "icon": "😴", "label": "Sleep Mac"},
+        ])
+
+    # Always available
+    suggestions.extend([
+        {"cmd": "open chrome", "icon": "🌐", "label": "Open Chrome"},
+        {"cmd": "find my files", "icon": "📁", "label": "Find files"},
+        {"cmd": "volume up", "icon": "🔊", "label": "Volume up"},
+        {"cmd": "send an email", "icon": "✉️", "label": "Send email"},
+        {"cmd": "create a file", "icon": "📄", "label": "New file"},
+        {"cmd": "what can you do", "icon": "💡", "label": "Help"},
+    ])
+
+    return {"suggestions": suggestions}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+

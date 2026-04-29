@@ -201,6 +201,19 @@ INTENT_REGISTRY = {
         "where is my file", "locate file", "find my",
         "find a file named", "find file named",
         "find a text file named", "search for a text file",
+        # ── Natural language without extensions ──────────────
+        "find abc", "find resume", "find my notes",
+        "search for abc", "look for resume",
+        "where is my resume", "where is the report",
+        "find the project file", "look for my homework",
+        "search for my document", "find my presentation",
+        "locate my budget file", "where did I save that",
+        "find a file called abc", "search for a file named report",
+        "find my file abc", "look for file named notes",
+        # ── Find and send compound ───────────────────────────
+        "find abc and send it to", "find resume and email it to",
+        "search for report and send to", "look for notes and email",
+        "find my file and send it", "get the file and email it",
     ],
 
     # ── Email ────────────────────────────────────────────────
