@@ -195,6 +195,45 @@ def _voice_input_with_retry(
     return ""
 
 
+# ─── Direct Gmail API Send ───────────────────────────────────
+
+def _send_via_gmail_api(to: str, subject: str, body: str) -> dict:
+    """
+    Sends an email directly via the Gmail API — no browser, no Playwright.
+    Uses the existing OAuth2 credentials (token.json).
+    
+    Returns:
+        {"sent": True, "message_id": "..."} on success
+        {"sent": False, "error": "..."} on failure
+    """
+    from email.mime.text import MIMEText
+
+    try:
+        service = get_gmail_service()
+        
+        # Construct the MIME message
+        message = MIMEText(body)
+        message["to"] = to
+        message["subject"] = subject
+        
+        # Encode to base64url
+        raw = base64.urlsafe_b64encode(message.as_bytes()).decode("utf-8")
+        
+        # Send via API
+        sent = service.users().messages().send(
+            userId="me",
+            body={"raw": raw}
+        ).execute()
+        
+        msg_id = sent.get("id", "unknown")
+        print(f"📧 ✅ Email sent via Gmail API! Message ID: {msg_id}")
+        return {"sent": True, "message_id": msg_id}
+        
+    except Exception as e:
+        print(f"📧 ❌ Gmail API send error: {e}")
+        return {"sent": False, "error": str(e)}
+
+
 # ─── Gmail Service ───────────────────────────────────────────
 
 def get_gmail_service():
@@ -411,7 +450,15 @@ def send_email(to: str = "", subject: str = "", body: str = "", _source: str = "
         if not _is_headless_source(_source):
             speak("Sending the email now.")
 
-        # ── Try Playwright auto-send first ───────────────────
+        # ── Strategy 1: Gmail API direct send (no browser needed) ──
+        try:
+            result = _send_via_gmail_api(to, subject, body)
+            if result.get("sent"):
+                return f"Email sent to {to} with subject '{subject}'."
+        except Exception as e:
+            print(f"⚠️  Gmail API send failed ({e}), trying fallback...")
+
+        # ── Strategy 2: Playwright auto-send ─────────────────────
         try:
             res = draft_email_with_attachment(
                 to=to,
@@ -428,7 +475,7 @@ def send_email(to: str = "", subject: str = "", body: str = "", _source: str = "
         except Exception as e:
             print(f"⚠️  Playwright send failed ({e}), falling back to URL open.")
 
-        # ── Fallback: open compose URL in default browser ────
+        # ── Strategy 3: Fallback — open compose URL ──────────────
         params = urllib.parse.urlencode(
             {
                 "to":      _safe(to),
@@ -560,10 +607,11 @@ def draft_email_with_attachment(
     body: str = "",
     attachment_path: str = None,
     announce: bool = True,
+    auto_send: bool = False,
 ) -> dict:
     """
-    Opens Gmail compose with the given fields pre-filled, then attaches
-    a file via Playwright browser automation.
+    Opens Gmail compose with the given fields pre-filled, optionally attaches
+    a file via Playwright browser automation, and optionally auto-sends.
 
     Args:
         to:              Recipient email address
@@ -571,12 +619,14 @@ def draft_email_with_attachment(
         body:            Email body text
         attachment_path: Absolute path to the file to attach (optional)
         announce:        If True, speak status updates (voice mode)
+        auto_send:       If True, automatically click Send after composing
 
     Returns:
         {
             "success": bool,
             "draft_opened": bool,
             "attachment_verified": bool,
+            "sent": bool,
             "error": str
         }
     """
@@ -584,6 +634,7 @@ def draft_email_with_attachment(
         "success": False,
         "draft_opened": False,
         "attachment_verified": False,
+        "sent": False,
         "error": "",
     }
 
@@ -606,35 +657,38 @@ def draft_email_with_attachment(
     compose_url = f"https://mail.google.com/mail/?view=cm&fs=1&{params}"
     print(f"📧 Gmail compose URL: {compose_url[:100]}...")
 
-    # ── Attempt Playwright attach ——————————————————————
-    if attachment_path:
+    # ── Use Playwright when we need auto-send OR have an attachment ──
+    if auto_send or attachment_path:
         try:
             from control.playwright_browser import open_gmail_compose_with_attachment
-            attach_result = open_gmail_compose_with_attachment(
+            pw_result = open_gmail_compose_with_attachment(
                 to=to,
                 subject=subject,
                 body=body,
                 file_path=attachment_path,
-                auto_send=True,
+                auto_send=auto_send,
             )
-            result["draft_opened"] = True
-            result["attachment_verified"] = attach_result.get("attachment_verified", False)
-            result["sent"] = attach_result.get("sent", False)
-            result["success"] = True
+            result["draft_opened"] = pw_result.get("draft_opened", False)
+            result["attachment_verified"] = pw_result.get("attachment_verified", False)
+            result["sent"] = pw_result.get("sent", False)
+            result["success"] = result["draft_opened"]
             if announce:
-                if result.get("sent"):
-                    speak(f"Done. Email sent to {to} with {os.path.basename(attachment_path)} attached.")
-                elif result["attachment_verified"]:
-                    speak(f"Draft opened with attachment. Please click send manually.")
+                if result["sent"]:
+                    msg = f"Done. Email sent to {to}."
+                    if attachment_path:
+                        msg = f"Done. Email sent to {to} with {os.path.basename(attachment_path)} attached."
+                    speak(msg)
+                elif result["draft_opened"]:
+                    speak("Draft opened. Please click send manually.")
                 else:
-                    speak("Gmail opened. Please verify the attachment and send manually.")
-            print(f"  ✔ Draft opened. Attachment: {result['attachment_verified']}, Sent: {result.get('sent', False)}")
+                    speak("Gmail opened. Please verify and send manually.")
+            print(f"  ✔ Playwright result: draft={result['draft_opened']}, sent={result['sent']}")
             return result
         except Exception as e:
-            print(f"  ⚠️  Playwright attach failed ({e}), falling back to URL open.")
+            print(f"  ⚠️  Playwright failed ({e}), falling back to URL open.")
             result["error"] = str(e)
 
-    # ── Fallback: open compose URL in default browser (no attachment) ———
+    # ── Fallback: open compose URL in default browser (no auto-send) ──
     try:
         webbrowser.open(compose_url)
         result["draft_opened"] = True

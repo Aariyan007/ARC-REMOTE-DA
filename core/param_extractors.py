@@ -316,22 +316,18 @@ def extract_file_edit_params(text: str) -> dict:
             result["content"] = content
             return result
 
-    # Pattern 3: "write/add <content> in/to <filename>"
-    match_content_first = re.search(
-        r'(?:write|add|append|put|type|insert)\s+(.+?)\s+'
-        r'(?:in|inside|to|into|on)\s+(?:that\s+|the\s+)?'
-        r'(?:particular\s+)?(?:file\s+)?(?:name[d]?\s+|called\s+)?'
-        r'([\w\.]+)\s*$', text)
-    if match_content_first:
-        content = match_content_first.group(1).strip()
-        fname = match_content_first.group(2).strip()
-        if content and fname not in {"the", "a", "that", "this", "my", "file", "document",
-                                       "note", "it", "particular", "now", "just", "right",
-                                       "here", "there", "please", "first", "last", "one",
-                                       "create", "make", "delete", "read", "open", "copy", "write", "add"}:
+    # Pattern 3b: "add/write X to that file WITH <content>"
+    # Handles: "add content to that file with hi this is testing"
+    with_match = re.search(
+        r'(?:write|add|append|put|type|insert)\s+.+?'
+        r'(?:in|inside|to|into|on)\s+(?:that|the|a|this|my)\s+'
+        r'(?:particular\s+)?(?:file|document|note)\s+'
+        r'(?:with|saying|containing)\s+(.+)',
+        text, re.IGNORECASE)
+    if with_match:
+        content = with_match.group(1).strip()
+        if content and not _is_meta_content(content):
             result["content"] = content
-            if not result["filename"]:
-                result["filename"] = fname
             return result
 
     # Pattern 4: Generic "write/add <content>" (filename from context)
@@ -348,11 +344,13 @@ def extract_file_edit_params(text: str) -> dict:
                 rf'(?:name|named|called)?\s*{fname}.*$',
                 '', content, flags=re.IGNORECASE).strip()
 
-        # Clean generic references
+        # Clean generic file references — but STOP at content-introducing words
+        # "content to that file with hi" → keep "hi" after "with"
         content = re.sub(
             r'\s*(?:in|inside|to|into|on)\s+(?:that|the|a|this)\s+'
-            r'(?:particular\s+)?(?:file|document|note).*$',
-            '', content, flags=re.IGNORECASE).strip()
+            r'(?:particular\s+)?(?:file|document|note)'
+            r'(?:\s+(?:with|saying|containing)\s+)?',
+            ' ', content, flags=re.IGNORECASE).strip()
         content = re.sub(
             r'\s*(?:in|inside|to|into|on)\s+(?:it|that|this)(?:\s+file)?$',
             '', content, flags=re.IGNORECASE).strip()

@@ -454,9 +454,29 @@ def _extract_params(action: str, text: str) -> dict:
 
     elif action == "edit_file":
         params.update(extract_file_edit_params(text))
+        # ── Gemini fallback when regex can't extract content ──
+        if not params.get("content"):
+            gemini_params = _gemini_extract_file_params(text)
+            if gemini_params:
+                if gemini_params.get("content"):
+                    params["content"] = gemini_params["content"]
+                    print(f"🤖 Gemini extracted content: '{params['content']}'")
+                if gemini_params.get("filename") and not params.get("filename"):
+                    params["filename"] = gemini_params["filename"]
+                    print(f"🤖 Gemini extracted filename: '{params['filename']}'")
+                if gemini_params.get("location") and not params.get("location"):
+                    params["location"] = gemini_params["location"]
 
     elif action == "create_and_edit_file":
         params.update(extract_compound_file_params(text))
+        # ── Gemini fallback for compound create+edit ─────────
+        if not params.get("content"):
+            gemini_params = _gemini_extract_file_params(text)
+            if gemini_params:
+                if gemini_params.get("content"):
+                    params["content"] = gemini_params["content"]
+                if gemini_params.get("filename") and not params.get("filename"):
+                    params["filename"] = gemini_params["filename"]
 
     # Auto-fill missing filename from file context cache
     if action in ("edit_file", "read_file", "delete_file", "rename_file", "copy_file"):
@@ -485,6 +505,49 @@ def _get_music_agent():
         from core.agents.music_agent import MusicAgent
         return MusicAgent()
     except Exception:
+        return None
+
+
+# ── Gemini-Powered File Param Extraction ─────────────────────
+def _gemini_extract_file_params(text: str) -> dict:
+    """
+    Uses Gemini to extract filename, content, and location from a
+    natural language file command. Only called when regex fails.
+    Returns dict with 'filename', 'content', 'location' or None on error.
+    """
+    try:
+        import json
+        from google import genai
+        client = genai.Client(api_key=os.getenv("API_KEY"))
+
+        prompt = f"""Extract file operation parameters from this command.
+Return ONLY a JSON object with these keys (use null if not found):
+
+- "filename": the target filename (e.g. "notes.txt", "superman.txt")
+- "content": the actual text content to write/add (NOT meta-words like "content", "text", "stuff")
+- "location": where the file is ("desktop", "downloads", "documents", or null)
+
+Examples:
+- "add content to that file with hi this is testing" → {{"filename": null, "content": "hi this is testing", "location": null}}
+- "write hello world in notes.txt" → {{"filename": "notes.txt", "content": "hello world", "location": null}}
+- "add some text to superman.txt saying I am the best" → {{"filename": "superman.txt", "content": "I am the best", "location": null}}
+- "put stuff in the file" → {{"filename": null, "content": null, "location": null}}
+- "write in create.txt on desktop the message welcome home" → {{"filename": "create.txt", "content": "welcome home", "location": "desktop"}}
+
+Command: "{text}"
+
+Return ONLY JSON, nothing else."""
+
+        response = client.models.generate_content(
+            model="gemini-3.1-flash-lite-preview",
+            contents=prompt
+        )
+        raw = response.text.strip().replace("```json", "").replace("```", "").strip()
+        data = json.loads(raw)
+        print(f"🤖 Gemini file params: {data}")
+        return data
+    except Exception as e:
+        print(f"⚠️  Gemini file param extraction failed: {e}")
         return None
 
 
