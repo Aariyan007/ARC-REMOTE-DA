@@ -40,8 +40,10 @@ credentials.json
 token.json
 hf_cache/
 .friend/
-temp_*.wav
+*.wav
+*.mp3
 data/voice_samples/
+data/*.json
 logs/
 data/remote.db
 
