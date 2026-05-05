@@ -6,6 +6,7 @@
 
 import jobStore from '../state/jobStore.js';
 import { renderEventCard } from './EventCard.js';
+import { isMultiStepJob, renderWorkflowStepper } from './WorkflowStepper.js';
 import { escapeHtml, truncate } from '../utils/helpers.js';
 import appState from '../state/appState.js';
 
@@ -119,8 +120,9 @@ function _formatSessionTime(timestamp) {
 /**
  * Render the timeline container and subscribe to updates.
  * @param {Function} onReply - Callback when user replies
+ * @param {Function} [onRetry] - Callback when user retries a failed command
  */
-export function renderEventTimeline(onReply) {
+export function renderEventTimeline(onReply, onRetry = null) {
   const container = document.createElement('div');
   container.id = 'event-timeline';
 
@@ -234,6 +236,27 @@ export function renderEventTimeline(onReply) {
           </div>
         `;
         fragment.appendChild(typingBubble);
+      } else if (isMultiStepJob(job)) {
+        // ── Multi-step workflow → consolidated stepper card ──
+        const stepperBubble = document.createElement('div');
+        stepperBubble.className = 'chat-bubble chat-bubble--arc chat-bubble--stepper';
+
+        stepperBubble.innerHTML = `
+          <div class="chat-bubble__avatar chat-bubble__avatar--arc">
+            <span>A</span>
+          </div>
+        `;
+        const contentWrap = document.createElement('div');
+        contentWrap.className = 'chat-bubble__content';
+
+        const stepper = renderWorkflowStepper(job, (jobId, answer) => {
+          jobStore.markReplied(jobId);
+          onReply?.(jobId, answer);
+        }, onRetry);
+
+        contentWrap.appendChild(stepper);
+        stepperBubble.appendChild(contentWrap);
+        fragment.appendChild(stepperBubble);
       } else {
         visibleEvents.forEach((event, idx) => {
           const isLast = idx === visibleEvents.length - 1;
@@ -245,7 +268,7 @@ export function renderEventTimeline(onReply) {
           const card = renderEventCard(event, job.id, (answer) => {
             jobStore.markReplied(job.id);
             onReply?.(job.id, answer);
-          }, isActivePrompt);
+          }, isActivePrompt, onRetry, job.command);
 
           arcBubble.innerHTML = `
             <div class="chat-bubble__avatar chat-bubble__avatar--arc">

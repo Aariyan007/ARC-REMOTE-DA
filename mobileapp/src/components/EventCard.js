@@ -16,8 +16,10 @@ import { renderFileDownload } from './FileDownload.js';
  * @param {string} jobId - The parent job ID
  * @param {Function} onReply - Callback when user replies to clarify/confirm
  * @param {boolean} isActivePrompt - Whether this is the active clarify/confirm
+ * @param {Function} [onRetry] - Callback when user clicks retry on an error card
+ * @param {string} [commandText] - Original command text for retry
  */
-export function renderEventCard(event, jobId, onReply, isActivePrompt = false) {
+export function renderEventCard(event, jobId, onReply, isActivePrompt = false, onRetry = null, commandText = '') {
   const card = document.createElement('div');
   card.className = `event-card event-card--${event.type}`;
   card.id = `event-${event.id}`;
@@ -68,6 +70,14 @@ export function renderEventCard(event, jobId, onReply, isActivePrompt = false) {
 ${JSON.stringify(event.data, null, 2)}
         </div>
       ` : ''}
+      ${event.type === 'error' && onRetry && commandText ? `
+        <button class="event-card__retry-btn" id="retry-${event.id}">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 2v5h5"/><path d="M2.5 10.5a6 6 0 1 0 1-4.2L1 7"/>
+          </svg>
+          Retry
+        </button>
+      ` : ''}
       <div class="event-card__time">${timeAgo(event.timestamp)}</div>
       <div class="event-card__attachments" id="attachments-${event.id}"></div>
       <div class="event-card__prompt" id="prompt-${event.id}"></div>
@@ -114,6 +124,14 @@ ${JSON.stringify(event.data, null, 2)}
     } else if (isActivePrompt && event.type === 'confirm') {
       promptContainer.appendChild(renderConfirmPrompt(jobId, onReply, event));
     }
+  }
+
+  // Retry button handler for error events
+  const retryBtn = card.querySelector(`#retry-${event.id}`);
+  if (retryBtn && onRetry && commandText) {
+    retryBtn.addEventListener('click', () => {
+      onRetry(commandText);
+    });
   }
 
   return card;

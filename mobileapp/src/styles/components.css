@@ -494,3 +494,163 @@
   border-color: rgba(248, 113, 113, 0.2);
   background: var(--accent-red-dim);
 }
+.event-card__retry-btn {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding: var(--space-1) var(--space-4); border-radius: var(--radius-full);
+  background: var(--accent-blue-dim); border: 1px solid rgba(79, 140, 255, 0.25);
+  color: var(--accent-blue); font-size: var(--text-xs); font-weight: 600;
+  cursor: pointer; transition: all var(--transition-base);
+  animation: slideInUp 0.25s ease both;
+}
+.event-card__retry-btn:hover {
+  background: rgba(79, 140, 255, 0.25); border-color: var(--accent-blue);
+  transform: translateY(-1px); box-shadow: 0 4px 12px rgba(79, 140, 255, 0.15);
+}
+.event-card__retry-btn:active {
+  transform: translateY(0); box-shadow: none;
+}
+.event-card__retry-btn svg {
+  flex-shrink: 0; width: 14px; height: 14px;
+}
+
+/* ── Workflow Stepper ──────────────────────────────────────── */
+.workflow-stepper {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  padding: var(--space-1) 0;
+}
+.workflow-stepper__steps {
+  display: flex; flex-direction: column;
+}
+
+/* ── Step Row ─────────────────────────────────────────────── */
+.workflow-step {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-2) 0;
+  animation: fadeIn 0.3s ease both;
+}
+
+/* Step icon circle */
+.workflow-step__icon {
+  width: 26px; height: 26px; border-radius: var(--radius-full);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; font-size: 11px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+/* Status-based icon backgrounds */
+.workflow-step--done .workflow-step__icon {
+  background: var(--accent-green-dim); color: var(--accent-green);
+}
+.workflow-step--active .workflow-step__icon {
+  background: var(--accent-blue-dim); color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.15);
+}
+.workflow-step--failed .workflow-step__icon {
+  background: var(--accent-red-dim); color: var(--accent-red);
+}
+.workflow-step--pending .workflow-step__icon {
+  background: var(--bg-glass); color: var(--text-tertiary);
+  border: 1px solid var(--border-subtle);
+}
+
+/* Override icon color by event type when active */
+.workflow-step--active.workflow-step--purple .workflow-step__icon {
+  background: var(--accent-purple-dim); color: var(--accent-purple);
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.15);
+}
+.workflow-step--active.workflow-step--teal .workflow-step__icon {
+  background: var(--accent-teal-dim); color: var(--accent-teal);
+  box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.15);
+}
+.workflow-step--active.workflow-step--amber .workflow-step__icon {
+  background: var(--accent-amber-dim); color: var(--accent-amber);
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.15);
+}
+.workflow-step--active.workflow-step--orange .workflow-step__icon {
+  background: var(--accent-orange-dim); color: var(--accent-orange);
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+}
+
+/* Pulse dot for active step */
+.workflow-step__pulse {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: currentColor;
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+/* Step body */
+.workflow-step__body {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.workflow-step__label {
+  font-size: var(--text-sm); color: var(--text-primary);
+  font-weight: 500; line-height: 1.4;
+  word-break: break-word;
+}
+.workflow-step--done .workflow-step__label { color: var(--text-secondary); }
+.workflow-step--pending .workflow-step__label { color: var(--text-tertiary); }
+
+.workflow-step__meta {
+  font-size: var(--text-xs); color: var(--text-tertiary);
+}
+.workflow-step--active .workflow-step__meta {
+  color: var(--accent-blue); font-weight: 500;
+}
+
+/* ── Connector Line ──────────────────────────────────────── */
+.workflow-step__connector {
+  width: 2px; height: 16px;
+  margin-left: 12px; /* center under the 26px icon */
+  background: var(--border-subtle);
+  border-radius: var(--radius-full);
+  transition: background 0.4s ease;
+}
+.workflow-step__connector--filled {
+  background: linear-gradient(180deg, var(--accent-blue), var(--accent-purple));
+}
+
+/* ── Embedded Prompt ─────────────────────────────────────── */
+.workflow-step__prompt {
+  margin-left: 38px; /* 26px icon + 12px gap */
+  margin-top: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+
+/* ── Result / Error Message ──────────────────────────────── */
+.workflow-stepper__result {
+  font-size: var(--text-sm); line-height: 1.6;
+  padding: var(--space-3) var(--space-4);
+  margin-top: var(--space-2);
+  border-radius: var(--radius-md);
+  word-break: break-word;
+  animation: fadeIn 0.3s ease both;
+}
+.workflow-stepper__result--result {
+  background: var(--accent-green-dim);
+  color: var(--text-primary);
+  border: 1px solid rgba(34, 197, 94, 0.15);
+}
+.workflow-stepper__result--error {
+  background: var(--accent-red-dim);
+  color: var(--accent-red);
+  border: 1px solid rgba(248, 113, 113, 0.15);
+}
+
+/* ── Typing Indicator in Stepper ─────────────────────────── */
+.workflow-stepper__typing {
+  display: flex; gap: 4px; align-items: center;
+  padding: var(--space-2) 0;
+  margin-left: 38px;
+}
+.workflow-stepper__typing .chat-typing__dot {
+  width: 6px; height: 6px;
+}
+
+/* Stepper bubble content should have a bit more space */
+.chat-bubble--stepper .chat-bubble__content {
+  max-width: 90%;
+}
+

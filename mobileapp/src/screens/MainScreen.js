@@ -139,7 +139,7 @@ export function mountMainScreen() {
   main.id = 'main-content';
 
   // Event Timeline
-  main.appendChild(renderEventTimeline(onReply));
+  main.appendChild(renderEventTimeline(onReply, onCommandSubmit));
   app.appendChild(main);
 
   // Command Input (sticky bottom)
