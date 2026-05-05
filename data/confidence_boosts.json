@@ -39,7 +39,8 @@
     "no": 1
   },
   "brightness_down": {
-    "brightnoess down by 50%": 1
+    "brightnoess down by 50%": 1,
+    "decrease brightness oercentage by 50%": 1
   },
   "brightness_up": {
     "dim brightness by 50": 1
@@ -56,12 +57,15 @@
   },
   "get_battery": {
     "what is my battery percentage": 1,
-    "get battery level": 3
+    "get battery level": 4
   },
   "open_gmail": {
     "open gmail": 1
   },
   "create_file": {
     "send a file named abc which is a text file": 1
+  },
+  "lock_screen": {
+    "lock screen": 1
   }
 }

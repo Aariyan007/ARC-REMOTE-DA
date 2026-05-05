@@ -1,25 +1,5 @@
 [
   {
-    "timestamp": "2026-04-24 22:08:11",
-    "you": "send that screenshot to jithinpr888@gmail.com",
-    "jarvis": "Captured. Screenshot saved."
-  },
-  {
-    "timestamp": "2026-04-24 22:08:32",
-    "you": "open chrome",
-    "jarvis": "On it. Opened chrome."
-  },
-  {
-    "timestamp": "2026-04-24 22:08:44",
-    "you": "what is todays news",
-    "jarvis": "Working on it. Executed read_news"
-  },
-  {
-    "timestamp": "2026-04-24 22:09:39",
-    "you": "what is my battery percentage",
-    "jarvis": "Checking. Executed get_battery"
-  },
-  {
     "timestamp": "2026-04-24 22:37:21",
     "you": "what time is it",
     "jarvis": "It's 10:37 PM"
@@ -98,5 +78,25 @@
     "timestamp": "2026-05-05 21:15:07",
     "you": "search for a file resume i think its a pdf file",
     "jarvis": "Reading. Couldn't read that file."
+  },
+  {
+    "timestamp": "2026-05-05 21:28:30",
+    "you": "get battery level",
+    "jarvis": "Checking. Battery is at 21 percent and on battery."
+  },
+  {
+    "timestamp": "2026-05-05 21:29:01",
+    "you": "decrease brightness oercentage by 50%",
+    "jarvis": "Dimmer. Brightness down by 50%."
+  },
+  {
+    "timestamp": "2026-05-05 21:29:35",
+    "you": "play a song",
+    "jarvis": "Playing. Playing now."
+  },
+  {
+    "timestamp": "2026-05-05 21:29:59",
+    "you": "lock screen",
+    "jarvis": "Locked. Screen locked."
   }
 ]
