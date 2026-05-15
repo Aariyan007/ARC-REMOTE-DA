@@ -315,9 +315,10 @@ def open_gmail_compose_with_attachment(
 
     try:
         ctx = _ensure_browser()
-        # Reuse existing page (persistent context always starts with one) to avoid about:blank tab
-        pages = ctx.pages
-        page = pages[0] if pages else ctx.new_page()
+        # BUG FIX: Open compose in a NEW tab — don't hijack the existing inbox page.
+        # Reusing pages[0] would navigate away from the logged-in inbox, potentially
+        # losing the session or destroying any open draft.
+        page = ctx.new_page()
         page.set_default_timeout(timeout_ms)
 
         # Build Gmail compose URL
@@ -329,11 +330,15 @@ def open_gmail_compose_with_attachment(
         print(f"  ➡️  Navigating to Gmail compose...")
         page.goto(compose_url, wait_until="domcontentloaded")
 
-        # Wait for the compose window to appear
-        # Gmail's "To" field is a hidden div — we wait for it to be attached (not visible)
+        # BUG FIX: Gmail compose uses contenteditable divs, NOT <input> elements.
+        # The old selector '[aria-label="To"], input[name="to"]' timed out because
+        # Gmail renders contenteditable spans for its fields.
+        # We wait for any of the known compose-window indicators.
         try:
             page.wait_for_selector(
-                '[aria-label="To"], input[name="to"], .Am.Al.editable, [role="textbox"]',
+                '.aO7, .Am.Al.editable, [g_editable="true"], '
+                '[aria-label="To"], [contenteditable="true"], '
+                'form[method="post"]',
                 state="attached",
                 timeout=20_000
             )
@@ -363,33 +368,36 @@ def open_gmail_compose_with_attachment(
 
             print(f"  📎 Attaching: {abs_path}")
 
-            # Strategy 1: Direct file input (most reliable for Gmail)
+            # BUG FIX: Gmail attachment strategy was backwards.
+            # Gmail hides input[type=file] until the user clicks the attach button.
+            # The correct order is: (1) trigger file chooser via button click,
+            # (2) set files on the resulting chooser — NOT look for pre-existing inputs.
             try:
-                file_inputs = page.locator('input[type="file"]')
-                count = file_inputs.count()
-                print(f"  🔍 Found {count} file input(s) on page")
-                
-                if count > 0:
-                    file_inputs.first.set_input_files(abs_path, timeout=10_000)
-                    result["attachment_verified"] = True
-                    print(f"  ✔ Attached '{file_name}' via direct file input")
-                else:
-                    # Strategy 2: Click attach button to trigger file chooser
-                    print("  🖱️ No file inputs found. Trying button click...")
-                    with page.expect_file_chooser(timeout=15_000) as fc_info:
-                        attach_btn = page.locator(
-                            '[data-tooltip*="Attach"], [aria-label*="Attach"]'
-                        ).first
-                        attach_btn.click(force=True, timeout=10_000)
-                    
-                    file_chooser = fc_info.value
-                    file_chooser.set_files(abs_path)
-                    result["attachment_verified"] = True
-                    print(f"  ✔ Attached '{file_name}' via file chooser")
-
-            except Exception as e:
-                print(f"  ❌ Attachment error: {e}")
-                result["error"] = f"Attachment failed: {e}"
+                # Strategy 1: expect_file_chooser + click attach button (most reliable)
+                attach_btn_selector = (
+                    '[data-tooltip*="Attach files"], [aria-label*="Attach files"], '
+                    '[aria-label*="Attach"], [data-tooltip*="Attach"]'
+                )
+                with page.expect_file_chooser(timeout=10_000) as fc_info:
+                    page.locator(attach_btn_selector).first.click(timeout=8_000)
+                fc_info.value.set_files(abs_path)
+                result["attachment_verified"] = True
+                print(f"  ✔ Attached '{file_name}' via file chooser")
+            except Exception as e1:
+                print(f"  ⚠️ File chooser failed ({e1}), trying direct input...")
+                # Strategy 2: Gmail may have rendered a direct file input in the DOM
+                try:
+                    file_inputs = page.locator('input[type="file"]')
+                    if file_inputs.count() > 0:
+                        file_inputs.first.set_input_files(abs_path, timeout=8_000)
+                        result["attachment_verified"] = True
+                        print(f"  ✔ Attached '{file_name}' via direct file input")
+                    else:
+                        print(f"  ❌ No file inputs found and chooser failed")
+                        result["error"] = f"Attachment failed: {e1}"
+                except Exception as e2:
+                    print(f"  ❌ Both attach strategies failed: {e2}")
+                    result["error"] = f"Attachment failed: {e1} / {e2}"
 
             # Wait for the upload to fully complete before proceeding
             if result["attachment_verified"]:
@@ -450,9 +458,13 @@ def open_gmail_compose_with_attachment(
                 # Wait for Gmail to process the send
                 time.sleep(5)
                 
-                # Verify: check if compose window closed or "Message sent" banner appeared
+                # BUG FIX: page.locator() second argument is NOT a second selector.
+                # 'page.locator("a", "b")' is invalid — "b" is interpreted as kwargs.
+                # Use CSS OR selector syntax (',' separator) or nth-match instead.
                 try:
-                    sent_banner = page.locator('text="Message sent"', 'text="Your message has been sent"').first
+                    sent_banner = page.locator(
+                        'text="Message sent", text="Your message has been sent"'
+                    ).first
                     sent_banner.wait_for(state="visible", timeout=8_000)
                     result["sent"] = True
                     print("  ✔ Send confirmed: 'Message sent' banner visible")

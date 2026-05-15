@@ -1,102 +1,102 @@
 [
   {
-    "timestamp": "2026-04-24 22:37:21",
-    "you": "what time is it",
-    "jarvis": "It's 10:37 PM"
+    "timestamp": "2026-05-06 00:36:47",
+    "you": "decrease brightness oercentage by 100%",
+    "jarvis": "Turning down. Brightness down by 100%."
   },
   {
-    "timestamp": "2026-04-24 22:37:27",
-    "you": "take a screenshot",
-    "jarvis": "Screenshot taken. Screenshot saved."
+    "timestamp": "2026-05-06 00:37:05",
+    "you": "more",
+    "jarvis": "Brighter. Brightness up by 10%."
   },
   {
-    "timestamp": "2026-04-24 22:38:19",
-    "you": "send a email jithinpr888gmail.com",
-    "jarvis": "On it. Opened Gmail"
+    "timestamp": "2026-05-06 00:37:26",
+    "you": "no more darker",
+    "jarvis": "Dimmer. Brightness down by 10%."
   },
   {
-    "timestamp": "2026-04-24 22:38:47",
-    "you": "open gmail",
-    "jarvis": "Opening Gmail. Opened Gmail."
+    "timestamp": "2026-05-06 00:38:07",
+    "you": "serach for a resume..i think its a pdf file",
+    "jarvis": "Working on it. Searched for file a resume.. its a pdf file"
   },
   {
-    "timestamp": "2026-04-24 22:39:11",
-    "you": "send a mail jithin@gmial.com",
-    "jarvis": "Composing. Couldn't send the email. name 'time' is not defined"
+    "timestamp": "2026-05-06 00:38:23",
+    "you": "resume.pdf",
+    "jarvis": "One sec. Couldn't read that file."
   },
   {
-    "timestamp": "2026-04-24 22:40:12",
-    "you": "send a file named abc which is a text file",
-    "jarvis": "Creating. Created abc.txt."
-  },
-  {
-    "timestamp": "2026-04-24 22:40:52",
-    "you": "search for file abc.txt",
-    "jarvis": "Got it. Showed recent files"
-  },
-  {
-    "timestamp": "2026-05-05 20:57:29",
-    "you": "get battery level",
-    "jarvis": "Checking. Executed get_battery"
-  },
-  {
-    "timestamp": "2026-05-05 20:58:01",
-    "you": "take a screenshot of screen",
-    "jarvis": "Screenshot taken. Screenshot saved."
-  },
-  {
-    "timestamp": "2026-05-05 20:58:21",
-    "you": "send that screenshot to aariyansunu28@gmail.com",
-    "jarvis": "Captured. Screenshot saved."
-  },
-  {
-    "timestamp": "2026-05-05 21:09:10",
-    "you": "get battery level",
-    "jarvis": "Checking. Battery is at 25 percent and on battery."
-  },
-  {
-    "timestamp": "2026-05-05 21:11:11",
-    "you": "get battery level",
-    "jarvis": "Checking. Battery is at 25 percent and on battery."
-  },
-  {
-    "timestamp": "2026-05-05 21:11:37",
-    "you": "decrese the birghtness by 50%",
+    "timestamp": "2026-05-06 00:40:13",
+    "you": "can u send a mail to aariyansunu28@gmail.com",
     "jarvis": null
   },
   {
-    "timestamp": "2026-05-05 21:13:05",
-    "you": "send a mail to aariyansunu28@gmail.com",
-    "jarvis": "On it. Draft opened in Gmail \u2014 auto-send was not available."
+    "timestamp": "2026-05-06 00:41:05",
+    "you": "whats todays news aorund the world",
+    "jarvis": "On it. Here are today's top 3 headlines:\n1. Tamil Nadu CM swearing-in: Short of majority by just 10 seats TVK chief Vijay to take oath on May 7 - but\n2. \"Dismiss Mamata Banerjee If She Doesn't Resign\": Himanta Biswa Sarma To NDTV\n3. West Bengal CM announcement LIVE: Bengal CEO says no FIR lodged, dismisses Mamata's physical attack claim | India News"
   },
   {
-    "timestamp": "2026-05-05 21:14:36",
-    "you": "fuck off",
-    "jarvis": "Whoa, someone's feeling spicy today. I'll be here when you're done throwing your little tantrum."
+    "timestamp": "2026-05-06 00:41:24",
+    "you": "whast by battery health",
+    "jarvis": "Checking. Battery is at 100 percent and on battery."
   },
   {
-    "timestamp": "2026-05-05 21:15:07",
-    "you": "search for a file resume i think its a pdf file",
-    "jarvis": "Reading. Couldn't read that file."
+    "timestamp": "2026-05-06 00:41:44",
+    "you": "can u close spotify",
+    "jarvis": "Opening. Opened spotify."
   },
   {
-    "timestamp": "2026-05-05 21:28:30",
-    "you": "get battery level",
-    "jarvis": "Checking. Battery is at 21 percent and on battery."
+    "timestamp": "2026-05-06 00:43:26",
+    "you": "its to hot today",
+    "jarvis": "Executed tell_weather"
   },
   {
-    "timestamp": "2026-05-05 21:29:01",
-    "you": "decrease brightness oercentage by 50%",
-    "jarvis": "Dimmer. Brightness down by 50%."
+    "timestamp": "2026-05-06 00:47:27",
+    "you": "can u close spotify",
+    "jarvis": "Got it. I tried to close spotify, but it may still be running."
   },
   {
-    "timestamp": "2026-05-05 21:29:35",
-    "you": "play a song",
-    "jarvis": "Playing. Playing now."
+    "timestamp": "2026-05-06 00:48:23",
+    "you": "can u close spotify",
+    "jarvis": "Done. Closed spotify."
   },
   {
-    "timestamp": "2026-05-05 21:29:59",
-    "you": "lock screen",
-    "jarvis": "Locked. Screen locked."
+    "timestamp": "2026-05-06 00:48:24",
+    "you": "tmp1dnge0nz.txt",
+    "jarvis": "Reading. hello from frontend content"
+  },
+  {
+    "timestamp": "2026-05-06 13:24:50",
+    "you": "its to hot today",
+    "jarvis": "Executed tell_weather"
+  },
+  {
+    "timestamp": "2026-05-06 13:25:01",
+    "you": "what is the time",
+    "jarvis": "It's 1:25 PM"
+  },
+  {
+    "timestamp": "2026-05-06 13:25:13",
+    "you": "whats the battery percentage",
+    "jarvis": "Checking. Battery is at 95 percent and on battery."
+  },
+  {
+    "timestamp": "2026-05-06 13:25:30",
+    "you": "increase brightness",
+    "jarvis": "Brighter. Brightness up by 10%."
+  },
+  {
+    "timestamp": "2026-05-06 13:25:41",
+    "you": "increase brightness by 100%",
+    "jarvis": "Dimmer. Brightness down by 100%."
+  },
+  {
+    "timestamp": "2026-05-06 13:26:06",
+    "you": "open resume whihc is a pdf file",
+    "jarvis": "On it. Found file: resume.pdf"
+  },
+  {
+    "timestamp": "2026-05-06 13:26:25",
+    "you": "read the contents of that file",
+    "jarvis": "Reading. Sunu Aariyan\naariyansunu28@gmail.com | +91-9633465526 | linkedin.com/in/aariyan-s | github.com/Aariyan007\nIndia,Kerala-682019\nPortFolio-https://portfolio-1-xlzb.onrender.com/\nAspiring Full Stack Developer with hands-on experience building API-driven web applications and machine learning\nmodels. Proficient in MERN stack, RESTful APIs, real-time data visualization, and currently expanding skills in Java and\nSpring Boot. Pursuing B.T ech in Computer Science (3rd year) at MITS, Kochi, eager to contribute to innovative web and\nsoftware development projects.\nEDUCATION\nMuthoot Institute of Technology and Science \u2013 Kochi, Kerala\nBachelor of T echnology in Computer Science and Engineering \u2014 Expected May 2027\n\u25cf\n\u25cf\nCurrent Standing: 3rd Year Student\nRelevant Coursework: Data Structures & Algorithms, Web Development, Operating Systems, Database\nManagement Systems, Microprocessors & Microcontrollers, Computer Architecture, Computer Networking\nWORK HISTORY\nCorizo \u2013 Machine Learning Intern June 2024 \u2013 August 2024 Corizo is an ed-tech company offering mentor-led,\nindustry-relevant training in tech like full stack development, AI/ML, and data science to help students become\njob-ready.\n\u25cf Developed a"
   }
 ]

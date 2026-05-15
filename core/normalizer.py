@@ -53,6 +53,7 @@ FILLER_PHRASES = [
     "you know", "you know what", "i mean",
     "i guess", "i suppose", "i think",
     "can you", "could you", "would you",
+    "can u", "could u", "would u",
 ]
 
 # ─── Whisper Mistranscription Corrections ────────────────────
@@ -81,6 +82,9 @@ CORRECTIONS = {
     # Common mishears
     "screeshot":  "screenshot",
     "screen shot":"screenshot",
+    "serach":     "search",
+    "seach":      "search",
+    "seraching":  "searching",
     "volum":      "volume",
     "brightnes":  "brightness",
     "brighness":  "brightness",

@@ -161,6 +161,38 @@ def _remote_confidence_floor(action: str, params: dict, missing_params: list) ->
         return 0.62
     return 0.60
 
+
+def _override_app_action_from_verb(text: str, action: str, params: dict) -> tuple[str, dict]:
+    """Prefer explicit app verbs over embedding guesses like open_app for 'close Spotify'."""
+    if action not in {"open_app", "close_app", "switch_to_app", "minimise_app"}:
+        return action, params
+
+    target = params.get("target") or params.get("name") or extract_app_name(text)
+    if not target:
+        return action, params
+
+    updated = dict(params)
+    updated.setdefault("target", target)
+    updated.setdefault("name", target)
+
+    import re as _re
+    if _re.search(r"\b(close|quit|exit|kill)\b", text):
+        return "close_app", updated
+    if _re.search(r"\b(switch|switch to|go to|bring up|focus)\b", text):
+        return "switch_to_app", updated
+    if _re.search(r"\b(minimize|minimise|hide)\b", text):
+        return "minimise_app", updated
+    if _re.search(r"\b(open|launch|start|run|fire up)\b", text):
+        return "open_app", updated
+
+    return action, updated
+
+
+def _is_bare_filename(text: str) -> bool:
+    """True when the user typed only a filename like resume.pdf."""
+    import re as _re
+    return bool(_re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._ -]{0,180}\.[A-Za-z0-9]{1,8}", text.strip()))
+
 # ── Format Keywords → Extensions ───────────────────────────────
 FORMAT_MAP = {
     "text": ".txt", "txt": ".txt", "plain text": ".txt",
@@ -751,7 +783,34 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "", _s
             filename = params.get("filename", "")
             location = params.get("location")
             if filename and "read_file" in actions:
-                actions["read_file"](filename, location)
+                read_result = actions["read_file"](filename, location)
+                if isinstance(read_result, dict):
+                    data = dict(read_result)
+                    message = (
+                        data.get("content")
+                        or data.get("message")
+                        or data.get("summary")
+                        or f"Read {filename}"
+                    )
+                    resolved_name = data.get("filename") or filename
+                    update_file_context(resolved_name, path=data.get("path"), action="read_file")
+                    if data.get("success", True):
+                        return ActionResult.ok(
+                            action,
+                            data.get("summary") or f"Read {resolved_name}",
+                            data=data,
+                            user_message=message,
+                        )
+                    return ActionResult.fail(action, message, data=data, user_message=message)
+                if isinstance(read_result, str) and read_result.strip():
+                    message = read_result.strip()
+                    update_file_context(filename, action="read_file")
+                    return ActionResult.ok(
+                        action,
+                        f"Read {filename}",
+                        data={"filename": filename, "content": message},
+                        user_message=message,
+                    )
                 update_file_context(filename, action="read_file")
                 return ActionResult.ok(action, f"Read {filename}", data={"filename": filename})
             return ActionResult.fail(action, "No filename extracted", data={"filename": ""})
@@ -953,7 +1012,6 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "", _s
             if "take_screenshot" in actions:
                 path = actions["take_screenshot"]()
                 if path and isinstance(path, str):
-                    from core.memory import update_file_context
                     update_file_context(os.path.basename(path), path=path, action="take_screenshot")
                     return ActionResult.ok(
                         action,
@@ -1449,6 +1507,19 @@ def route(command: str, actions: dict, _source: str = "voice", _request_id: str 
         intent = classify(cleaned)
         params = _extract_params(intent.action, cleaned)
         print(f"⚡ Fast intent: {intent.action} (conf={intent.confidence:.2f}, source={intent.source}, match='{intent.matched_example}')")
+
+    if _is_bare_filename(cleaned):
+        if intent.action != "read_file":
+            print(f"🔀 Filename shortcut: {intent.action} → read_file")
+        intent.action = "read_file"
+        intent.confidence = max(intent.confidence, 0.95)
+        params = _extract_params("read_file", cleaned)
+
+    corrected_action, corrected_params = _override_app_action_from_verb(cleaned, intent.action, params)
+    if corrected_action != intent.action:
+        print(f"🔀 Verb correction: {intent.action} → {corrected_action}")
+        intent.action = corrected_action
+    params = corrected_params
 
     update_thinking(command=command, intent=intent.action, confidence=intent.confidence, stage="Classified")
 

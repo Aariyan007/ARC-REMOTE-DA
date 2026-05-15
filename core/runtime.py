@@ -107,6 +107,7 @@ def _initialize_actions() -> bool:
             close_tab, new_tab,
             read_file, create_file, delete_file,
             rename_file, get_recent_files, copy_file, edit_file,
+            search_files_advanced,
         )
         from core.daily_greeting import read_news
     except ImportError as e:

@@ -51,7 +51,35 @@ def _find_file(name: str, location: str = None) -> str:
     return None
 
 
-def read_file(name: str, location: str = None) -> None:
+def _extract_pdf_text(path: str, max_pages: int = 3) -> str:
+    """Best-effort PDF text extraction using whichever local backend exists."""
+    try:
+        import fitz  # PyMuPDF, optional
+        doc = fitz.open(path)
+        text = "\n".join(page.get_text() for page in doc[:max_pages])
+        doc.close()
+        return text.strip()
+    except Exception:
+        pass
+
+    try:
+        import Quartz
+        url = Quartz.NSURL.fileURLWithPath_(path)
+        doc = Quartz.PDFDocument.alloc().initWithURL_(url)
+        if doc is None:
+            return ""
+        page_count = min(int(doc.pageCount()), max_pages)
+        chunks = []
+        for idx in range(page_count):
+            page = doc.pageAtIndex_(idx)
+            if page is not None and page.string():
+                chunks.append(str(page.string()))
+        return "\n".join(chunks).strip()
+    except Exception:
+        return ""
+
+
+def read_file(name: str, location: str = None) -> dict:
     """
     Finds and reads a text file aloud.
     Example: read_file("notes.txt") or read_file("notes.txt", "desktop")
@@ -60,12 +88,14 @@ def read_file(name: str, location: str = None) -> None:
     path = _find_file(name, location)
 
     if not path:
-        speak(f"Couldn't find {name} anywhere.")
-        return
+        message = f"Couldn't find {name} anywhere."
+        speak(message)
+        return {"success": False, "message": message, "filename": name}
 
     print(f"📄 Found: {path}")
 
     ext = os.path.splitext(path)[1].lower()
+    filename = os.path.basename(path)
 
     # ── Binary / non-text formats ────────────────────────────────
     BINARY_EXTS = {".pdf", ".docx", ".doc", ".xlsx", ".xls", ".pptx", ".ppt",
@@ -74,53 +104,72 @@ def read_file(name: str, location: str = None) -> None:
                    ".pages", ".numbers", ".key", ".exe", ".bin", ".dmg"}
     if ext in BINARY_EXTS:
         if ext == ".pdf":
-            # Try PyMuPDF / pdfminer if available, else open in Preview
-            try:
-                import fitz  # PyMuPDF
-                doc = fitz.open(path)
-                text = ""
-                for page in doc[:3]:   # first 3 pages max
-                    text += page.get_text()
-                doc.close()
-                if text.strip():
-                    if len(text) > 800:
-                        text = text[:800]
-                        speak("Here's the beginning of the PDF:")
-                    speak(text.strip())
-                    return
-            except ImportError:
-                pass
+            text = _extract_pdf_text(path)
+            if text:
+                content = text.strip()
+                if len(content) > 1200:
+                    content = content[:1200].rstrip()
+                    speak("Here's the beginning of the PDF:")
+                speak(content)
+                return {
+                    "success": True,
+                    "filename": filename,
+                    "path": path,
+                    "content": content,
+                    "summary": f"Read {filename}",
+                    "file_type": "pdf",
+                }
             # Fallback: open in Preview
-            speak(f"Opening {name} in Preview — I can't read PDF text directly.")
+            message = f"Opening {filename} in Preview — I couldn't extract readable PDF text."
+            speak(message)
             subprocess.Popen(["open", path])
-            return
+            return {
+                "success": False,
+                "filename": filename,
+                "path": path,
+                "message": message,
+                "file_type": "pdf",
+            }
         else:
-            speak(f"{name} is a {ext.lstrip('.')} file — I can't read that as text. Opening it instead.")
+            message = f"{filename} is a {ext.lstrip('.')} file — I can't read that as text. Opening it instead."
+            speak(message)
             subprocess.Popen(["open", path])
-            return
+            return {"success": False, "filename": filename, "path": path, "message": message}
 
     try:
         with open(path, "r", encoding="utf-8", errors="strict") as f:
             content = f.read().strip()
     except UnicodeDecodeError:
         # File has binary content despite a text-looking extension
-        speak(f"That file appears to contain binary data — I can't read it aloud.")
-        return
+        message = "That file appears to contain binary data — I can't read it aloud."
+        speak(message)
+        return {"success": False, "filename": filename, "path": path, "message": message}
     except Exception as e:
-        speak(f"Couldn't read that file.")
+        message = "Couldn't read that file."
+        speak(message)
         print(f"❌ Error: {e}")
-        return
+        return {"success": False, "filename": filename, "path": path, "message": message, "error": str(e)}
 
     if not content:
-        speak("The file is empty.")
-        return
+        message = "The file is empty."
+        speak(message)
+        return {"success": True, "filename": filename, "path": path, "content": "", "summary": message}
 
     # Truncate if too long
+    original_length = len(content)
     if len(content) > 1000:
         content = content[:1000]
         speak(f"File is long — reading the first part.")
 
     speak(content)
+    return {
+        "success": True,
+        "filename": filename,
+        "path": path,
+        "content": content,
+        "summary": f"Read {filename}" + (" (first part)" if original_length > len(content) else ""),
+        "file_type": ext.lstrip(".") or "text",
+    }
 
 
 

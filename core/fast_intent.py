@@ -58,6 +58,8 @@ INTENT_REGISTRY = {
         "close safari", "quit safari", "exit safari",
         "close terminal", "quit terminal", "exit terminal",
         "close chrome", "quit chrome",
+        "close spotify", "quit spotify", "exit spotify",
+        "close music", "quit music",
         "close the app", "quit the application", "kill the app",
     ],
     "switch_to_app": [

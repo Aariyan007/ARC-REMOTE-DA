@@ -219,6 +219,23 @@ def extract_filename(text: str) -> dict:
             result["filename"] = match.group(1)
             return result
 
+    # Search-style natural phrases:
+    # "search for a resume, I think it's a pdf file" → resume.pdf
+    # "find my tax document" → tax.docx
+    search_match = re.search(
+        r'(?:search|find|look\s+for|locate)\s+(?:for\s+)?'
+        r'(?:a\s+|an\s+|the\s+|my\s+)?'
+        r'(?!file\b|document\b|pdf\b|text\b|txt\b|docx\b)'
+        r'([a-zA-Z0-9_-]+)',
+        text,
+        re.IGNORECASE,
+    )
+    if search_match:
+        candidate = search_match.group(1).strip(".,;:!?")
+        if candidate and candidate.lower() not in FORMAT_KEYWORDS:
+            result["filename"] = candidate + detected_ext if detected_ext else candidate
+            return result
+
     # No extension found — try bare name patterns:
     bare_patterns = [
         r'(?:called|named)\s+(\S+)',                                   # "file called ideas"
@@ -518,35 +535,66 @@ def is_compound_file_command(text: str) -> bool:
 # ─── Compound Search and Send Extraction ─────────────────────
 def is_find_and_send_command(text: str) -> bool:
     """
-    Quick check: does this command contain find/search AND send to email?
+    Quick check: does this command contain find/search AND send/email a file?
+    Must NOT trigger on plain 'send an email to X' (no file search intent).
     """
-    has_find = bool(re.search(r'\b(?:find|search|get|look for)\b', text))
-    has_send = bool(re.search(r'\b(?:send|email)\b', text))
-    has_join = bool(re.search(r'\b(?:and|then|to)\b', text))
-    return has_find and has_send and has_join
+    has_find = bool(re.search(r'\b(?:find|search|get|look for|locate)\b', text))
+    has_send = bool(re.search(r'\b(?:send|email|mail)\b', text))
+    has_file_ref = bool(re.search(
+        r'\b(?:file|pdf|document|doc|it|that)\b', text
+    ))
+    # Exclude pure email commands: "send an email to X", "email to X"
+    is_pure_email = bool(re.search(
+        r'^(?:send\s+(?:an?\s+)?email|email\s+(?:to|my))', text
+    ))
+    return has_find and has_send and not is_pure_email and (has_file_ref or has_find)
 
 def extract_find_and_send_params(text: str) -> dict:
     """
-    Extracts filename and email from "find X and send it to Y"
+    Extracts filename and email from "find X and send it to Y" / "look for X and mail it to Y".
     """
     result = {"filename": None, "to": None}
-    
-    # Try splitting into find part and send part
-    split_match = re.split(r'\b(?:and\s+)?(?:then\s+)?(?:send|email)\b', text, maxsplit=1)
+
+    # BUG FIX: 'mail' was missing from split pattern — "mail it to X" never split correctly
+    split_match = re.split(
+        r'\b(?:and\s+)?(?:then\s+)?(?:send|email|mail)\b',
+        text, maxsplit=1
+    )
     if len(split_match) == 2:
         find_part = split_match[0].strip()
         send_part = split_match[1].strip()
-        
+
         # 1. Get filename from find_part
+        # BUG FIX: extract_filename was returning stopwords ('a', 'an', 'the', 'my', 'file', 'it')
+        # Strip common prefix verbs/articles before extracting
+        _FIND_STOPWORDS = {
+            'a', 'an', 'the', 'my', 'that', 'this', 'it', 'file', 'some',
+            'for', 'find', 'search', 'get', 'look', 'locate', 'any', 'me',
+        }
         file_info = extract_filename(find_part)
-        # If extract_filename failed, fallback to extract_query
-        result["filename"] = file_info.get("filename") or extract_query(find_part)
-        
-        # 2. Get email from send_part
-        email_info = extract_email_params("send " + send_part)
-        result["to"] = email_info.get("to")
-        
+        raw_name = file_info.get("filename") or extract_query(find_part)
+
+        if raw_name and raw_name.lower() in _FIND_STOPWORDS:
+            # Fallback: strip leading stopwords from find_part and take last meaningful word
+            tokens = [
+                w for w in re.split(r'\s+', find_part)
+                if w.lower() not in _FIND_STOPWORDS and len(w) > 1
+            ]
+            raw_name = tokens[-1] if tokens else None
+
+        result["filename"] = raw_name
+
+        # 2. Get email from send_part — try direct regex first, then extract_email_params
+        email_match = re.search(r'[\w.+-]+@[\w-]+\.[\w.]+', send_part)
+        if email_match:
+            result["to"] = email_match.group(0)
+        else:
+            # May be a name reference like "send it to my boss" — extract_email_params resolves contacts
+            email_info = extract_email_params("send " + send_part)
+            result["to"] = email_info.get("to")
+
     return result
+
 
 
 # ─── Send Context Reference Detection ────────────────────────

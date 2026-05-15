@@ -3,15 +3,18 @@
     "what time is it": 7,
     "what time is chrome": 1,
     "what is time": 1,
-    "what is the time": 1
+    "what is the time": 2
   },
   "search_file": {
     "search file": 1,
-    "find abc whihc is a text file..to jithinpr888@gmail.com": 1
+    "find abc whihc is a text file..to jithinpr888@gmail.com": 1,
+    "serach for a resume.. its a pdf file": 1,
+    "open resume whihc is a pdf file": 1
   },
   "open_app": {
     "open chrome": 13,
-    "open spotify": 3
+    "open spotify": 3,
+    "can u close spotify": 1
   },
   "unmute": {
     "find dog voice": 1
@@ -40,10 +43,15 @@
   },
   "brightness_down": {
     "brightnoess down by 50%": 1,
-    "decrease brightness oercentage by 50%": 1
+    "decrease brightness oercentage by 50%": 1,
+    "decrease brightness oercentage by 100%": 1,
+    "no more darker": 1,
+    "increase brightness by 100%": 1
   },
   "brightness_up": {
-    "dim brightness by 50": 1
+    "dim brightness by 50": 1,
+    "more": 1,
+    "increase brightness": 1
   },
   "volume_up": {
     "increase volume by 1000": 1,
@@ -53,11 +61,14 @@
     "what is todays date": 1
   },
   "read_news": {
-    "what is todays news": 1
+    "what is todays news": 1,
+    "whats todays news aorund the world": 1
   },
   "get_battery": {
     "what is my battery percentage": 1,
-    "get battery level": 4
+    "get battery level": 4,
+    "whast by battery health": 1,
+    "whats the battery percentage": 1
   },
   "open_gmail": {
     "open gmail": 1
@@ -67,5 +78,15 @@
   },
   "lock_screen": {
     "lock screen": 1
+  },
+  "tell_weather": {
+    "its to hot today": 2
+  },
+  "close_app": {
+    "close spotify": 1
+  },
+  "read_file": {
+    "tmp1dnge0nz.txt": 1,
+    "read the contents of resume.pdf file": 1
   }
 }
