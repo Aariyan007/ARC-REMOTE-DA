@@ -32,11 +32,15 @@ export function renderEventCard(event, jobId, onReply, isActivePrompt = false, o
   const isProgress = event.type === 'executing' || event.type === 'progress' || event.type === 'verify';
 
   if (isProgress) {
-    // ── Pipeline step stepper ──────────────────────────────
+    // BUG 8 FIX: step=0 when handlers don't set it, making bar stuck at 0%.
+    // Compute progress from event type order when step data absent.
+    const _typeProgress = { progress: 25, executing: 50, verify: 75 };
     const step = event.data?.step || 0;
-    const totalSteps = event.data?.total_steps || 4;
+    const totalSteps = event.data?.total_steps || 0;
+    const progressPct = totalSteps > 0
+      ? Math.round((step / totalSteps) * 100)
+      : (_typeProgress[event.type] ?? 40);
     const stage = event.data?.stage || event.type;
-    const progressPct = totalSteps > 0 ? Math.round((step / totalSteps) * 100) : 0;
 
     card.innerHTML = `
       <div class="event-card__step-row">

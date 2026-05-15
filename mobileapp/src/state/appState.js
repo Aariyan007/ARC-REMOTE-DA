@@ -7,7 +7,8 @@ class AppState {
   constructor() {
     this.connected = false;
     this.backendBooted = false;
-    this.useMocks = false;
+    // BUG 16 FIX: useMocks was not persisted — lost on page refresh while token wasn't.
+    this.useMocks = localStorage.getItem('arc_use_mocks') === 'true';
     this.checking = false;
     this.token = localStorage.getItem('arc_token') || null;
     /** @type {Set<Function>} */
@@ -42,13 +43,18 @@ class AppState {
   setUseMocks(val) {
     if (this.useMocks !== val) {
       this.useMocks = val;
+      // BUG 16 FIX: persist to localStorage
+      if (val) {
+        localStorage.setItem('arc_use_mocks', 'true');
+      } else {
+        localStorage.removeItem('arc_use_mocks');
+      }
       this._notify();
     }
   }
 
   toggleMocks() {
-    this.useMocks = !this.useMocks;
-    this._notify();
+    this.setUseMocks(!this.useMocks);
   }
 
   setToken(val) {

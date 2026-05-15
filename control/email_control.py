@@ -136,7 +136,10 @@ def _voice_input_with_retry(
         return reply or ""
 
     for attempt in range(max_retries + 1):
-        speak(prompt if attempt == 0 else f"Let me try again. {prompt}")
+        # BUG 3 FIX: speak() was called here even in headless mode.
+        # _is_headless_source guard was only on listen(), not on speak().
+        if not _is_headless_source(_source):
+            speak(prompt if attempt == 0 else f"Let me try again. {prompt}")
 
         if use_long_listen:
             raw = _get_listen_long()(max_seconds=long_max_seconds,

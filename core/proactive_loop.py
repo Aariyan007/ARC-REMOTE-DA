@@ -198,6 +198,22 @@ class ProactiveLoop:
         if system_state != "coding":
             self._coding_prompted = False
 
+    def _emit_to_frontend(self, message: str, event_type: str = "result") -> None:
+        """
+        BUG 15 FIX: Proactive messages were speak()-only — the frontend never saw them.
+        This pushes proactive messages to the job_store so they appear in the timeline.
+        """
+        try:
+            import uuid
+            from remote.job_store import get_job_store, JobEvent
+            store = get_job_store()
+            job_id = f"proactive-{uuid.uuid4().hex[:8]}"
+            job = store.create(job_id, command="[ARC Proactive]", source="proactive_loop")
+            job.add_event(JobEvent("ack", "Proactive message"))
+            job.add_event(JobEvent(event_type, message, data={"source": "proactive_loop"}))
+        except Exception as e:
+            print(f"⚠️  Proactive frontend emit error: {e}")
+
     def _trigger_coding_checkin(self) -> None:
         """Ask the user how they're feeling during a long coding session."""
         if self._suppress_notifications:
@@ -208,14 +224,18 @@ class ProactiveLoop:
             self._last_prompt_time = time.time()
 
         print("🤖 Proactive: Coding session check-in")
+        msg = "Hey, you've been coding for a while. How are you feeling today?"
 
         # Speak the question
         if self._speak:
             try:
-                self._speak("Hey, you've been coding for a while. How are you feeling today?")
+                self._speak(msg)
             except Exception as e:
                 print(f"⚠️  Proactive speak error: {e}")
                 return
+
+        # BUG 15 FIX: surface to frontend
+        self._emit_to_frontend(f"💡 {msg}", event_type="result")
 
         # Listen for response
         if self._listen and self._config.music_suggestion_enabled:

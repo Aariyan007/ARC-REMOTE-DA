@@ -53,7 +53,9 @@ def save_job_event(job_id: str, event_type: str, message: str, data: dict, times
     with conn:
         conn.execute(
             "INSERT INTO job_events (job_id, type, message, data, timestamp) VALUES (?, ?, ?, ?, ?)",
-            (job_id, event_type, message, json.dumps(data), timestamp)
+            # BUG 19 FIX: data can be None if passed explicitly; json.dumps(None) = "null"
+            # which frontend parses as null (not {}), breaking event.data || {} fallback.
+            (job_id, event_type, message, json.dumps(data or {}), timestamp)
         )
 
 

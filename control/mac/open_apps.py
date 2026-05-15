@@ -13,8 +13,8 @@ def open_terminal():
 def open_settings():
     subprocess.Popen(["open", "-a", "System Preferences"])
     
-def open_any_app(app_name: str) -> None:
-    """Opens any app by name — Mac finds it automatically."""
+def open_any_app(app_name: str) -> str:
+    """Opens any app by name — Mac finds it automatically. Returns status string."""
     import subprocess
     # Try exact name first
     result = subprocess.run(
@@ -28,7 +28,10 @@ def open_any_app(app_name: str) -> None:
             capture_output=True
         )
     if result.returncode != 0:
+        # BUG 11 FIX: was returning None — caller built "Opened None" message
         print(f"❌ Couldn't find app: {app_name}")
         speak(f"Couldn't find {app_name} on your Mac.")
+        return f"Couldn't find '{app_name}' on this Mac."
     else:
         print(f"✅ Opened: {app_name}")
+        return f"Opened {app_name}."

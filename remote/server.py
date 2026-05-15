@@ -145,8 +145,20 @@ def run_command(body: CommandIn, device: str = Depends(get_current_device)):
                 session_id=job_id,
                 user=device
             )
+            
+            if res is None:
+                # BUG 12 FIX: route() didn't store a result (e.g. interrupted command).
+                # Build a descriptive fallback using the correct factory signature.
+                res = runtime.CommandResponse.ok(
+                    job_id,
+                    "route",
+                    f"Command '{body.text[:60]}' was processed.",
+                    source=body.source,
+                )
 
-            if res.status == "completed":
+            # BUG 1 FIX: res.status is an ExecutionStatus enum, not a string.
+            # Comparing enum to str "completed" is always False.
+            if getattr(res.status, 'value', res.status) == "completed":
                 action = getattr(res, 'interpreted_action', None) or res.to_dict().get('interpreted_action', '')
 
                 # ── Stage 3: Verification (skip for chat/question intents)
@@ -200,12 +212,29 @@ def get_job_status(job_id: str, device: str = Depends(get_current_device)):
     }
 
 @app.websocket("/stream/{job_id}")
-async def stream_job(websocket: WebSocket, job_id: str):
+async def stream_job(websocket: WebSocket, job_id: str, token: str = None):
     """
     Stream events for a job via WebSocket.
     Events: ack -> clarify/confirm -> executing -> verify -> result
+
+    BUG 5 FIX: WebSocket cannot use HTTP Authorization header from browser.
+    Token is passed as a query param: /stream/{job_id}?token=<bearer_token>
     """
     await websocket.accept()
+
+    # Auth check — token comes as query param since WS headers aren't standard
+    raw_token = websocket.query_params.get("token", "")
+    if not raw_token:
+        await websocket.send_json({"type": "error", "message": "Missing token"})
+        await websocket.close(code=1008)
+        return
+    from remote.auth import verify_access_token
+    payload = verify_access_token(raw_token)
+    if not payload:
+        await websocket.send_json({"type": "error", "message": "Invalid or expired token"})
+        await websocket.close(code=1008)
+        return
+
     job = get_job_store().get(job_id)
     if not job:
         await websocket.close(code=1008)

@@ -555,18 +555,23 @@ def extract_find_and_send_params(text: str) -> dict:
     """
     result = {"filename": None, "to": None}
 
-    # BUG FIX: 'mail' was missing from split pattern — "mail it to X" never split correctly
+    # BUG 13 FIX: splitting on 'email' mid-phrase could cut filenames that
+    # contain the word "email" (e.g. "email report.pdf").
+    # Use a stricter pattern: split only when send/email/mail appears after
+    # a whitespace boundary and is followed by common send-context words.
     split_match = re.split(
-        r'\b(?:and\s+)?(?:then\s+)?(?:send|email|mail)\b',
+        r'\s+(?:and\s+)?(?:then\s+)?(?:send|email|mail)(?:\s+it)?\b',
         text, maxsplit=1
     )
     if len(split_match) == 2:
         find_part = split_match[0].strip()
         send_part = split_match[1].strip()
 
+        # BUG 14 FIX: find_part sometimes ends with trailing " and" or " to"
+        # from partial pattern matches — strip those before extracting filename.
+        find_part = re.sub(r'\s+(?:and|to|then)\s*$', '', find_part).strip()
+
         # 1. Get filename from find_part
-        # BUG FIX: extract_filename was returning stopwords ('a', 'an', 'the', 'my', 'file', 'it')
-        # Strip common prefix verbs/articles before extracting
         _FIND_STOPWORDS = {
             'a', 'an', 'the', 'my', 'that', 'this', 'it', 'file', 'some',
             'for', 'find', 'search', 'get', 'look', 'locate', 'any', 'me',
@@ -575,7 +580,6 @@ def extract_find_and_send_params(text: str) -> dict:
         raw_name = file_info.get("filename") or extract_query(find_part)
 
         if raw_name and raw_name.lower() in _FIND_STOPWORDS:
-            # Fallback: strip leading stopwords from find_part and take last meaningful word
             tokens = [
                 w for w in re.split(r'\s+', find_part)
                 if w.lower() not in _FIND_STOPWORDS and len(w) > 1

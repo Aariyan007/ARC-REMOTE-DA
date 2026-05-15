@@ -127,6 +127,18 @@ export function renderEventTimeline(onReply, onRetry = null) {
   container.id = 'event-timeline';
 
   async function render() {
+    // BUG 17 FIX: Full innerHTML wipe on every job store event caused the command
+    // input to lose focus mid-typing (progress events fire every 100ms).
+    // Skip rebuilding if the user is actively typing in the command field.
+    const focused = document.activeElement;
+    const isTyping = focused && (
+      focused.id === 'command-input-field' ||
+      focused.closest?.('#command-input-area') ||
+      (focused.tagName === 'INPUT' && focused !== document.body) ||
+      focused.tagName === 'TEXTAREA'
+    );
+    if (isTyping) return;
+
     const jobs = jobStore.getAllJobs();
 
     if (jobs.length === 0) {

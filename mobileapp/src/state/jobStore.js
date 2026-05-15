@@ -109,6 +109,11 @@ class JobStore {
     if (!job) return;
     job.needsInput = false;
     job.pendingEventType = null;
+    // BUG 9 FIX: restore running status so typing indicator reappears
+    // while backend processes the reply
+    if (job.status !== 'completed' && job.status !== 'failed') {
+      job.status = 'running';
+    }
     this._notify();
   }
 

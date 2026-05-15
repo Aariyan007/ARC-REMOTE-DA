@@ -1183,14 +1183,16 @@ def _handle_find_and_send_command(command: str, cleaned: str, actions: dict, sta
             summary=result_text, data=params
         )
         
+        # BUG 2 FIX: Case-insensitive failure check — was missing "failed", "cancelled" etc.
+        _is_failure = any(w in result_text.lower() for w in ("failed", "cancelled", "could not", "error"))
         resp = CommandResponse(
             request_id=_request_id,
-            status=ExecutionStatus.COMPLETED if "Failed" not in result_text else ExecutionStatus.FAILED,
+            status=ExecutionStatus.FAILED if _is_failure else ExecutionStatus.COMPLETED,
             interpreted_action="find_and_send",
             final_result=result_text,
             steps=[step],
             data={"params": params},
-            errors=[result_text] if "Failed" in result_text else [],
+            errors=[result_text] if _is_failure else [],
             elapsed_ms=latency_ms,
             source=_source,
         )
@@ -1408,7 +1410,7 @@ def route(command: str, actions: dict, _source: str = "voice", _request_id: str 
                         normalized_text=command, params=params,
                         spoken_text=full_spoken,
                     )
-                    save_exchange(command, full_spoken)
+                    # BUG 4 FIX: was called twice — duplicate conversation history
                     save_exchange(command, full_spoken)
 
                     return True
@@ -1481,14 +1483,16 @@ def route(command: str, actions: dict, _source: str = "voice", _request_id: str 
                 from core.runtime import store_result
                 step = StepResult(step_id=0, action="send_context_file", status="success", summary=result_text,
                                   data={"to": to_email, "attachment": attachment_path})
+                # BUG 2 FIX: Case-insensitive failure check
+                _is_failure = any(w in result_text.lower() for w in ("failed", "cancelled", "could not", "error"))
                 resp = CommandResponse(
                     request_id=_request_id,
-                    status=ExecutionStatus.COMPLETED if "Failed" not in result_text else ExecutionStatus.FAILED,
+                    status=ExecutionStatus.FAILED if _is_failure else ExecutionStatus.COMPLETED,
                     interpreted_action="send_email",
                     final_result=result_text,
                     steps=[step],
                     data={"to": to_email, "attachment": attachment_path},
-                    errors=[result_text] if "Failed" in result_text else [],
+                    errors=[result_text] if _is_failure else [],
                     elapsed_ms=latency_ms,
                     source=_source,
                 )

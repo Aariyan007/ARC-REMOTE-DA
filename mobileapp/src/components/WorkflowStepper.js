@@ -66,11 +66,17 @@ function _typeColorClass(type) {
  */
 export function isMultiStepJob(job) {
   const nonAck = job.events.filter(e => e.type !== 'ack');
-  // Need at least 3 pipeline events (e.g. executing → progress → verify → result)
-  // OR interactive steps like clarify/confirm
-  const pipelineTypes = ['executing', 'progress', 'verify', 'clarify', 'confirm'];
-  const pipelineCount = nonAck.filter(e => pipelineTypes.includes(e.type)).length;
-  return pipelineCount >= 2;
+  // BUG 6 FIX: threshold was >= 2 which every remote command triggered because
+  // the server always auto-emits: progress + executing = 2 pipeline events.
+  // Changed to >= 3 so only genuinely multi-step workflows (e.g. clarify/confirm
+  // + subsequent steps) render as stepper cards.
+  const pipelineTypes = ['clarify', 'confirm', 'verify'];
+  const hasClarifyOrConfirm = nonAck.some(e => pipelineTypes.includes(e.type));
+  const pipelineCount = nonAck.filter(e =>
+    ['executing', 'progress', 'verify', 'clarify', 'confirm'].includes(e.type)
+  ).length;
+  // Must have a user-interactive step OR 3+ pipeline events to be "multi-step"
+  return hasClarifyOrConfirm || pipelineCount >= 3;
 }
 
 /**
