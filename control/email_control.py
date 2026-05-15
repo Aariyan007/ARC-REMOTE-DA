@@ -292,39 +292,34 @@ def _extract_body(payload: dict) -> str:
     return body
 
 
-def _speak_email(service, msg_id: str, read_body: bool = False) -> None:
-    """Fetches and speaks a single email."""
-    data    = service.users().messages().get(
-        userId="me", id=msg_id,
-        format="full" if read_body else "metadata",
-        metadataHeaders=["Subject", "From"]
-    ).execute()
+def _speak_email_summary(service, msg_id: str, read_body: bool = False) -> str:
+    """Fetches an email and returns a one-line spoken summary string."""
+    try:
+        data = service.users().messages().get(
+            userId="me", id=msg_id,
+            format="full" if read_body else "metadata",
+            metadataHeaders=["Subject", "From"]
+        ).execute()
+        headers = {h["name"]: h["value"] for h in data["payload"]["headers"]}
+        subject = headers.get("Subject", "No subject")
+        sender  = headers.get("From", "Unknown")
+        sender_name = sender.split("<")[0].strip().strip('"')
+        line = f"From {sender_name}: {subject}"
+        if read_body:
+            body = _extract_body(data["payload"])
+            if body:
+                preview = body[:200] + ("…" if len(body) > 200 else "")
+                line += f" — {preview}"
+        return line
+    except Exception as e:
+        return f"(Could not read email: {e})"
 
-    headers     = {h["name"]: h["value"] for h in data["payload"]["headers"]}
-    subject     = headers.get("Subject", "No subject")
-    sender      = headers.get("From", "Unknown")
-    sender_name = sender.split("<")[0].strip().strip('"')
-
-    speak(f"From {sender_name}: {subject}.")
-    print(f"📧 From: {sender_name} | Subject: {subject}")
-
-    if read_body:
-        body = _extract_body(data["payload"])
-        if body:
-            # Read first 300 chars — enough to get the gist
-            preview = body[:300]
-            if len(body) > 300:
-                preview += "..."
-            speak(f"It says: {preview}")
-            print(f"📄 Body preview: {preview[:100]}...")
-        else:
-            speak("Couldn't read the email body.")
 
 
 # ─── Read / Search / Open ────────────────────────────────────
 
-def read_emails(count: int = 5) -> None:
-    """Reads latest unread email subjects aloud."""
+def read_emails(count: int = 5) -> str:
+    """Reads latest unread email subjects. Returns summary string for frontend."""
     speak("Checking your inbox.")
     try:
         service  = get_gmail_service()
@@ -337,21 +332,26 @@ def read_emails(count: int = 5) -> None:
         messages = results.get("messages", [])
         if not messages:
             speak("You have no unread emails.")
-            return
+            return "You have no unread emails."
 
-        speak(f"You have {len(messages)} unread emails.")
+        lines = [f"You have {len(messages)} unread email(s):"]
+        speak(lines[0])
         for msg in messages[:count]:
-            _speak_email(service, msg["id"], read_body=False)
+            summary = _speak_email_summary(service, msg["id"], read_body=False)
+            speak(summary)
+            lines.append(f"• {summary}")
+
+        return "\n".join(lines)
 
     except Exception as e:
         print(f"❌ Email error: {e}")
         speak("Couldn't read emails right now.")
+        return f"Couldn't read emails: {e}"
 
 
-def search_emails(query: str) -> None:
+def search_emails(query: str) -> str:
     """
-    Searches Gmail and reads matching emails aloud.
-    Reads subject + body preview for each result.
+    Searches Gmail and reads matching emails. Returns summary string for frontend.
     """
     speak(f"Searching emails for {query}.")
     try:
@@ -364,16 +364,24 @@ def search_emails(query: str) -> None:
 
         messages = results.get("messages", [])
         if not messages:
-            speak(f"No emails found about {query}.")
-            return
+            msg = f"No emails found about '{query}'."
+            speak(msg)
+            return msg
 
-        speak(f"Found {len(messages)} emails. Reading them.")
-        for msg in messages[:3]:
-            _speak_email(service, msg["id"], read_body=True)  # ← reads body too
+        lines = [f"Found {len(messages)} email(s) matching '{query}':"]
+        speak(lines[0])
+        for msg_obj in messages[:3]:
+            summary = _speak_email_summary(service, msg_obj["id"], read_body=True)
+            speak(summary)
+            lines.append(f"• {summary}")
+
+        return "\n".join(lines)
 
     except Exception as e:
         print(f"❌ Search error: {e}")
         speak("Couldn't search emails right now.")
+        return f"Couldn't search emails: {e}"
+
 
 
 # ─── Send Email (Voice-Driven Multi-Step) ────────────────────
@@ -575,9 +583,11 @@ def find_and_send_file(filename: str = "", to: str = "", _source: str = "voice",
             speak(f"Confirmed. Sending {file_basename} to {to}.")
         
         # Add a progress event so the UI shows activity
-        get_job_store().get(_request_id).add_event(
-            JobEvent("executing", f"Attaching {file_basename} and drafting email...")
-        )
+        _job = get_job_store().get(_request_id)
+        if _job:
+            _job.add_event(
+                JobEvent("executing", f"Attaching {file_basename} and drafting email...")
+            )
         
         # Use playwright to open draft and attach
         res = draft_email_with_attachment(

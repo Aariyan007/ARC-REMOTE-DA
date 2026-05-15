@@ -741,8 +741,9 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "", _s
         if action == "search_emails":
             query = params.get("query", "")
             if query and "search_emails" in actions:
-                actions["search_emails"](query)
-                return ActionResult.ok(action, f"Searched emails for {query}", data={"query": query})
+                summary = actions["search_emails"](query)  # now returns str
+                summary = summary or f"Searched emails for '{query}'."
+                return ActionResult.ok(action, summary, data={"query": query}, user_message=summary)
 
         if action == "send_email":
             if "send_email" in actions:
@@ -1046,11 +1047,21 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "", _s
             result = actions[action]()
             if isinstance(result, str) and result.strip():
                 message = result.strip()
-                direct_answer_actions = {"tell_time", "tell_date", "tell_weather", "get_battery", "get_volume"}
+                # Actions whose return value IS the user-facing answer
+                # (not just an internal status string).
+                # BUG FIX: was only {tell_time, tell_date, ...} so read_emails,
+                # morning_briefing etc. showed blank in frontend.
+                content_answer_actions = {
+                    "tell_time", "tell_date", "tell_weather", "get_battery",
+                    "get_volume", "read_emails", "search_emails",
+                    "morning_briefing", "search_vault", "read_note_vault",
+                    "summarise_pdf", "tell_news", "read_clipboard",
+                    "get_wifi_name", "get_ip_address",
+                }
                 return ActionResult.ok(
                     action,
                     message,
-                    user_message=message if action in direct_answer_actions else "",
+                    user_message=message if action in content_answer_actions else "",
                 )
 
             summary = f"Executed {action}" + (f": {result}" if result else "")
