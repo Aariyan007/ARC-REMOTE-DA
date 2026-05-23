@@ -15,6 +15,12 @@ let _suggestionsCache = null;
 let _suggestionsFetchedAt = 0;
 const SUGGESTIONS_TTL = 5 * 60 * 1000;
 
+/** Deferred render handle for BUG-C fix */
+let _deferredRender = null;
+
+/** Interval handle for BUG-J live timestamp refresh */
+let _timestampInterval = null;
+
 /**
  * Get dynamic suggestions — try backend first, fall back to client-side.
  */
@@ -41,6 +47,15 @@ async function getDynamicSuggestions() {
   // Fallback: client-side time-based suggestions
   return _getClientSuggestions();
 }
+
+// BUG-I FIX: clear suggestion cache whenever we disconnect so reconnect/restart
+// always fetches a fresh set rather than serving stale data for up to 5 min.
+appState.subscribe(() => {
+  if (!appState.connected) {
+    _suggestionsCache = null;
+    _suggestionsFetchedAt = 0;
+  }
+});
 
 function _getClientSuggestions() {
   const hour = new Date().getHours();
@@ -137,7 +152,17 @@ export function renderEventTimeline(onReply, onRetry = null) {
       (focused.tagName === 'INPUT' && focused !== document.body) ||
       focused.tagName === 'TEXTAREA'
     );
-    if (isTyping) return;
+    // BUG-C FIX: the old guard did `if (isTyping) return` with no follow-up.
+    // Every jobStore._notify() that fired while typing was permanently lost.
+    // When the user stopped typing the timeline stayed stale (e.g. showing a
+    // typing indicator after a result had already arrived) until the next
+    // unrelated state change triggered a new render.
+    // Fix: schedule a deferred render 300ms after the last skipped notification.
+    if (isTyping) {
+      clearTimeout(_deferredRender);
+      _deferredRender = setTimeout(render, 300);
+      return;
+    }
 
     const jobs = jobStore.getAllJobs();
 
@@ -343,6 +368,26 @@ export function renderEventTimeline(onReply, onRetry = null) {
 
   render();
   jobStore.subscribe(render);
+
+  // BUG-J FIX: timeAgo() is a static string baked into innerHTML at render time.
+  // Completed jobs never get new events so jobStore._notify() never fires again,
+  // leaving "just now" frozen indefinitely. A lightweight interval refreshes only
+  // the time nodes without triggering a full DOM rebuild.
+  if (_timestampInterval) clearInterval(_timestampInterval);
+  _timestampInterval = setInterval(() => {
+    container.querySelectorAll('.event-card__time, .workflow-step__meta').forEach(el => {
+      const ts = parseFloat(el.dataset.ts);
+      if (!isNaN(ts)) {
+        const now = Date.now() / 1000;
+        const diff = Math.max(0, now - ts);
+        if (diff < 5)       el.textContent = 'just now';
+        else if (diff < 60) el.textContent = `${Math.floor(diff)}s ago`;
+        else if (diff < 3600) el.textContent = `${Math.floor(diff / 60)}m ago`;
+        else if (diff < 86400) el.textContent = `${Math.floor(diff / 3600)}h ago`;
+        // Older than a day doesn't need live refresh
+      }
+    });
+  }, 30_000);
 
   return container;
 }

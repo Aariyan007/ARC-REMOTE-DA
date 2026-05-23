@@ -73,12 +73,13 @@ class JobStore {
         job.needsInput = false;
         break;
       case 'clarify':
-        job.needsInput = true;
-        job.pendingEventType = 'clarify';
-        break;
       case 'confirm':
+        // BUG-E FIX: status was left as 'running' even though the typedef declares
+        // 'needs_confirmation'. Any downstream code branching on this status was
+        // silently falling through.
+        job.status = 'needs_confirmation';
         job.needsInput = true;
-        job.pendingEventType = 'confirm';
+        job.pendingEventType = event.type;
         break;
       case 'executing':
       case 'progress':
@@ -109,8 +110,8 @@ class JobStore {
     if (!job) return;
     job.needsInput = false;
     job.pendingEventType = null;
-    // BUG 9 FIX: restore running status so typing indicator reappears
-    // while backend processes the reply
+    // Restore 'running' from 'needs_confirmation' (or any non-terminal state)
+    // so the typing indicator reappears while the backend processes the reply.
     if (job.status !== 'completed' && job.status !== 'failed') {
       job.status = 'running';
     }

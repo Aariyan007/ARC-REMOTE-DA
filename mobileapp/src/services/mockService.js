@@ -3,16 +3,22 @@
  * Simulates the full ARC event lifecycle for offline/dev mode.
  */
 
-import { uuid } from '../utils/helpers.js';
+// uuid import removed — jobId is now supplied by the caller (BUG-A fix)
 
 /**
  * Simulate a command lifecycle with realistic delays.
+ *
+ * BUG-A FIX: The caller (MainScreen.handleMockCommand) now passes a pre-registered
+ * jobId so that jobStore.createJob() is guaranteed to run before any setTimeout
+ * callback fires. The old signature auto-generated the id internally, causing
+ * every event to be silently dropped (job not yet in the Map).
+ *
+ * @param {string} jobId      - Pre-registered job ID from the caller
  * @param {string} commandText - The command text
- * @param {Function} onEvent - Callback for each event
- * @returns {{ jobId: string, cancel: Function }}
+ * @param {Function} onEvent  - Callback for each event
+ * @returns {{ cancel: Function }}
  */
-export function simulateCommand(commandText, onEvent) {
-  const jobId = uuid();
+export function simulateCommand(jobId, commandText, onEvent) {
   let cancelled = false;
   const timers = [];
 
@@ -51,7 +57,7 @@ export function simulateCommand(commandText, onEvent) {
       timestamp: (Date.now() + delay) / 1000,
     });
     // Clarify pauses the timeline — user must reply
-    return { jobId, cancel: () => { cancelled = true; timers.forEach(clearTimeout); } };
+    return { cancel: () => { cancelled = true; timers.forEach(clearTimeout); } };
   }
 
   // CONFIRM flow
@@ -71,7 +77,7 @@ export function simulateCommand(commandText, onEvent) {
       data: { action: commandText },
       timestamp: (Date.now() + delay) / 1000,
     });
-    return { jobId, cancel: () => { cancelled = true; timers.forEach(clearTimeout); } };
+    return { cancel: () => { cancelled = true; timers.forEach(clearTimeout); } };
   }
 
   // ERROR flow
@@ -91,7 +97,7 @@ export function simulateCommand(commandText, onEvent) {
       data: { error_code: 'MOCK_FAILURE' },
       timestamp: (Date.now() + delay) / 1000,
     });
-    return { jobId, cancel: () => { cancelled = true; timers.forEach(clearTimeout); } };
+    return { cancel: () => { cancelled = true; timers.forEach(clearTimeout); } };
   }
 
   // NORMAL flow (most commands)

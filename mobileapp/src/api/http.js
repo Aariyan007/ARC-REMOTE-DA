@@ -58,10 +58,11 @@ async function request(method, path, body = null) {
  * @returns {Promise<{job_id: string}>}
  */
 export async function sendCommand(text) {
+  // BUG-H FIX: removed hardcoded user:'user'. The backend derives device identity
+  // from the JWT Authorization header via get_current_device(), never from the body.
   return request('POST', CONFIG.ENDPOINTS.COMMAND, {
     text,
     source: 'controller',
-    user: 'user',
   });
 }
 

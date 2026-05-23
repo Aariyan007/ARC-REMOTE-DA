@@ -219,6 +219,11 @@ async def stream_job(websocket: WebSocket, job_id: str, token: str = None):
 
     BUG 5 FIX: WebSocket cannot use HTTP Authorization header from browser.
     Token is passed as a query param: /stream/{job_id}?token=<bearer_token>
+
+    BUG-N FIX: replaced asyncio.sleep(0.1) polling with a condition-variable
+    wait via run_in_executor. The old 10 Hz poll added up to 100ms latency per
+    event, which was especially bad for 'clarify' prompts that need to appear
+    immediately so the user knows to respond.
     """
     await websocket.accept()
 
@@ -240,9 +245,19 @@ async def stream_job(websocket: WebSocket, job_id: str, token: str = None):
         await websocket.close(code=1008)
         return
 
+    loop = asyncio.get_event_loop()
     sent_idx = 0
+
+    def _wait_for_new_event():
+        """Block in a thread until a new event is added or 2s timeout."""
+        with job.new_event_cond:
+            # Only wait if there's nothing new to send right now
+            if len(job.events) <= sent_idx:
+                job.new_event_cond.wait(timeout=2.0)
+
     try:
         while True:
+            # Flush any events that arrived since last iteration
             current_len = len(job.events)
             if current_len > sent_idx:
                 for i in range(sent_idx, current_len):
@@ -252,7 +267,10 @@ async def stream_job(websocket: WebSocket, job_id: str, token: str = None):
                         await websocket.close()
                         return
                 sent_idx = current_len
-            await asyncio.sleep(0.1)
+            else:
+                # Nothing new — block until the background thread notifies us
+                # (or the 2s timeout fires as a safety net)
+                await loop.run_in_executor(None, _wait_for_new_event)
     except WebSocketDisconnect:
         pass
 

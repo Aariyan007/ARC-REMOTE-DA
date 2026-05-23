@@ -62,20 +62,27 @@ export function connectToJob(jobId, callbacks = {}) {
     ws.onclose = () => {
       connected = false;
 
-      if (closed || terminalEventReceived) {
-        onClose?.({ clean: true });
-        return;
-      }
+      // BUG-F FIX: In some browsers the TCP close frame can arrive before the
+      // final 'message' frame is processed by onmessage. Without a grace period,
+      // terminalEventReceived would still be false, triggering a spurious
+      // reconnect attempt and showing a 'Connection lost' error in the timeline.
+      // 50ms is enough for the microtask queue to process the pending message.
+      setTimeout(() => {
+        if (closed || terminalEventReceived) {
+          onClose?.({ clean: true });
+          return;
+        }
 
-      // Attempt reconnect on unexpected close
-      if (reconnectAttempts < CONFIG.WS_MAX_RECONNECTS) {
-        reconnectAttempts++;
-        const delay = CONFIG.WS_RECONNECT_DELAY * Math.pow(2, reconnectAttempts - 1);
-        setTimeout(connect, delay);
-      } else {
-        closed = true;
-        onClose?.({ clean: false, reason: 'Max reconnection attempts reached' });
-      }
+        // Attempt reconnect on unexpected close
+        if (reconnectAttempts < CONFIG.WS_MAX_RECONNECTS) {
+          reconnectAttempts++;
+          const delay = CONFIG.WS_RECONNECT_DELAY * Math.pow(2, reconnectAttempts - 1);
+          setTimeout(connect, delay);
+        } else {
+          closed = true;
+          onClose?.({ clean: false, reason: 'Max reconnection attempts reached' });
+        }
+      }, 50);
     };
   }
 

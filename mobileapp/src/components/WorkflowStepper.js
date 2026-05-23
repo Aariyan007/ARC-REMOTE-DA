@@ -93,12 +93,18 @@ export function renderWorkflowStepper(job, onReply, onRetry = null) {
 
   const visibleEvents = job.events.filter(e => e.type !== 'ack');
 
+  // BUG-K FIX: result/error events were included in both the step loop (lines
+  // below) AND the terminal footer block, showing the message twice — once
+  // truncated to 60 chars as a step label, and once in full as a footer.
+  // Solution: exclude terminal events from steps; only the footer renders them.
+  const stepEvents = visibleEvents.filter(e => e.type !== 'result' && e.type !== 'error');
+
   // Build step list
   const stepsEl = document.createElement('div');
   stepsEl.className = 'workflow-stepper__steps';
 
-  visibleEvents.forEach((event, idx) => {
-    const total = visibleEvents.length;
+  stepEvents.forEach((event, idx) => {
+    const total = stepEvents.length;
     const status = _getStepStatus(event, idx, total, job);
     const colorClass = _typeColorClass(event.type);
     const isLast = idx === total - 1;
@@ -128,6 +134,9 @@ export function renderWorkflowStepper(job, onReply, onRetry = null) {
 
     const meta = document.createElement('div');
     meta.className = 'workflow-step__meta';
+    // BUG-J FIX: write data-ts so EventTimeline's 30s interval can refresh
+    // the timestamp text without triggering a full DOM rebuild.
+    meta.dataset.ts = String(event.timestamp);
     meta.textContent = status === 'active' && job.status === 'running'
       ? 'In progress…'
       : status === 'active' && job.needsInput
@@ -147,7 +156,7 @@ export function renderWorkflowStepper(job, onReply, onRetry = null) {
       const connector = document.createElement('div');
       connector.className = 'workflow-step__connector';
       // Fill the connector if the next step exists (done)
-      const nextStatus = _getStepStatus(visibleEvents[idx + 1], idx + 1, total, job);
+      const nextStatus = _getStepStatus(stepEvents[idx + 1], idx + 1, total, job);
       if (nextStatus === 'done' || nextStatus === 'active' || nextStatus === 'failed') {
         connector.classList.add('workflow-step__connector--filled');
       }

@@ -69,12 +69,30 @@ export function renderConfirmPrompt(jobId, onReply, event = {}) {
   yesBtn.addEventListener('click', () => respond('yes'));
   noBtn.addEventListener('click', () => respond('no'));
 
-  // Keyboard shortcuts
+  // BUG-B FIX: the old code only removed the listener when Y/N was pressed.
+  // If the timeline re-renders (e.g. a progress event arrives) before the user
+  // replies, the old ConfirmPrompt element is removed from the DOM but its
+  // 'keydown' handler lived on document forever, silently sending phantom
+  // replies for stale jobs on the user's next keypress.
+  //
+  // Fix: use an AbortController tied to a MutationObserver that fires the
+  // moment the element is detached from the DOM.
+  const ac = new AbortController();
+
   function onKey(e) {
-    if (e.key === 'y' || e.key === 'Y') { respond('yes'); document.removeEventListener('keydown', onKey); }
-    if (e.key === 'n' || e.key === 'N') { respond('no'); document.removeEventListener('keydown', onKey); }
+    if (e.key === 'y' || e.key === 'Y') { respond('yes'); ac.abort(); }
+    if (e.key === 'n' || e.key === 'N') { respond('no');  ac.abort(); }
   }
-  document.addEventListener('keydown', onKey);
+  document.addEventListener('keydown', onKey, { signal: ac.signal });
+
+  // Watch for el being removed from the DOM and clean up immediately
+  const obs = new MutationObserver(() => {
+    if (!el.isConnected) {
+      ac.abort();
+      obs.disconnect();
+    }
+  });
+  obs.observe(document.body, { childList: true, subtree: true });
 
   return el;
 }

@@ -82,7 +82,7 @@ ${JSON.stringify(event.data, null, 2)}
           Retry
         </button>
       ` : ''}
-      <div class="event-card__time">${timeAgo(event.timestamp)}</div>
+      <div class="event-card__time" data-ts="${event.timestamp}">${timeAgo(event.timestamp)}</div>
       <div class="event-card__attachments" id="attachments-${event.id}"></div>
       <div class="event-card__prompt" id="prompt-${event.id}"></div>
     `;
@@ -94,7 +94,7 @@ ${JSON.stringify(event.data, null, 2)}
         <div class="event-card__type">${getEventLabel(event.type)}</div>
       </div>
       <div class="event-card__chat-message">${_formatMessage(event.message)}</div>
-      <div class="event-card__time">${timeAgo(event.timestamp)}</div>
+      <div class="event-card__time" data-ts="${event.timestamp}">${timeAgo(event.timestamp)}</div>
       <div class="event-card__attachments" id="attachments-${event.id}"></div>
       <div class="event-card__prompt" id="prompt-${event.id}"></div>
     `;
@@ -148,7 +148,10 @@ function _isFileResult(event) {
   if (event.type !== 'result') return false;
   const data = event.data || {};
   const action = data.interpreted_action || '';
-  return action === 'search_file' || !!(data.path || data.filename);
+  // BUG-G FIX: must use .trim() — data.path = "" (empty string) is falsy in
+  // JS but the old !!(data.path) check returned true before trim, letting
+  // _extractFileInfo return null while the render still called _renderFilePreview(null).
+  return action === 'search_file' || !!(data.path?.trim() || data.filename?.trim());
 }
 
 /**

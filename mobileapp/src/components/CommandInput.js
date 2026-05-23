@@ -165,7 +165,7 @@ export function renderCommandInput(onSubmit) {
       input.placeholder = `Reply to: ${activeJob.pendingEventType === 'confirm' ? 'Confirm Action' : 'Clarification Request'}...`;
       wrapper.querySelector('.command-input').style.borderColor = 'var(--accent-orange)';
     } else {
-      input.placeholder = 'Type a command... (e.g., open chrome, find resume.txt)';
+      input.placeholder = 'Type a command… (e.g., open chrome, read my emails)';
       wrapper.querySelector('.command-input').style.borderColor = 'var(--border-default)';
     }
   });

@@ -29,14 +29,23 @@ export function formatTime(timestamp) {
   });
 }
 
-/** Escape HTML to prevent XSS */
+/** Escape HTML to prevent XSS.
+ * BUG-O FIX: replaced live-DOM approach (div.textContent/innerHTML) with a
+ * character-map regex. The old version created a DOM element on every call —
+ * in EventTimeline.render() this fired 20-50 times per state change.
+ */
+const _ESC_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 export function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
+  return String(str ?? '').replace(/[&<>"']/g, c => _ESC_MAP[c]);
 }
 
-/** Detect file URLs in a string or data object */
+/** Detect file URLs in a string or data object.
+ * BUG-D FIX: removed JSON.stringify(data) scan. Scanning the full serialised
+ * blob caused the same URL to appear twice — once from the string scan and once
+ * from the JSON string — producing duplicate download buttons even after Set
+ * deduplication (because the URL matched in two different passes).
+ * Now only known top-level fields are checked.
+ */
 export function extractFileUrls(message, data) {
   const urls = [];
   const urlRegex = /https?:\/\/[^\s"'<>]+/gi;
@@ -47,14 +56,11 @@ export function extractFileUrls(message, data) {
   }
 
   if (data) {
-    const dataStr = JSON.stringify(data);
-    const matches = dataStr.match(urlRegex);
-    if (matches) urls.push(...matches);
-
-    // Check common file fields
-    for (const key of ['file', 'file_url', 'download_url', 'path', 'attachment']) {
-      if (data[key] && typeof data[key] === 'string') {
-        urls.push(data[key]);
+    // Only scan known file-bearing fields — do NOT JSON.stringify the whole object
+    for (const key of ['file', 'file_url', 'download_url', 'attachment']) {
+      const val = data[key];
+      if (val && typeof val === 'string' && /^https?:\/\//.test(val)) {
+        urls.push(val);
       }
     }
   }

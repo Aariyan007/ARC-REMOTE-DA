@@ -104,13 +104,21 @@ async function handleRealCommand(text) {
 
 /**
  * Mock flow: simulated events via mockService.
+ * BUG-A FIX: createJob MUST be called before simulateCommand schedules any events.
+ * Previously the job didn't exist yet when the first setTimeout fired, so
+ * jobStore.addEvent silently dropped every event (job not found in the Map).
  */
 function handleMockCommand(text) {
-  const { jobId } = simulateCommand(text, (event) => {
+  // Generate a stable ID synchronously before anything else runs
+  const jobId = `mock-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+  // Register the job FIRST so addEvent can find it when timers fire
+  jobStore.createJob(jobId, text);
+
+  // Pass the pre-registered jobId into the simulator
+  simulateCommand(jobId, text, (event) => {
     handleEvent(jobId, event);
   });
-
-  jobStore.createJob(jobId, text);
 }
 
 /**

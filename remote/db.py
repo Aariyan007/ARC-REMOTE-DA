@@ -2,19 +2,39 @@ import os
 import sqlite3
 import json
 import threading
+import atexit
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "remote.db")
 
 _local = threading.local()
+# Track all open connections so atexit can close them
+_all_conns: list = []
+_all_conns_lock = threading.Lock()
 
 def get_db():
     if not hasattr(_local, "conn"):
         os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-        # Check if same thread
-        _local.conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-        _local.conn.row_factory = sqlite3.Row
-        _init_db(_local.conn)
+        conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        _init_db(conn)
+        _local.conn = conn
+        # BUG-M FIX: track every connection so we can close them on exit.
+        # Thread-local connections are never auto-closed when a thread dies or
+        # the process exits, causing a resource leak in long-running servers.
+        with _all_conns_lock:
+            _all_conns.append(conn)
     return _local.conn
+
+@atexit.register
+def _close_all_db_connections():
+    """Close every SQLite connection registered from any thread."""
+    with _all_conns_lock:
+        for conn in _all_conns:
+            try:
+                conn.close()
+            except Exception:
+                pass
+        _all_conns.clear()
 
 def _init_db(conn):
     with conn:
