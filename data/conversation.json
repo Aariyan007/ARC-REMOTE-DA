@@ -1,10 +1,5 @@
 [
   {
-    "timestamp": "2026-05-06 00:36:47",
-    "you": "decrease brightness oercentage by 100%",
-    "jarvis": "Turning down. Brightness down by 100%."
-  },
-  {
     "timestamp": "2026-05-06 00:37:05",
     "you": "more",
     "jarvis": "Brighter. Brightness up by 10%."
@@ -98,5 +93,10 @@
     "timestamp": "2026-05-06 13:26:25",
     "you": "read the contents of that file",
     "jarvis": "Reading. Sunu Aariyan\naariyansunu28@gmail.com | +91-9633465526 | linkedin.com/in/aariyan-s | github.com/Aariyan007\nIndia,Kerala-682019\nPortFolio-https://portfolio-1-xlzb.onrender.com/\nAspiring Full Stack Developer with hands-on experience building API-driven web applications and machine learning\nmodels. Proficient in MERN stack, RESTful APIs, real-time data visualization, and currently expanding skills in Java and\nSpring Boot. Pursuing B.T ech in Computer Science (3rd year) at MITS, Kochi, eager to contribute to innovative web and\nsoftware development projects.\nEDUCATION\nMuthoot Institute of Technology and Science \u2013 Kochi, Kerala\nBachelor of T echnology in Computer Science and Engineering \u2014 Expected May 2027\n\u25cf\n\u25cf\nCurrent Standing: 3rd Year Student\nRelevant Coursework: Data Structures & Algorithms, Web Development, Operating Systems, Database\nManagement Systems, Microprocessors & Microcontrollers, Computer Architecture, Computer Networking\nWORK HISTORY\nCorizo \u2013 Machine Learning Intern June 2024 \u2013 August 2024 Corizo is an ed-tech company offering mentor-led,\nindustry-relevant training in tech like full stack development, AI/ML, and data science to help students become\njob-ready.\n\u25cf Developed a"
+  },
+  {
+    "timestamp": "2026-05-23 12:07:04",
+    "you": "what time is it",
+    "jarvis": "It's 12:07 PM"
   }
 ]

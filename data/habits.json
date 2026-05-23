@@ -6,7 +6,7 @@
     "weekday": -1,
     "occurrences": 3,
     "confidence": 1.0,
-    "last_seen": "2026-05-06 00:48:24",
+    "last_seen": "2026-05-06 13:26:25",
     "description": "chat_response usually at 1:00 (3 times, 100% confidence)"
   },
   {
@@ -16,8 +16,22 @@
     "weekday": -1,
     "occurrences": 3,
     "confidence": 1.0,
-    "last_seen": "2026-05-06 00:48:24",
+    "last_seen": "2026-05-06 13:26:25",
     "description": "sleep_mac_cancelled usually at 2:00 (3 times, 100% confidence)"
+  },
+  {
+    "action": "create_file",
+    "params": {
+      "filename": "superman.txt",
+      "location": null,
+      "target": "superman.txt"
+    },
+    "hour": 0,
+    "weekday": -1,
+    "occurrences": 3,
+    "confidence": 1.0,
+    "last_seen": "2026-04-30 00:27:45",
+    "description": "create_file usually at 0:00 (3 times, 100% confidence)"
   },
   {
     "action": "sleep_mac_cancelled → tell_time",
@@ -30,18 +44,14 @@
     "description": "After sleep_mac_cancelled, usually does tell_time (3 times, 100%)"
   },
   {
-    "action": "create_file",
-    "params": {
-      "filename": "__arc_remote_phase1_create_test__.txt",
-      "location": null,
-      "target": "__arc_remote_phase1_create_test__.txt"
-    },
-    "hour": 0,
+    "action": "tell_time",
+    "params": {},
+    "hour": 2,
     "weekday": -1,
-    "occurrences": 3,
-    "confidence": 0.75,
-    "last_seen": "2026-04-23 01:14:52",
-    "description": "create_file usually at 0:00 (3 times, 75% confidence)"
+    "occurrences": 8,
+    "confidence": 0.667,
+    "last_seen": "2026-05-06 13:26:25",
+    "description": "tell_time usually at 2:00 (8 times, 67% confidence)"
   },
   {
     "action": "read_news",
@@ -50,62 +60,7 @@
     "weekday": -1,
     "occurrences": 2,
     "confidence": 0.667,
-    "last_seen": "2026-05-06 00:48:24",
+    "last_seen": "2026-05-06 13:26:25",
     "description": "read_news usually at 2:00 (2 times, 67% confidence)"
-  },
-  {
-    "action": "read_file",
-    "params": {
-      "filename": "Resume",
-      "location": null
-    },
-    "hour": 0,
-    "weekday": -1,
-    "occurrences": 2,
-    "confidence": 0.667,
-    "last_seen": "2026-05-05 21:15:07",
-    "description": "read_file usually at 0:00 (2 times, 67% confidence)"
-  },
-  {
-    "action": "tell_time",
-    "params": {},
-    "hour": 2,
-    "weekday": -1,
-    "occurrences": 8,
-    "confidence": 0.615,
-    "last_seen": "2026-05-06 00:48:24",
-    "description": "tell_time usually at 2:00 (8 times, 62% confidence)"
-  },
-  {
-    "action": "brightness_up",
-    "params": {
-      "amount": 100
-    },
-    "hour": 2,
-    "weekday": -1,
-    "occurrences": 3,
-    "confidence": 0.6,
-    "last_seen": "2026-04-25 02:47:53",
-    "description": "brightness_up usually at 2:00 (3 times, 60% confidence)"
-  },
-  {
-    "action": "get_battery",
-    "params": {},
-    "hour": 21,
-    "weekday": -1,
-    "occurrences": 3,
-    "confidence": 0.6,
-    "last_seen": "2026-05-06 00:48:24",
-    "description": "get_battery usually at 21:00 (3 times, 60% confidence)"
-  },
-  {
-    "action": "brightness_up → sleep_mac_cancelled",
-    "params": {},
-    "hour": -1,
-    "weekday": -1,
-    "occurrences": 3,
-    "confidence": 0.6,
-    "last_seen": "",
-    "description": "After brightness_up, usually does sleep_mac_cancelled (3 times, 60%)"
   }
 ]
