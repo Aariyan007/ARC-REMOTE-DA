@@ -4,6 +4,7 @@
 
 import { sendReply } from '../api/http.js';
 import appState from '../state/appState.js';
+import jobStore from '../state/jobStore.js';
 import { simulateReply } from '../services/mockService.js';
 import { handleEvent } from '../services/eventHandler.js';
 import { escapeHtml } from '../utils/helpers.js';
@@ -56,7 +57,7 @@ export function renderConfirmPrompt(jobId, onReply, event = {}) {
       if (appState.useMocks) {
         simulateReply(jobId, answer, (event) => handleEvent(jobId, event));
       } else {
-        await sendReply(jobId, answer);
+        await sendReply(jobId, answer, jobStore.getJob(jobId)?.pendingNonce);
       }
       onReply?.(answer);
     } catch (err) {

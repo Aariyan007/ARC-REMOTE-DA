@@ -21,7 +21,7 @@ import { renderFileDownload } from './FileDownload.js';
  */
 export function renderEventCard(event, jobId, onReply, isActivePrompt = false, onRetry = null, commandText = '') {
   const card = document.createElement('div');
-  card.className = `event-card event-card--${event.type}`;
+  card.className = `event-card event-card--${String(event.type).replace(/[^a-z_]/g, '')}`;
   card.id = `event-${event.id}`;
 
   const hasData = event.data && Object.keys(event.data).length > 0;
@@ -44,7 +44,7 @@ export function renderEventCard(event, jobId, onReply, isActivePrompt = false, o
 
     card.innerHTML = `
       <div class="event-card__step-row">
-        <div class="event-card__step-indicator event-card__step-indicator--${event.type}">
+        <div class="event-card__step-indicator event-card__step-indicator--${String(event.type).replace(/[^a-z_]/g, '')}">
           <div class="event-card__step-icon">${getEventIcon(event.type)}</div>
         </div>
         <div class="event-card__step-body">
@@ -71,7 +71,7 @@ export function renderEventCard(event, jobId, onReply, isActivePrompt = false, o
           ▸ Details
         </div>
         <div class="event-card__data" style="display:none">
-${JSON.stringify(event.data, null, 2)}
+${escapeHtml(JSON.stringify(event.data, null, 2))}
         </div>
       ` : ''}
       ${event.type === 'error' && onRetry && commandText ? `

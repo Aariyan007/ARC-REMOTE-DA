@@ -80,18 +80,27 @@ API_KEY=your_gemini_api_key_here
 
 ```bash
 source venv/bin/activate
-python -m uvicorn remote.server:app --host 0.0.0.0 --port 8000
+python -m remote.server          # listens on 127.0.0.1:8000 by default
 ```
 
-You'll see a **QR code** in your terminal — scan it with your phone.
+The daemon prints a **pairing code and QR code** in the terminal. Run `python -m remote.pair` any time for a fresh one (single use, 5 minutes). The code is never served over HTTP.
 
-### 4. Connect your phone
+### 4. Reach your Mac from your phone (free)
 
-1. Scan the QR code (or open the URL shown in terminal)
-2. Enter the 6-digit pairing code displayed in the terminal
-3. Start sending commands!
+The server binds to loopback by default, so nothing is exposed until you choose how. Recommended — **Tailscale** (free Personal plan, encrypted, works away from home Wi-Fi):
 
-**Pro tip:** Tap "Add to Home Screen" in your phone's browser to make it feel like a native app.
+1. Install Tailscale on the Mac and the phone and sign in to the same account.
+2. On the Mac: `tailscale serve --bg 8000` — this gives you `https://<mac-name>.<tailnet>.ts.net`.
+3. Set `ARC_PUBLIC_URL=https://<mac-name>.<tailnet>.ts.net` in `.env` so the QR points at it.
+
+Same Wi-Fi only (no Tailscale): `ARC_HOST=0.0.0.0` and `ARC_PUBLIC_URL=http://<mac-lan-ip>:8000`. This is plain HTTP — fine on a trusted home network, not elsewhere.
+
+### 5. Connect your phone
+
+- **Mobile app (recommended):** build it from `mobileapp/` (see [mobileapp/README.md](mobileapp/README.md)), open it, tap **Scan QR code**, and scan the terminal QR.
+- **Browser:** open the server URL on your phone and enter the 6-digit code. Use "Add to Home Screen" for an app-like icon.
+
+Manage paired phones with `GET /devices` and revoke one with `DELETE /devices/{id}`; a revoked phone is signed out immediately.
 
 ## Example Commands
 
@@ -118,8 +127,7 @@ When a command is ambiguous, ARC will ask you for clarification through your pho
 | **Desktop: Windows** | 🔜 Coming soon |
 | **Desktop: Linux** | 🔜 Coming soon |
 | **Phone: Any browser** | ✅ Works as PWA |
-| **Phone: iOS app** | 🔜 Planned |
-| **Phone: Android app** | 🔜 Planned |
+| **Phone: iOS / Android app** | 🧪 Capacitor project (build it yourself — see `mobileapp/README.md`) |
 
 ## How It Works
 
@@ -185,11 +193,16 @@ This requires a microphone and additional dependencies (torch, speechbrain, etc)
 
 ## Security
 
-- **Local only** — Everything runs on your machine, on your local network
-- **One-time pairing** — 6-digit codes expire after 5 minutes and single use
-- **Token auth** — After pairing, all requests use a signed bearer token
-- **Command filtering** — Dangerous commands are blocked by an allowlist
-- **Audit log** — All commands are logged locally
+- **Private by default** — the daemon listens on loopback; you opt in to LAN or Tailscale exposure
+- **One-time pairing** — 6-digit codes are single-use, expire after 5 minutes, are compared in constant time, and 5 wrong guesses lock the client out for 15 minutes. The code is only shown on the desktop (terminal / QR), never over the network
+- **Device tokens** — signed, 30-day, bound to a registered device, revocable at any time; the signing key persists in `data/.secret` (mode 600)
+- **WebSocket tickets** — streams authenticate with a 30-second one-time ticket, so tokens never appear in URLs or logs
+- **Job isolation** — a device can only see, answer or cancel its own jobs
+- **Confirmations** — destructive actions require an explicit confirm bound to a per-prompt nonce
+- **Command validation, concurrency caps, and per-job timeouts**
+- **Audit log** — commands, results, pairing attempts, lockouts, replies and revocations (SQLite, pruned after 30 days)
+
+This is a personal-use control plane, not a multi-tenant sandbox: anyone holding a paired phone can drive your Mac within the confirmation rules.
 
 ## Development
 
@@ -205,15 +218,18 @@ This starts Vite with hot reload and proxies API calls to `localhost:8000`.
 ### Run tests
 
 ```bash
-python test_phase1.py
-python test_phase2.py
+pip install -r requirements-dev.txt
+python -m pytest                 # server tests (runtime is stubbed; no ML stack needed)
+cd mobileapp && npm test         # client unit tests
 ```
+
+`tests/manual/` holds the older desktop smoke scripts (need macOS + the full dependencies).
 
 ### Build frontend for production
 
 ```bash
 cd mobileapp
-npm run build   # outputs to ../ui/
+npm run build   # outputs to ../ui/ (served by the daemon and bundled into the apps)
 ```
 
 ## Contributing
@@ -223,7 +239,7 @@ Contributions are welcome! Here's how:
 1. Fork the repo
 2. Create a feature branch (`git checkout -b feature/my-feature`)
 3. Make your changes
-4. Run the tests (`python test_phase1.py && python test_phase2.py`)
+4. Run the tests (`python -m pytest` and `cd mobileapp && npm test`)
 5. Commit and push (`git push origin feature/my-feature`)
 6. Open a Pull Request
 

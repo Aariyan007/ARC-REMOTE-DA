@@ -1,28 +1,11 @@
-const CACHE_NAME = 'arc-remote-v1';
-const ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/favicon.svg'
-];
-
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS);
-    })
-  );
-});
-
-self.addEventListener('fetch', (event) => {
-  // Only cache GET requests, bypass cache for API calls
-  if (event.request.method !== 'GET' || event.request.url.includes('/command') || event.request.url.includes('/health') || event.request.url.includes('/pair')) {
-    return;
-  }
-
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
-    })
-  );
+// The previous app version registered a cache-first service worker that could serve
+// stale builds. This replacement removes it (and its caches) from existing installs.
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    for (const key of await caches.keys()) await caches.delete(key);
+    await self.registration.unregister();
+    const clients = await self.clients.matchAll({ type: 'window' });
+    clients.forEach((c) => c.navigate(c.url));
+  })());
 });

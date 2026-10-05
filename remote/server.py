@@ -1,4 +1,5 @@
 import os
+import re
 import threading
 import uuid
 import asyncio
@@ -217,6 +218,13 @@ def home():
 @app.get("/manifest.json")
 def manifest():
     return _static("ui/manifest.json")
+
+
+@app.get("/icon-{name}.png")
+def icon(name: str):
+    if not re.fullmatch(r"[a-z0-9-]+", name):
+        raise HTTPException(status_code=404)
+    return _static(f"ui/icon-{name}.png")
 
 
 @app.get("/sw.js")

@@ -1,18 +1,35 @@
 /**
  * ARC Controller — Global App State
- * Tracks connection status, mock mode, and backend health.
+ * Tracks server URL, auth token, connection status and (dev-only) mock mode.
  */
+import { getItem, setItem, removeItem } from '../utils/storage.js';
+import { isNative } from '../utils/platform.js';
+
+// Mock mode is a development aid only. It can never switch on in a production
+// build, so a failed connection can't silently show fake results.
+const MOCKS_ALLOWED = import.meta.env?.DEV === true;
 
 class AppState {
   constructor() {
     this.connected = false;
     this.backendBooted = false;
-    // BUG 16 FIX: useMocks was not persisted — lost on page refresh while token wasn't.
-    this.useMocks = localStorage.getItem('arc_use_mocks') === 'true';
+    this.useMocks = false;
     this.checking = false;
-    this.token = localStorage.getItem('arc_token') || null;
+    this.token = null;
+    this.serverUrl = '';
+    this.loaded = false;
     /** @type {Set<Function>} */
     this._listeners = new Set();
+  }
+
+  /** Load persisted settings. Must complete before the first render. */
+  async load() {
+    this.token = await getItem('token');
+    const stored = await getItem('server_url');
+    // Browser build served by the daemon itself talks to its own origin.
+    this.serverUrl = stored || (isNative() ? '' : location.origin);
+    this.useMocks = MOCKS_ALLOWED && localStorage.getItem('arc_use_mocks') === 'true';
+    this.loaded = true;
   }
 
   subscribe(fn) {
@@ -41,9 +58,9 @@ class AppState {
   }
 
   setUseMocks(val) {
+    val = MOCKS_ALLOWED && !!val;
     if (this.useMocks !== val) {
       this.useMocks = val;
-      // BUG 16 FIX: persist to localStorage
       if (val) {
         localStorage.setItem('arc_use_mocks', 'true');
       } else {
@@ -57,18 +74,27 @@ class AppState {
     this.setUseMocks(!this.useMocks);
   }
 
+  setServerUrl(url) {
+    if (this.serverUrl !== url) {
+      this.serverUrl = url;
+      setItem('server_url', url);
+      this._notify();
+    }
+  }
+
   setToken(val) {
     if (this.token !== val) {
       this.token = val;
       if (val) {
-        localStorage.setItem('arc_token', val);
+        setItem('token', val);
       } else {
-        localStorage.removeItem('arc_token');
+        removeItem('token');
       }
       this._notify();
     }
   }
 }
 
+export const MOCKS_ENABLED_IN_BUILD = MOCKS_ALLOWED;
 const appState = new AppState();
 export default appState;

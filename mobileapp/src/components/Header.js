@@ -3,7 +3,7 @@
  */
 
 import { renderConnectionStatus } from './ConnectionStatus.js';
-import appState from '../state/appState.js';
+import appState, { MOCKS_ENABLED_IN_BUILD } from '../state/appState.js';
 
 export function renderHeader() {
   const header = document.createElement('header');
@@ -32,7 +32,7 @@ export function renderHeader() {
     appState.toggleMocks();
     mockBtn.classList.toggle('active', appState.useMocks);
   });
-  actions.appendChild(mockBtn);
+  if (MOCKS_ENABLED_IN_BUILD) actions.appendChild(mockBtn); // dev builds only
 
   // Connection status
   actions.appendChild(renderConnectionStatus());

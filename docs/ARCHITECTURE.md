@@ -63,10 +63,11 @@ The remote path has a few important safety layers:
 
 - device pairing via a one-time 6-digit code
 - bearer token auth after pairing
-- a command allowlist / dangerous-pattern filter in `remote/allowlist.py`
+- command validation + source whitelist in `remote/allowlist.py` (remote clients can never claim the `voice` source)
+- device registry with revocation, persistent signing key, pairing lockout, one-time WebSocket tickets (`remote/auth.py`, `remote/db.py`)
 - audit logging in `remote/security.py`
 - per-job persistence in SQLite
-- rate limiting on pairing attempts
+- lockout on failed pairing attempts, per-device and global running-job caps, per-job timeout
 
 This is not a full sandbox yet. It is a practical first-pass control plane for a trusted personal setup on a local network or tightly controlled environment.
 
@@ -133,15 +134,23 @@ Main endpoints in the current dispatcher server:
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/pair` | Exchange pairing code + device name for a bearer token |
-| `GET` | `/pairing-code` | Returns the current pairing code (local testing) |
-| `GET` | `/health` | Health and boot status |
-| `POST` | `/command` | Submit a command, receive a `job_id` |
-| `POST` | `/reply/{job_id}` | Answer a clarify or confirm event |
-| `GET` | `/jobs/{job_id}` | Poll job events over HTTP |
+| `POST` | `/pair` | Exchange pairing code + device name for `{token, device_id}`. 401 bad code, 429 locked out (`Retry-After`) |
+| `POST` | `/auth/refresh` | New token for the same device |
+| `POST` | `/ws-ticket` | One-time 30s ticket for opening a stream |
+| `GET` | `/devices` | List paired devices |
+| `DELETE` | `/devices/{id}` | Revoke a device (signs it out immediately) |
+| `POST` | `/devices/push` | Store a push token for the device (delivery not implemented yet) |
+| `GET` | `/health` | `{status, booted, boot_error?}` (no auth) |
+| `POST` | `/command` | `{text, source}` -> `{job_id}`. 400 invalid, 429 too many jobs, 503 booting |
+| `POST` | `/reply/{job_id}` | `{answer, nonce}` for a pending clarify/confirm. 409 if nothing is waiting or nonce is stale |
+| `POST` | `/jobs/{job_id}/cancel` | Cancel a running job |
+| `GET` | `/jobs` | Recent jobs for this device |
+| `GET` | `/jobs/{job_id}?since=n` | Job status + events after the first `n` (served from SQLite after a restart) |
 | `GET` | `/jobs/health_check_ping` | Token validity check |
-| `WS` | `/stream/{job_id}` | Real-time event stream for a job |
+| `WS` | `/stream/{job_id}?ticket=…&since=n` | Event stream; resumes after `n` events; `ping` frames every 20s |
 | `GET` | `/suggestions` | Dynamic command suggestions |
+
+All endpoints except `/health`, `/pair` and static files require `Authorization: Bearer <token>`. Jobs are scoped to the device that created them. `clarify` / `confirm` events carry `data.nonce` and `data.expires_at`; echo the nonce in `/reply`.
 
 ## Gmail / Browser Automation Notes
 

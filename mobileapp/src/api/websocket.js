@@ -1,103 +1,125 @@
 /**
  * ARC Controller — WebSocket Manager
- * Manages WebSocket connections for real-time job event streaming.
- *
- * Fixes applied:
- * - BUG 5:  Token now appended as ?token=... query param (server requires auth)
- * - BUG 10: terminalEventReceived flag separates clean server-close from dirty
- *           disconnect so onClose() gets the right signal
+ * Streams a job's events. Resilient by design:
+ *  - authenticates with a one-time ticket (no bearer token in the URL)
+ *  - resumes from the last received event (?since=) after any drop
+ *  - retries with capped backoff until the job finishes or is closed
+ *  - reconnects immediately when the app returns to the foreground / network returns
  */
 
-import CONFIG from '../utils/config.js';
-import appState from '../state/appState.js';
+import CONFIG, { wsBase } from '../utils/config.js';
+import { getWsTicket } from './http.js';
+
+const liveConnections = new Set();
+
+/** Force every open stream to reconnect now (app resumed / network back). */
+export function reconnectAll() {
+  for (const c of liveConnections) c.reconnectNow();
+}
 
 /**
- * Connect to a job's event stream via WebSocket.
- * @param {string} jobId - The job ID to stream events for
+ * @param {string} jobId
  * @param {object} callbacks - { onEvent, onError, onClose, onOpen }
- * @returns {{ close: Function, isConnected: Function }}
+ * @param {number} since - number of events already received
  */
-export function connectToJob(jobId, callbacks = {}) {
+export function connectToJob(jobId, callbacks = {}, since = 0) {
   const { onEvent, onError, onClose, onOpen } = callbacks;
 
   let ws = null;
-  let reconnectAttempts = 0;
+  let received = since;
+  let attempts = 0;
   let closed = false;
   let connected = false;
-  // BUG 10 FIX: separate "terminal event received" from "manually closed"
-  let terminalEventReceived = false;
+  let terminal = false;
+  let retryTimer = null;
 
-  function connect() {
+  function finish(info) {
+    if (closed) return;
+    closed = true;
+    liveConnections.delete(api);
+    clearTimeout(retryTimer);
+    onClose?.(info);
+  }
+
+  function scheduleRetry() {
+    if (closed || retryTimer) return;
+    const delay = Math.min(CONFIG.WS_RECONNECT_DELAY * 2 ** attempts, CONFIG.WS_MAX_RECONNECT_DELAY);
+    attempts++;
+    retryTimer = setTimeout(() => { retryTimer = null; connect(); }, delay);
+  }
+
+  async function connect() {
+    if (closed || terminal) return;
+    if (ws && ws.readyState <= WebSocket.OPEN) return;
+
+    let ticket;
+    try {
+      ticket = await getWsTicket();
+    } catch (err) {
+      if (err.status === 401) return finish({ clean: false, reason: 'Signed out' });
+      onError?.(err);
+      return scheduleRetry();
+    }
     if (closed) return;
 
-    // BUG 5 FIX: send auth token as query param — browser WS can't set headers
-    const token = appState.token || '';
-    const tokenParam = token ? `?token=${encodeURIComponent(token)}` : '';
-    const url = `${CONFIG.WS_BASE}${CONFIG.ENDPOINTS.STREAM}/${jobId}${tokenParam}`;
-    ws = new WebSocket(url);
+    ws = new WebSocket(`${wsBase()}${CONFIG.ENDPOINTS.STREAM}/${jobId}?ticket=${encodeURIComponent(ticket)}&since=${received}`);
+    let opened = false;
 
     ws.onopen = () => {
+      opened = true;
       connected = true;
-      reconnectAttempts = 0;
+      attempts = 0;
       onOpen?.();
     };
 
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        if (data.type === 'ping') return;
+        received++;
         onEvent?.(data);
-        // Mark terminal but don't prematurely set closed — server closes next
-        if (data.type === 'result' || data.type === 'error') {
-          terminalEventReceived = true;
-        }
+        if (data.type === 'result' || data.type === 'error') terminal = true;
       } catch (err) {
         onError?.(new Error(`Failed to parse event: ${err.message}`));
       }
     };
 
-    ws.onerror = () => {
-      onError?.(new Error('WebSocket connection error'));
-    };
+    ws.onerror = () => onError?.(new Error('WebSocket connection error'));
 
     ws.onclose = () => {
       connected = false;
-
-      // BUG-F FIX: In some browsers the TCP close frame can arrive before the
-      // final 'message' frame is processed by onmessage. Without a grace period,
-      // terminalEventReceived would still be false, triggering a spurious
-      // reconnect attempt and showing a 'Connection lost' error in the timeline.
-      // 50ms is enough for the microtask queue to process the pending message.
+      // Let a final message that raced the close frame be processed first.
       setTimeout(() => {
-        if (closed || terminalEventReceived) {
-          onClose?.({ clean: true });
-          return;
+        if (terminal) return finish({ clean: true });
+        // Rejected before opening: job unknown to this device or ticket refused.
+        // Retry a few times (it may be a transient network failure), then give up.
+        if (!opened && attempts >= 5) {
+          return finish({ clean: false, reason: 'Could not connect to the job stream' });
         }
-
-        // Attempt reconnect on unexpected close
-        if (reconnectAttempts < CONFIG.WS_MAX_RECONNECTS) {
-          reconnectAttempts++;
-          const delay = CONFIG.WS_RECONNECT_DELAY * Math.pow(2, reconnectAttempts - 1);
-          setTimeout(connect, delay);
-        } else {
-          closed = true;
-          onClose?.({ clean: false, reason: 'Max reconnection attempts reached' });
-        }
+        scheduleRetry();
       }, 50);
     };
   }
 
-  connect();
-
-  return {
+  const api = {
     close() {
       closed = true;
       connected = false;
-      if (ws && ws.readyState <= WebSocket.OPEN) {
-        ws.close();
-      }
+      liveConnections.delete(api);
+      clearTimeout(retryTimer);
+      if (ws && ws.readyState <= WebSocket.OPEN) ws.close();
     },
-    isConnected() {
-      return connected;
+    isConnected: () => connected,
+    reconnectNow() {
+      if (closed || terminal || connected) return;
+      clearTimeout(retryTimer);
+      retryTimer = null;
+      attempts = 0;
+      connect();
     },
   };
+
+  liveConnections.add(api);
+  connect();
+  return api;
 }
