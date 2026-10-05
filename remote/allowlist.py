@@ -1,50 +1,63 @@
 """
-Remote Command Allowlist — blocks dangerous shell/code injection patterns.
+Remote command validation.
 
-Every command submitted via the remote API is validated here before
-being enqueued for execution. This is a defence-in-depth layer:
-even if the intent engine somehow parses a dangerous command,
-this filter will reject it.
+Every command submitted via the remote API passes through validate_command()
+before a job is created. This is a defence-in-depth layer in front of the
+intent engine and the confirmation flow in core/safety.py.
 """
 
 import re
 
-# Patterns that should NEVER be accepted from remote clients
+MAX_COMMAND_LENGTH = 1000
+
+# Sources a remote client may claim. Anything non-"voice" is treated as a
+# headless/remote caller by the intent router; "voice" would route confirmation
+# prompts to the desktop microphone, so it is never accepted over the network.
+ALLOWED_SOURCES = {"api", "controller", "mobile", "web"}
+
+# Raw code / shell payloads are never a valid natural-language command.
 _DANGER_PATTERNS = [
-    r"\bimport\s+os\b",
-    r"\bimport\s+subprocess\b",
-    r"\bimport\s+sys\b",
+    r"\bimport\s+(os|subprocess|sys|shutil|socket)\b",
     r"\bexec\s*\(",
     r"\beval\s*\(",
     r"\b__import__\s*\(",
-    r"\brm\s+-rf\b",
-    r"\bdel\s+/[sS]\b",
-    r"\bformat\s+[a-zA-Z]:\b",
+    r"\brm\s+(-[a-z]*\s+)*-?[a-z]*[rf][a-z]*\s+(/|~)",
+    r"\bdel\s+/[sSqQ]\b",
+    r"\bformat\s+[a-zA-Z]:",
     r"\bshutdown\s+/[sS]\b",
     r"\bos\.system\b",
-    r"\bsubprocess\.\b",
+    r"\bsubprocess\.",
+    r"\bsudo\s+rm\b",
+    r"\bmkfs(\.\w+)?\b",
+    r"\bdd\s+if=",
+    r":\(\)\s*\{\s*:\|:&\s*\};:",
+    r"\bcurl\b[^|]*\|\s*(ba|z)?sh\b",
 ]
 
 _compiled = [re.compile(p, re.IGNORECASE) for p in _DANGER_PATTERNS]
 
 
+def validate_source(source: str) -> str:
+    """Normalise a client-supplied source; unknown values fall back to 'api'."""
+    source = (source or "").strip().lower()
+    return source if source in ALLOWED_SOURCES else "api"
+
+
 def validate_command(text: str) -> tuple[bool, str]:
     """
-    Check if a remote command is safe to execute.
-
-    Returns:
-        (True, "")           if the command is allowed
-        (False, reason_str)  if the command is blocked
+    Returns (True, "") if allowed, else (False, reason).
     """
     if not text or not text.strip():
         return False, "Empty command"
 
+    if "\x00" in text:
+        return False, "Invalid characters in command"
+
+    if len(text) > MAX_COMMAND_LENGTH:
+        return False, f"Command too long (max {MAX_COMMAND_LENGTH} chars)"
+
     for pattern in _compiled:
         if pattern.search(text):
-            return False, f"Command blocked: contains dangerous pattern"
-
-    # Length sanity — extremely long commands are suspicious
-    if len(text) > 500:
-        return False, "Command too long (max 500 chars)"
+            return False, "Command blocked: contains a dangerous pattern"
 
     return True, ""

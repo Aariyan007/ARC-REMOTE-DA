@@ -1,0 +1,16 @@
+# Everything: remote server + voice mode + local ML models.
+-r requirements.txt
+torch
+torchaudio
+torchvision
+speechbrain==0.5.16
+scipy
+sounddevice
+huggingface_hub==0.19.4
+sentencepiece
+webrtcvad
+setuptools
+pvporcupine
+sentence-transformers
+PyAudio
+playwright>=1.49.0
