@@ -148,6 +148,9 @@ Main endpoints in the current dispatcher server:
 | `GET` | `/jobs/{job_id}?since=n` | Job status + events after the first `n` (served from SQLite after a restart) |
 | `GET` | `/jobs/health_check_ping` | Token validity check |
 | `WS` | `/stream/{job_id}?ticket=…&since=n` | Event stream; resumes after `n` events; `ping` frames every 20s |
+| `GET` | `/tools` | List structured tools |
+| `POST` | `/tools/{tool}` | `{args}` -> `{job_id}`; same job/event stream as `/command`. Tool today: `search_files` (`args.query`) |
+| `GET` | `/files/{ticket}` | Download a file previously returned by a search. Tickets are device-bound, expire after 10 min, and are re-checked against the allowed folders on every download; clients never send a path |
 | `GET` | `/suggestions` | Dynamic command suggestions |
 
 All endpoints except `/health`, `/pair` and static files require `Authorization: Bearer <token>`. Jobs are scoped to the device that created them. `clarify` / `confirm` events carry `data.nonce` and `data.expires_at`; echo the nonce in `/reply`.

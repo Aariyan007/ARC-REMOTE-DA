@@ -15,7 +15,7 @@ jobs:
           cache-dependency-path: requirements-dev.txt
       # Server tests stub core.runtime, so only the lightweight server deps are needed.
       - run: pip install fastapi "uvicorn[standard]" pydantic python-dotenv qrcode pytest httpx websockets ruff
-      - run: ruff check remote tests --exclude tests/manual --select E9,F
+      - run: ruff check remote remote_tools tests --exclude tests/manual --select E9,F
       - run: python -m pytest -q
 
   mobileapp:

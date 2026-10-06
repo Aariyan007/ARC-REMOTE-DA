@@ -29,6 +29,8 @@ from remote.auth import (
 )
 from remote.allowlist import validate_command, validate_source
 from remote.security import log_audit_event
+from remote_tools.registry import get_tool, list_tools, ToolContext
+from remote_tools.files import resolve_download_ticket
 
 MAX_JOBS = int(os.getenv("ARC_MAX_JOBS", "8"))
 MAX_JOBS_PER_DEVICE = int(os.getenv("ARC_MAX_JOBS_PER_DEVICE", "3"))
@@ -266,34 +268,27 @@ def _job_events(job_id: str, since: int = 0) -> list:
     return db.get_job_events(job_id, since)
 
 
-@app.post("/command")
-def run_command(body: CommandIn, device: Device = Depends(get_current_device)):
-    """Submit a command. Returns a job_id immediately."""
-    if not runtime._booted:
-        detail = f"Runtime failed to boot: {_boot_error}" if _boot_error else "Runtime booting."
-        raise HTTPException(status_code=503, detail=detail)
-
-    ok, reason = validate_command(body.text)
-    if not ok:
-        log_audit_event("", device.id, "command_rejected", f"{reason}: {body.text[:200]}")
-        raise HTTPException(status_code=400, detail=reason)
-    source = validate_source(body.source)
-
+def _start_job(device: Device, label: str, source: str, work):
+    """
+    Create a job and run `work(job, job_id)` on a worker thread. `work` returns the
+    terminal event as (type, message, data) -- "result" or "error" -- or raises.
+    Shared by natural-language commands and structured tools so caps, timeout,
+    cancel, persistence and audit behave identically.
+    """
     store = get_job_store()
     if store.running_count() >= MAX_JOBS or store.running_count(device.id) >= MAX_JOBS_PER_DEVICE:
         raise HTTPException(status_code=429, detail="Too many running jobs. Wait for one to finish.")
 
     job_id = str(uuid.uuid4())
     job = store.get_or_create(job_id, device.id)
-    db.save_job(job_id, command=body.text, source=source, user=device.id, status="created", created_at=time.time())
-    log_audit_event(job_id, device.id, "command", body.text)
-
-    job.add_event(JobEvent("ack", f"Command received: {body.text}"))
+    db.save_job(job_id, command=label, source=source, user=device.id, status="created", created_at=time.time())
+    log_audit_event(job_id, device.id, "command", label)
+    job.add_event(JobEvent("ack", f"Command received: {label}"))
 
     def _on_timeout():
         if job.add_event(JobEvent("error", f"Timed out after {int(JOB_TIMEOUT)}s")):
             job.cancelled = True
-            log_audit_event(job_id, device.id, "job_timeout", body.text)
+            log_audit_event(job_id, device.id, "job_timeout", label)
 
     timer = threading.Timer(JOB_TIMEOUT, _on_timeout)
     timer.daemon = True
@@ -301,41 +296,8 @@ def run_command(body: CommandIn, device: Device = Depends(get_current_device)):
 
     def _run():
         try:
-            job.add_event(JobEvent(
-                "progress", "Routing command...",
-                data={"stage": "routing", "step": 1, "total_steps": 4}
-            ))
-            job.add_event(JobEvent(
-                "executing", f"Classifying: {body.text}",
-                data={"stage": "classifying", "step": 2, "total_steps": 4}
-            ))
-
-            # Session ID is the job_id so intent_router can access it
-            res = runtime.execute_text_command(
-                text=body.text,
-                source=source,
-                session_id=job_id,
-                user=device.name
-            )
-
-            if res is None:
-                res = runtime.CommandResponse.ok(
-                    job_id, "route",
-                    f"Command '{body.text[:60]}' was processed.",
-                    source=source,
-                )
-
-            # res.status is an ExecutionStatus enum, not a string.
-            if getattr(res.status, 'value', res.status) == "completed":
-                action = getattr(res, 'interpreted_action', None) or res.to_dict().get('interpreted_action', '')
-                if action and action not in ('general_chat', 'answer_question', 'chat_response'):
-                    job.add_event(JobEvent(
-                        "verify", f"Verified: {action}",
-                        data={"stage": "verifying", "action": action, "step": 3, "total_steps": 4}
-                    ))
-                job.add_event(JobEvent("result", res.final_result or "Completed", data=res.to_dict()))
-            else:
-                job.add_event(JobEvent("error", res.final_result or "Failed", data=res.to_dict()))
+            etype, message, data = work(job, job_id)
+            job.add_event(JobEvent(etype, message, data=data))
         except Exception as e:
             traceback.print_exc()
             # Don't leak internals to the client; the traceback stays in the server log.
@@ -350,7 +312,100 @@ def run_command(body: CommandIn, device: Device = Depends(get_current_device)):
                 pass
 
     threading.Thread(target=_run, daemon=True).start()
-    return {"job_id": job_id}
+    return job_id
+
+
+@app.post("/command")
+def run_command(body: CommandIn, device: Device = Depends(get_current_device)):
+    """Submit a command. Returns a job_id immediately."""
+    if not runtime._booted:
+        detail = f"Runtime failed to boot: {_boot_error}" if _boot_error else "Runtime booting."
+        raise HTTPException(status_code=503, detail=detail)
+
+    ok, reason = validate_command(body.text)
+    if not ok:
+        log_audit_event("", device.id, "command_rejected", f"{reason}: {body.text[:200]}")
+        raise HTTPException(status_code=400, detail=reason)
+    source = validate_source(body.source)
+
+    def work(job, job_id):
+        job.add_event(JobEvent(
+            "progress", "Routing command...",
+            data={"stage": "routing", "step": 1, "total_steps": 4}
+        ))
+        job.add_event(JobEvent(
+            "executing", f"Classifying: {body.text}",
+            data={"stage": "classifying", "step": 2, "total_steps": 4}
+        ))
+
+        # Session ID is the job_id so intent_router can access it
+        res = runtime.execute_text_command(
+            text=body.text,
+            source=source,
+            session_id=job_id,
+            user=device.name
+        )
+
+        if res is None:
+            res = runtime.CommandResponse.ok(
+                job_id, "route",
+                f"Command '{body.text[:60]}' was processed.",
+                source=source,
+            )
+
+        # res.status is an ExecutionStatus enum, not a string.
+        if getattr(res.status, 'value', res.status) == "completed":
+            action = getattr(res, 'interpreted_action', None) or res.to_dict().get('interpreted_action', '')
+            if action and action not in ('general_chat', 'answer_question', 'chat_response'):
+                job.add_event(JobEvent(
+                    "verify", f"Verified: {action}",
+                    data={"stage": "verifying", "action": action, "step": 3, "total_steps": 4}
+                ))
+            return "result", res.final_result or "Completed", res.to_dict()
+        return "error", res.final_result or "Failed", res.to_dict()
+
+    return {"job_id": _start_job(device, body.text, source, work)}
+
+
+class ToolIn(BaseModel):
+    args: dict = {}
+
+
+@app.get("/tools")
+def list_available_tools(device: Device = Depends(get_current_device)):
+    return {"tools": list_tools()}
+
+
+@app.post("/tools/{tool_name}")
+def run_tool(tool_name: str, body: ToolIn, device: Device = Depends(get_current_device)):
+    """Run a structured tool (same job/event/confirm machinery as /command)."""
+    tool = get_tool(tool_name)
+    if not tool:
+        raise HTTPException(status_code=404, detail="Unknown tool")
+
+    def work(job, job_id):
+        def emit(etype, message, data=None):
+            job.add_event(JobEvent(etype, message, data=data))
+        res = tool.fn(body.args or {}, ToolContext(device_id=device.id, job_id=job_id, emit=emit))
+        payload = dict(res.data or {})
+        payload.update({"action": res.action, "interpreted_action": res.action,
+                        "status": "completed" if res.success else "failed"})
+        if res.success:
+            return "result", res.summary or "Done", payload
+        return "error", res.user_message or res.error or "Failed", payload
+
+    label = f"{tool.label}: {str((body.args or {}).get('query', '')).strip()[:80]}".rstrip(": ")
+    return {"job_id": _start_job(device, label, "api", work)}
+
+
+@app.get("/files/{ticket}")
+def download_file(ticket: str, device: Device = Depends(get_current_device)):
+    """Download a file the server previously returned from a search. No client-supplied paths."""
+    path = resolve_download_ticket(ticket, device.id)
+    if not path:
+        raise HTTPException(status_code=404, detail="File not available")
+    log_audit_event("", device.id, "file_download", os.path.basename(path))
+    return FileResponse(path, filename=os.path.basename(path))
 
 
 @app.post("/reply/{job_id}")

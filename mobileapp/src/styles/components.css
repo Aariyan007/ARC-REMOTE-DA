@@ -654,3 +654,19 @@
   max-width: 90%;
 }
 
+
+/* ── File matches ─────────────────────────────────────── */
+.file-matches { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.file-matches__title { font-size: var(--text-xs, 12px); color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; }
+.file-matches__row {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+  border-radius: 10px; background: rgba(255,255,255,0.04); border: 1px solid var(--border-color);
+}
+.file-matches__info { flex: 1; min-width: 0; }
+.file-matches__name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-matches__meta { font-size: 12px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-matches__btn {
+  flex: none; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--accent-color);
+  background: transparent; color: var(--accent-color); font-weight: 600; cursor: pointer;
+}
+.file-matches__btn:disabled { opacity: 0.6; cursor: default; }

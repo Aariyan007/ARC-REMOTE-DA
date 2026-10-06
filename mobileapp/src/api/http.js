@@ -60,6 +60,11 @@ export async function sendCommand(text) {
   return request('POST', CONFIG.ENDPOINTS.COMMAND, { text, source: 'mobile' });
 }
 
+/** POST /tools/{tool} — run a structured tool; returns {job_id} like /command. */
+export async function runTool(tool, args = {}) {
+  return request('POST', `/tools/${encodeURIComponent(tool)}`, { args });
+}
+
 /** POST /reply/{jobId} — Answer a clarify or confirm event (nonce binds it to that prompt). */
 export async function sendReply(jobId, answer, nonce) {
   return request('POST', `${CONFIG.ENDPOINTS.REPLY}/${jobId}`, { answer, nonce });
