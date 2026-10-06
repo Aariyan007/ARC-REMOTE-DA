@@ -60,3 +60,15 @@ Thumbs.db
 out/
 .parcel-cache/
 .cache/
+
+# Runtime artifacts
+*.log
+data/graphs/
+data/.secret
+data/.pairing_code.json
+data/remote.db-wal
+data/remote.db-shm
+.env.*
+!.env.example
+mobileapp/android/app/build/
+mobileapp/ios/App/Pods/

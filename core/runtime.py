@@ -348,6 +348,34 @@ def _initialize_subsystems() -> None:
 
 # ─── Canonical command entry point ────────────────────────────
 
+# ── ARC_SILENT refcount ───────────────────────────────────────
+# Concurrent remote jobs share one process env var; track active callers so one
+# job finishing can't un-silence another.
+_silent_lock = threading.Lock()
+_silent_active = 0
+_silent_prev: Optional[str] = None
+
+
+def _silent_enter() -> None:
+    global _silent_active, _silent_prev
+    with _silent_lock:
+        if _silent_active == 0:
+            _silent_prev = os.environ.get("ARC_SILENT")
+            os.environ["ARC_SILENT"] = "1"
+        _silent_active += 1
+
+
+def _silent_exit() -> None:
+    global _silent_active
+    with _silent_lock:
+        _silent_active = max(0, _silent_active - 1)
+        if _silent_active == 0:
+            if _silent_prev is None:
+                os.environ.pop("ARC_SILENT", None)
+            else:
+                os.environ["ARC_SILENT"] = _silent_prev
+
+
 def execute_text_command(
     text: str,
     source: str = "voice",
@@ -375,9 +403,8 @@ def execute_text_command(
         )
 
     # Non-voice sources should never trigger local TTS by default.
-    prev_silent = os.environ.get("ARC_SILENT")
     if source != "voice":
-        os.environ["ARC_SILENT"] = "1"
+        _silent_enter()
 
     request = CommandRequest(
         text=text, source=source, user=user, session_id=session_id
@@ -422,10 +449,7 @@ def execute_text_command(
         )
     finally:
         if source != "voice":
-            if prev_silent is None:
-                os.environ.pop("ARC_SILENT", None)
-            else:
-                os.environ["ARC_SILENT"] = prev_silent
+            _silent_exit()
 
     response.elapsed_ms = (time.time() - start) * 1000
     store_result(response)

@@ -5,6 +5,8 @@
 
 import CONFIG from '../utils/config.js';
 
+const STORE_KEY = 'arc_jobs_v1';
+
 /** @typedef {'waiting'|'running'|'completed'|'failed'|'needs_confirmation'} JobStatus */
 
 /**
@@ -27,6 +29,41 @@ class JobStore {
     this._activeJobId = null;
     /** @type {Set<Function>} */
     this._listeners = new Set();
+    this._saveTimer = null;
+  }
+
+  /** Persist recent jobs so history and in-flight jobs survive an app restart. */
+  _persist() {
+    clearTimeout(this._saveTimer);
+    this._saveTimer = setTimeout(() => {
+      try {
+        const jobs = Array.from(this._jobs.values())
+          .filter(j => !j.id.startsWith('mock-'))
+          .slice(-CONFIG.MAX_COMMAND_HISTORY)
+          .map(j => ({ ...j, events: j.events.slice(-100) }));
+        localStorage.setItem(STORE_KEY, JSON.stringify(jobs));
+      } catch { /* storage full/unavailable: history just won't persist */ }
+    }, 300);
+  }
+
+  /** Load persisted jobs. Call once at startup. */
+  restore() {
+    try {
+      const jobs = JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
+      for (const j of jobs) {
+        if (j && j.id && Array.isArray(j.events)) this._jobs.set(j.id, j);
+      }
+      const last = Array.from(this._jobs.keys()).pop();
+      this._activeJobId = last || null;
+    } catch { /* corrupt history is ignored */ }
+  }
+
+  /** Real (server-side) jobs that hadn't finished when the app last ran. */
+  getUnfinishedJobs() {
+    return Array.from(this._jobs.values()).filter(
+      j => !j.id.startsWith('mock-') && !j.id.startsWith('local-') && !j.id.startsWith('direct-')
+        && j.status !== 'completed' && j.status !== 'failed'
+    );
   }
 
   /** Subscribe to state changes */
@@ -36,6 +73,7 @@ class JobStore {
   }
 
   _notify() {
+    this._persist();
     for (const fn of this._listeners) {
       try { fn(); } catch (e) { console.error('JobStore listener error:', e); }
     }
@@ -48,6 +86,7 @@ class JobStore {
       command: commandText,
       status: 'waiting',
       events: [],
+      seen: 0,
       createdAt: Date.now() / 1000,
       completedAt: null,
       needsInput: false,
@@ -80,6 +119,7 @@ class JobStore {
         job.status = 'needs_confirmation';
         job.needsInput = true;
         job.pendingEventType = event.type;
+        job.pendingNonce = event.data?.nonce || null;
         break;
       case 'executing':
       case 'progress':
@@ -110,6 +150,7 @@ class JobStore {
     if (!job) return;
     job.needsInput = false;
     job.pendingEventType = null;
+    job.pendingNonce = null;
     // Restore 'running' from 'needs_confirmation' (or any non-terminal state)
     // so the typing indicator reappears while the backend processes the reply.
     if (job.status !== 'completed' && job.status !== 'failed') {
@@ -121,7 +162,7 @@ class JobStore {
   /** Send a reply to a job */
   async replyToJob(jobId, answer) {
     const { sendReply } = await import('../api/http.js');
-    await sendReply(jobId, answer);
+    await sendReply(jobId, answer, this._jobs.get(jobId)?.pendingNonce);
     this.markReplied(jobId);
   }
 
@@ -162,6 +203,7 @@ class JobStore {
   clearAllJobs() {
     this._jobs.clear();
     this._activeJobId = null;
+    try { localStorage.removeItem(STORE_KEY); } catch { /* ignore */ }
     this._notify();
   }
 }

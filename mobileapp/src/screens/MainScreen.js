@@ -27,6 +27,33 @@ async function onCommandSubmit(text) {
   return handleRealCommand(text);
 }
 
+/** Open (or resume) the event stream for a job. `since` = events already seen. */
+function streamJob(jobId, since) {
+  if (activeConnections.has(jobId)) return;
+  const conn = connectToJob(jobId, {
+    onEvent(event) {
+      const job = jobStore.getJob(jobId);
+      if (job) job.seen = (job.seen ?? 0) + 1; // server events only, for ?since= resume
+      handleEvent(jobId, event);
+    },
+    onError(err) {
+      console.error(`WS error for job ${jobId}:`, err);
+    },
+    onClose({ clean, reason }) {
+      activeConnections.delete(jobId);
+      if (!clean && !jobStore.isJobDone(jobId)) {
+        handleEvent(jobId, {
+          type: 'error',
+          message: `Connection lost: ${reason || 'Unknown'}. The command may still be running on your computer.`,
+          data: {},
+          timestamp: Date.now() / 1000,
+        });
+      }
+    },
+  }, since);
+  activeConnections.set(jobId, conn);
+}
+
 /**
  * Real backend flow: POST /command → WS /stream/{job_id}
  */
@@ -53,31 +80,7 @@ async function handleRealCommand(text) {
     // Create job in store
     jobStore.createJob(jobId, text);
 
-    // Connect WebSocket for real-time events
-    const conn = connectToJob(jobId, {
-      onEvent(event) {
-        handleEvent(jobId, event);
-      },
-      onError(err) {
-        console.error(`WS error for job ${jobId}:`, err);
-      },
-      onClose({ clean, reason }) {
-        activeConnections.delete(jobId);
-        if (!clean) {
-          console.warn(`WS closed unexpectedly for job ${jobId}: ${reason}`);
-          if (!jobStore.isJobDone(jobId)) {
-            handleEvent(jobId, {
-              type: 'error',
-              message: `Connection lost: ${reason || 'Unknown'}. The command may still be running on the server.`,
-              data: {},
-              timestamp: Date.now() / 1000,
-            });
-          }
-        }
-      },
-    });
-
-    activeConnections.set(jobId, conn);
+    streamJob(jobId, 0);
   } catch (err) {
     const failJobId = `local-${Date.now()}`;
     jobStore.createJob(failJobId, text);
@@ -152,4 +155,11 @@ export function mountMainScreen() {
 
   // Command Input (sticky bottom)
   app.appendChild(renderCommandInput(onCommandSubmit));
+
+  // Resume streams for jobs that were still running when the app was closed
+  if (!appState.useMocks) {
+    for (const job of jobStore.getUnfinishedJobs()) {
+      streamJob(job.id, job.seen ?? job.events.length);
+    }
+  }
 }

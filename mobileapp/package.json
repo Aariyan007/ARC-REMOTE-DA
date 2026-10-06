@@ -2,14 +2,30 @@
   "name": "arc-controller",
   "private": true,
   "version": "1.0.0",
-  "description": "ARC Remote Controller — Command your desktop from anywhere",
+  "description": "ARC Remote Controller \u2014 Command your desktop from anywhere",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "cap:sync": "npm run build && cap sync",
+    "cap:add:ios": "cap add ios",
+    "cap:add:android": "cap add android",
+    "cap:ios": "npm run cap:sync && cap open ios",
+    "cap:android": "npm run cap:sync && cap open android"
   },
   "devDependencies": {
-    "vite": "^6.3.2"
+    "@capacitor/cli": "^8.5.2",
+    "jsdom": "^29.1.1",
+    "vite": "^6.3.2",
+    "vitest": "^5.0.3"
+  },
+  "dependencies": {
+    "@aparajita/capacitor-secure-storage": "^8.0.1",
+    "@capacitor-mlkit/barcode-scanning": "^8.2.1",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/network": "^8.0.1"
   }
 }

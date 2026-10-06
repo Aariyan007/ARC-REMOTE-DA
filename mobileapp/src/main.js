@@ -6,10 +6,13 @@
 import './styles/index.css';
 import './styles/components.css';
 import './styles/animations.css';
-import { checkHealth } from './api/http.js';
+import { checkHealth, refreshToken } from './api/http.js';
+import { initLifecycle } from './services/lifecycle.js';
+import { getItem, setItem } from './utils/storage.js';
 import appState from './state/appState.js';
 import { mountMainScreen } from './screens/MainScreen.js';
 import { mountPairingScreen } from './screens/PairingScreen.js';
+import jobStore from './state/jobStore.js';
 import CONFIG from './utils/config.js';
 
 let healthTimer = null;
@@ -22,36 +25,34 @@ async function performHealthCheck() {
     const res = await checkHealth();
     appState.setConnected(true);
     appState.setBackendBooted(res.booted === true);
-
-    // If backend is fully booted, disable mock mode
-    if (res.booted && appState.useMocks) {
-      appState.setUseMocks(false);
-      const mockBtn = document.getElementById('mock-toggle-btn');
-      if (mockBtn) mockBtn.classList.remove('active');
-      console.log('ARC backend is ready — switching to live mode.');
-    }
+    maybeRefreshToken();
   } catch {
     appState.setConnected(false);
     appState.setBackendBooted(false);
   }
 }
 
+/** Rotate the 30-day token weekly so an active device never expires. */
+async function maybeRefreshToken() {
+  if (!appState.token || appState.useMocks) return;
+  const last = Number(await getItem('token_refreshed')) || 0;
+  if (Date.now() - last < CONFIG.TOKEN_REFRESH_INTERVAL) return;
+  try {
+    appState.setToken(await refreshToken());
+    await setItem('token_refreshed', String(Date.now()));
+  } catch { /* try again next check */ }
+}
+
 /**
  * Initialize the application.
  */
 async function init() {
-  // Initial health check
-  await performHealthCheck();
+  await appState.load();
+  jobStore.restore();
 
-  // If backend is not available or not booted, enable mock mode
-  if (!appState.connected || !appState.backendBooted) {
-    appState.setUseMocks(true);
-    if (!appState.connected) {
-      console.log('ARC backend not reachable — mock mode enabled.');
-    } else {
-      console.log('ARC backend still booting — mock mode enabled until ready.');
-    }
-  }
+  // Initial health check (no silent fallback to fake data if it fails —
+  // the header shows the disconnected state instead)
+  await performHealthCheck();
 
   // Keep track of current screen so we don't remount unnecessarily
   let currentScreen = null;
@@ -59,6 +60,7 @@ async function init() {
   function renderScreen() {
     const shouldBePairing = !appState.token;
     if (shouldBePairing && currentScreen !== 'pairing') {
+      if (currentScreen === 'main') jobStore.clearAllJobs(); // signed out / revoked
       mountPairingScreen();
       currentScreen = 'pairing';
     } else if (!shouldBePairing && currentScreen !== 'main') {
@@ -73,25 +75,12 @@ async function init() {
   // Re-render when token changes (e.g. login or automatic logout)
   appState.subscribe(renderScreen);
 
-  // Update mock toggle button state
   const mockBtn = document.getElementById('mock-toggle-btn');
-  if (mockBtn) {
-    mockBtn.classList.toggle('active', appState.useMocks);
-  }
+  if (mockBtn) mockBtn.classList.toggle('active', appState.useMocks);
 
-  // Periodic health checks (only when tab is visible)
-  healthTimer = setInterval(performHealthCheck, CONFIG.HEALTH_CHECK_INTERVAL);
-
-  // Pause health checks when tab is hidden
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      clearInterval(healthTimer);
-      healthTimer = null;
-    } else {
-      performHealthCheck();
-      healthTimer = setInterval(performHealthCheck, CONFIG.HEALTH_CHECK_INTERVAL);
-    }
-  });
+  // Periodic health checks; resume/foreground handled by lifecycle
+  healthTimer = setInterval(() => { if (!document.hidden) performHealthCheck(); }, CONFIG.HEALTH_CHECK_INTERVAL);
+  initLifecycle({ onResume: performHealthCheck });
 
   console.log('ARC Controller initialized.');
 }

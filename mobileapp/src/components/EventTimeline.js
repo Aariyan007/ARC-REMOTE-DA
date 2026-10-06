@@ -145,13 +145,11 @@ export function renderEventTimeline(onReply, onRetry = null) {
     // BUG 17 FIX: Full innerHTML wipe on every job store event caused the command
     // input to lose focus mid-typing (progress events fire every 100ms).
     // Skip rebuilding if the user is actively typing in the command field.
+    // The command box lives outside this container, so re-rendering never disturbs it.
+    // Only defer when the user is mid-answer in an input *inside* the timeline
+    // (e.g. a clarify reply) — rebuilding would wipe what they've typed.
     const focused = document.activeElement;
-    const isTyping = focused && (
-      focused.id === 'command-input-field' ||
-      focused.closest?.('#command-input-area') ||
-      (focused.tagName === 'INPUT' && focused !== document.body) ||
-      focused.tagName === 'TEXTAREA'
-    );
+    const isTyping = !!(focused && container.contains(focused) && focused.value);
     // BUG-C FIX: the old guard did `if (isTyping) return` with no follow-up.
     // Every jobStore._notify() that fired while typing was permanently lost.
     // When the user stopped typing the timeline stayed stale (e.g. showing a

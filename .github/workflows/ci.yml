@@ -1,0 +1,33 @@
+name: CI
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      # Server tests stub core.runtime, so only the lightweight server deps are needed.
+      - run: pip install fastapi "uvicorn[standard]" pydantic python-dotenv qrcode pytest httpx websockets ruff
+      - run: ruff check remote tests --exclude tests/manual --select E9,F
+      - run: python -m pytest -q
+
+  mobileapp:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobileapp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm test
+      - run: npm run build

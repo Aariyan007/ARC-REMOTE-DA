@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   root: '.',
-  base: '/',
+  base: './',
   server: {
     port: 5173,
     proxy: {
@@ -22,10 +22,10 @@ export default defineConfig({
         target: 'http://localhost:8000',
         changeOrigin: true,
       },
-      '/pairing-code': {
-        target: 'http://localhost:8000',
-        changeOrigin: true,
-      },
+      '/ws-ticket': { target: 'http://localhost:8000', changeOrigin: true },
+      '/auth': { target: 'http://localhost:8000', changeOrigin: true },
+      '/devices': { target: 'http://localhost:8000', changeOrigin: true },
+      '/suggestions': { target: 'http://localhost:8000', changeOrigin: true },
       '/jobs': {
         target: 'http://localhost:8000',
         changeOrigin: true,

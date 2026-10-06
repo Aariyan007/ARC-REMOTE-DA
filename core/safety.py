@@ -26,6 +26,10 @@ DESTRUCTIVE_ACTIONS = {
     "empty_trash",
     "format_disk",
     "sleep_mac",
+    "kill_process",
+    "open_cmd",
+    "open_powershell",
+    "open_windows_terminal",
 }
 
 # ─── Safe With Context ───────────────────────────────────────

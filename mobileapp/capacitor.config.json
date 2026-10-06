@@ -1,0 +1,12 @@
+{
+  "appId": "dev.aariyan.arcremote",
+  "appName": "ARC Remote",
+  "webDir": "../ui",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": true
+  },
+  "plugins": {}
+}

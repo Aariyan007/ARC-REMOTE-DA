@@ -4,6 +4,7 @@
 
 import { sendReply } from '../api/http.js';
 import appState from '../state/appState.js';
+import jobStore from '../state/jobStore.js';
 import { simulateReply } from '../services/mockService.js';
 import { handleEvent } from '../services/eventHandler.js';
 
@@ -39,7 +40,7 @@ export function renderClarifyPrompt(jobId, onReply) {
       if (appState.useMocks) {
         simulateReply(jobId, answer, (event) => handleEvent(jobId, event));
       } else {
-        await sendReply(jobId, answer);
+        await sendReply(jobId, answer, jobStore.getJob(jobId)?.pendingNonce);
       }
       onReply?.(answer);
     } catch (err) {

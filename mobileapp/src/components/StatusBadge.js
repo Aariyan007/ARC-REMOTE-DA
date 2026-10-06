@@ -4,7 +4,7 @@
 
 export function renderStatusBadge(status) {
   const el = document.createElement('span');
-  el.className = `status-badge status-badge--${status}`;
+  el.className = `status-badge status-badge--${String(status).replace(/[^a-z_]/g, '')}`;
 
   const labels = {
     waiting: 'Waiting',
@@ -14,6 +14,10 @@ export function renderStatusBadge(status) {
     needs_confirmation: 'Awaiting Input',
   };
 
-  el.innerHTML = `<span class="status-badge__dot"></span><span>${labels[status] || status}</span>`;
+  const dot = document.createElement('span');
+  dot.className = 'status-badge__dot';
+  const text = document.createElement('span');
+  text.textContent = labels[status] || String(status);
+  el.append(dot, text);
   return el;
 }
