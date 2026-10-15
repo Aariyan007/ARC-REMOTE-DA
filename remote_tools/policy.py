@@ -59,6 +59,19 @@ def safe_file_path(path: str, roots: Optional[List[str]] = None) -> Optional[str
     return real
 
 
+def safe_dir_path(path: str, roots: Optional[List[str]] = None) -> Optional[str]:
+    """Like safe_file_path but for an existing directory inside (or equal to) an allowed root."""
+    if not path or "\x00" in path:
+        return None
+    roots = file_roots() if roots is None else roots
+    real = os.path.realpath(os.path.expanduser(path))
+    if not os.path.isdir(real):
+        return None
+    if not any(real == r or _is_within(real, r) for r in roots):
+        return None
+    return real
+
+
 _SECRET_PATTERNS = [
     re.compile(r"(?i)\b(password|passwd|pwd|secret|token|api[_-]?key)\b(\s*[=:]\s*)\S+"),
     re.compile(r"\bBearer\s+[A-Za-z0-9._~+/=-]{8,}"),

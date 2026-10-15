@@ -2,11 +2,25 @@
 
 from core.action_result import ActionResult
 from remote_tools import files
-from remote_tools.registry import register, ToolContext
+from remote_tools.registry import register, ToolContext, RISK_READ
+from remote_tools.tools import fs, system  # noqa: F401  (register on import)
 
 
-@register("search_files", description="Find files by name; suggests similar names when nothing matches.",
-          label="Search files")
+@register(
+    "search_files",
+    description="Find files by name in the allowed folders. If nothing matches exactly it suggests similar names "
+                "(typos, partial names, different word order). Use this before reading or sending a file.",
+    label="Search files",
+    parameters={
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "File name or part of it, e.g. 'resume' or 'budget.xlsx'.", "maxLength": 200},
+            "limit": {"type": "integer", "description": "Max results (default 5).", "minimum": 1, "maximum": 20},
+        },
+        "required": ["query"],
+    },
+    risk=RISK_READ,
+)
 def search_files(args: dict, ctx: ToolContext) -> ActionResult:
     query = str(args.get("query", "")).strip()
     if not query:

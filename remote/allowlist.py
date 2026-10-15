@@ -13,7 +13,7 @@ MAX_COMMAND_LENGTH = 1000
 # Sources a remote client may claim. Anything non-"voice" is treated as a
 # headless/remote caller by the intent router; "voice" would route confirmation
 # prompts to the desktop microphone, so it is never accepted over the network.
-ALLOWED_SOURCES = {"api", "controller", "mobile", "web"}
+ALLOWED_SOURCES = {"api", "controller", "mobile", "web", "chat"}
 
 # Raw code / shell payloads are never a valid natural-language command.
 _DANGER_PATTERNS = [

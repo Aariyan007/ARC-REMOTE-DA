@@ -144,7 +144,8 @@ def test_tools_require_auth_and_unknown_tool(client):
     token, _ = pair(client)
     h = auth_header(token)
     assert client.post("/tools/nope", json={"args": {}}, headers=h).status_code == 404
-    assert [t["name"] for t in client.get("/tools", headers=h).json()["tools"]] == ["search_files"]
+    names = {t["name"] for t in client.get("/tools", headers=h).json()["tools"]}
+    assert {"search_files", "list_dir", "read_file", "system_status"} <= names
 
 
 def test_search_tool_end_to_end_and_download(client, tree):
@@ -186,9 +187,11 @@ def test_download_ignores_path_traversal(client, tree):
 def test_search_tool_validation_and_no_match(client, tree):
     token, _ = pair(client)
     h = auth_header(token)
-    j = client.post("/tools/search_files", json={"args": {}}, headers=h).json()["job_id"]
-    d = _wait_done(client, h, j)
-    assert d["status"] == "failed" and "What file" in d["events"][-1]["message"]
+    # schema validation rejects a missing/unknown/mistyped argument before any job is created
+    r = client.post("/tools/search_files", json={"args": {}}, headers=h)
+    assert r.status_code == 400 and "query" in r.json()["detail"]
+    assert client.post("/tools/search_files", json={"args": {"query": "x", "evil": 1}}, headers=h).status_code == 400
+    assert client.post("/tools/search_files", json={"args": {"query": 5}}, headers=h).status_code == 400
     j = client.post("/tools/search_files", json={"args": {"query": "qqqzzzxxx"}}, headers=h).json()["job_id"]
     d = _wait_done(client, h, j)
     assert d["status"] == "failed"

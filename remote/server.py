@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import threading
@@ -22,14 +23,17 @@ except ImportError:
 
 import core.runtime as runtime
 from remote import db
-from remote.job_store import get_job_store, JobEvent, TERMINAL_TYPES
+from remote.job_store import get_job_store, JobEvent, TERMINAL_TYPES, ask_user
 from remote.auth import (
     generate_pairing_code, verify_pairing_code, create_access_token,
     verify_access_token, is_locked_out, issue_ws_ticket, redeem_ws_ticket,
 )
 from remote.allowlist import validate_command, validate_source
 from remote.security import log_audit_event
-from remote_tools.registry import get_tool, list_tools, ToolContext
+from remote_tools.registry import get_tool, list_tools, ToolContext, validate_args
+from remote_tools import agent as chat_agent
+from remote_tools.llm import get_default_llm
+from remote_tools.policy import redact
 from remote_tools.files import resolve_download_ticket
 
 MAX_JOBS = int(os.getenv("ARC_MAX_JOBS", "8"))
@@ -382,11 +386,21 @@ def run_tool(tool_name: str, body: ToolIn, device: Device = Depends(get_current_
     tool = get_tool(tool_name)
     if not tool:
         raise HTTPException(status_code=404, detail="Unknown tool")
+    args, err = validate_args(tool.parameters, body.args or {})
+    if err:
+        raise HTTPException(status_code=400, detail=err)
 
     def work(job, job_id):
         def emit(etype, message, data=None):
             job.add_event(JobEvent(etype, message, data=data))
-        res = tool.fn(body.args or {}, ToolContext(device_id=device.id, job_id=job_id, emit=emit))
+
+        def ask_confirm(summary, data):
+            return ask_user(job_id, summary, event_type="confirm", data=data)
+
+        if not chat_agent.confirm_tool_call(tool, args, ask_confirm):
+            return "error", "Cancelled — nothing was changed.", {"status": "cancelled", "action": tool.name}
+        res = tool.fn(args, ToolContext(device_id=device.id, job_id=job_id, emit=emit))
+        log_audit_event(job_id, device.id, f"tool:{tool.name}", redact(json.dumps(args, default=str))[:500])
         payload = dict(res.data or {})
         payload.update({"action": res.action, "interpreted_action": res.action,
                         "status": "completed" if res.success else "failed"})
@@ -394,8 +408,75 @@ def run_tool(tool_name: str, body: ToolIn, device: Device = Depends(get_current_
             return "result", res.summary or "Done", payload
         return "error", res.user_message or res.error or "Failed", payload
 
-    label = f"{tool.label}: {str((body.args or {}).get('query', '')).strip()[:80]}".rstrip(": ")
+    label = f"{tool.label}: {str(args.get('query', args.get('path', ''))).strip()[:80]}".rstrip(": ")
     return {"job_id": _start_job(device, label, "api", work)}
+
+
+# ── Chat (model-driven tool use) ─────────────────────────────
+
+SESSION_ID_RE = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
+
+
+def get_llm():
+    """The chat model, or None if not configured. Tests replace this."""
+    return get_default_llm()
+
+
+class ChatIn(BaseModel):
+    text: str
+    session_id: Optional[str] = None
+
+
+@app.post("/chat")
+def chat(body: ChatIn, device: Device = Depends(get_current_device)):
+    """Send a chat message. Returns {job_id, session_id}; the reply streams as job events."""
+    text = (body.text or "").strip()
+    if not text or "\x00" in text:
+        raise HTTPException(status_code=400, detail="Empty message")
+    if len(text) > 2000:
+        raise HTTPException(status_code=400, detail="Message too long (max 2000 chars)")
+    session_id = body.session_id or uuid.uuid4().hex
+    if not SESSION_ID_RE.match(session_id):
+        raise HTTPException(status_code=400, detail="Invalid session_id")
+    llm = get_llm()
+    if llm is None:
+        raise HTTPException(status_code=503, detail="Chat is not configured: set API_KEY (Gemini) in the server's .env.")
+
+    history = [{"role": m["role"], "text": m["text"]}
+               for m in db.load_chat_messages(device.id, session_id, limit=20)]
+
+    def work(job, job_id):
+        def emit(etype, message, data=None):
+            job.add_event(JobEvent(etype, message, data=data))
+
+        def ask_confirm(summary, data):
+            return ask_user(job_id, summary, event_type="confirm", data=data)
+
+        def audit(tool_name, args, outcome):
+            log_audit_event(job_id, device.id, f"tool:{tool_name}",
+                            redact(f"{json.dumps(args, default=str)[:400]} -> {outcome}"))
+
+        res = chat_agent.run_chat_turn(
+            device_id=device.id, job_id=job_id, text=text, history=history, llm=llm,
+            emit=emit, ask_confirm=ask_confirm, cancelled=lambda: job.finished or job.cancelled, audit=audit)
+        if res.stopped != "cancelled":
+            db.save_chat_messages(device.id, session_id, res.new_messages)
+        payload = dict(res.data)
+        payload.update({"status": "completed" if not res.stopped or res.stopped in ("steps",) else "failed",
+                        "interpreted_action": "chat", "session_id": session_id,
+                        "tool_calls": res.tool_calls, "stopped": res.stopped})
+        if res.stopped in ("error", "timeout"):
+            return "error", res.reply, payload
+        return "result", res.reply, payload
+
+    return {"job_id": _start_job(device, text[:120], "chat", work), "session_id": session_id}
+
+
+@app.get("/chat/{session_id}")
+def chat_history(session_id: str, device: Device = Depends(get_current_device)):
+    if not SESSION_ID_RE.match(session_id):
+        raise HTTPException(status_code=400, detail="Invalid session_id")
+    return {"session_id": session_id, "messages": db.load_chat_messages(device.id, session_id, limit=100)}
 
 
 @app.get("/files/{ticket}")
