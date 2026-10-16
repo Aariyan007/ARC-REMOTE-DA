@@ -247,7 +247,7 @@ def favicon():
 def health_check():
     """Server health and runtime boot status."""
     booted = getattr(runtime, "_booted", False)
-    out = {"status": "ok", "booted": booted}
+    out = {"status": "ok", "booted": booted, "chat_enabled": get_llm() is not None}
     if _boot_error:
         out["boot_error"] = _boot_error
     return out

@@ -25,6 +25,7 @@ async function performHealthCheck() {
     const res = await checkHealth();
     appState.setConnected(true);
     appState.setBackendBooted(res.booted === true);
+    appState.setChatEnabled(res.chatEnabled === true);
     maybeRefreshToken();
   } catch {
     appState.setConnected(false);

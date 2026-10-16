@@ -140,7 +140,7 @@ Main endpoints in the current dispatcher server:
 | `GET` | `/devices` | List paired devices |
 | `DELETE` | `/devices/{id}` | Revoke a device (signs it out immediately) |
 | `POST` | `/devices/push` | Store a push token for the device (delivery not implemented yet) |
-| `GET` | `/health` | `{status, booted, boot_error?}` (no auth) |
+| `GET` | `/health` | `{status, booted, chat_enabled, boot_error?}` (no auth). The app switches to chat mode when `chat_enabled` is true |
 | `POST` | `/command` | `{text, source}` -> `{job_id}`. 400 invalid, 429 too many jobs, 503 booting |
 | `POST` | `/reply/{job_id}` | `{answer, nonce}` for a pending clarify/confirm. 409 if nothing is waiting or nonce is stale |
 | `POST` | `/jobs/{job_id}/cancel` | Cancel a running job |
@@ -203,3 +203,7 @@ What is still in-progress or uneven:
 - **Limits:** max steps per turn (`ARC_CHAT_MAX_STEPS`), turn timeout, cancel, and tool output that is truncated and secret-redacted before the model sees it. Content from files is flagged untrusted in the model's context.
 - **Tools today (all read-only):** `search_files`, `list_dir`, `read_file`, `system_status`. State-changing tools (open app, email, scripts, installs, Wi-Fi) are added on top of the same mechanism.
 - **History:** only the user's text and the final reply are stored (SQLite, per device and session, pruned after 30 days).
+
+### Phone chat UI
+
+`mobileapp/src/components/ChatTurn.js` renders one chat turn from the job's events: tool-activity chips (`progress` events with `data.tool`), an approval card for a pending `confirm` (shows the exact arguments from `data.details`, red styling when `data.dangerous`), the reply, file matches, and a Stop button that calls `/jobs/{id}/cancel`. Everything is built with `textContent`/DOM APIs because replies and file names are untrusted. When the server has no model configured the app falls back to the typed-command path.

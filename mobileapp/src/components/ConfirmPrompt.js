@@ -7,7 +7,6 @@ import appState from '../state/appState.js';
 import jobStore from '../state/jobStore.js';
 import { simulateReply } from '../services/mockService.js';
 import { handleEvent } from '../services/eventHandler.js';
-import { escapeHtml } from '../utils/helpers.js';
 
 /**
  * Render an inline confirmation prompt with Yes/No buttons.
@@ -20,31 +19,63 @@ export function renderConfirmPrompt(jobId, onReply, event = {}) {
   el.className = 'confirm-prompt';
 
   const data = event.data || {};
-  let richContent = '';
-  
-  if (data.filename && data.recipient) {
-    richContent = `
-      <div class="confirm-prompt__details">
-        <div class="confirm-prompt__detail">
-          <span class="confirm-prompt__detail-label">File:</span>
-          <span class="confirm-prompt__detail-value">${escapeHtml(data.filename)}</span>
-        </div>
-        <div class="confirm-prompt__detail">
-          <span class="confirm-prompt__detail-label">To:</span>
-          <span class="confirm-prompt__detail-value">${escapeHtml(data.recipient)}</span>
-        </div>
-      </div>
-    `;
+  const dangerous = data.dangerous === true;
+  el.classList.toggle('confirm-prompt--danger', dangerous);
+
+  // Rows to show: the exact arguments the assistant wants to use (data.details is a JSON
+  // string of the validated arguments), or the legacy filename/recipient pair.
+  const rows = [];
+  if (typeof data.details === 'string') {
+    try {
+      const args = JSON.parse(data.details);
+      if (args && typeof args === 'object' && !Array.isArray(args)) {
+        for (const [k, v] of Object.entries(args)) {
+          rows.push([k, typeof v === 'string' ? v : JSON.stringify(v)]);
+        }
+      }
+    } catch { /* details was redacted/truncated text; skip the rows */ }
+  } else if (data.filename && data.recipient) {
+    rows.push(['File', data.filename], ['To', data.recipient]);
   }
 
-  el.innerHTML = `
-    <div class="confirm-prompt__label">Action Required</div>
-    ${richContent}
-    <div class="confirm-prompt__actions">
-      <button class="confirm-prompt__btn confirm-prompt__btn--yes" id="confirm-yes-${jobId}">✓ Yes, Proceed</button>
-      <button class="confirm-prompt__btn confirm-prompt__btn--no" id="confirm-no-${jobId}">✕ Cancel</button>
-    </div>
-  `;
+  const label = document.createElement('div');
+  label.className = 'confirm-prompt__label';
+  label.textContent = dangerous ? 'Dangerous action — approve?' : 'Approve this action?';
+  el.appendChild(label);
+
+  if (rows.length) {
+    const details = document.createElement('div');
+    details.className = 'confirm-prompt__details';
+    for (const [k, v] of rows.slice(0, 8)) {
+      const row = document.createElement('div');
+      row.className = 'confirm-prompt__detail';
+      const kEl = document.createElement('span');
+      kEl.className = 'confirm-prompt__detail-label';
+      kEl.textContent = k;
+      const vEl = document.createElement('span');
+      vEl.className = 'confirm-prompt__detail-value';
+      vEl.textContent = v;
+      vEl.title = v;
+      row.append(kEl, vEl);
+      details.appendChild(row);
+    }
+    el.appendChild(details);
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'confirm-prompt__actions';
+  const yes = document.createElement('button');
+  yes.type = 'button';
+  yes.className = 'confirm-prompt__btn confirm-prompt__btn--yes';
+  yes.id = `confirm-yes-${jobId}`;
+  yes.textContent = '✓ Approve';
+  const no = document.createElement('button');
+  no.type = 'button';
+  no.className = 'confirm-prompt__btn confirm-prompt__btn--no';
+  no.id = `confirm-no-${jobId}`;
+  no.textContent = '✕ Decline';
+  actions.append(yes, no);
+  el.appendChild(actions);
 
   const yesBtn = el.querySelector(`#confirm-yes-${jobId}`);
   const noBtn = el.querySelector(`#confirm-no-${jobId}`);

@@ -670,3 +670,21 @@
   background: transparent; color: var(--accent-color); font-weight: 600; cursor: pointer;
 }
 .file-matches__btn:disabled { opacity: 0.6; cursor: default; }
+
+/* ── Chat turn ────────────────────────────────────────── */
+.tool-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.tool-chip {
+  padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 500;
+  color: var(--text-secondary); background: rgba(255,255,255,0.05); border: 1px solid var(--border-color);
+}
+.chat-reply { white-space: pre-wrap; word-break: break-word; line-height: 1.45; }
+.chat-reply--error { color: var(--error-color, #f87171); }
+.chat-typing-row { display: flex; align-items: center; gap: 12px; }
+.chat-stop-btn {
+  padding: 4px 12px; border-radius: 999px; border: 1px solid var(--border-color);
+  background: transparent; color: var(--text-secondary); font-size: 12px; cursor: pointer;
+}
+.chat-stop-btn:disabled { opacity: 0.5; cursor: default; }
+.confirm-prompt--danger { border-color: rgba(248,113,113,0.5); background: rgba(248,113,113,0.08); }
+.confirm-prompt--danger .confirm-prompt__label { color: var(--accent-red, #f87171); }
+.confirm-prompt__detail-value { max-width: 65%; }

@@ -434,3 +434,10 @@ def test_chat_cancel_while_waiting_for_confirm(client, tree, risky):
     assert d["status"] == "cancelled" and risky == []
     time.sleep(0.2)
     assert client.get(f"/jobs/{job_id}", headers=h).json()["events"][-1]["message"] == "Cancelled by user"
+
+
+def test_health_reports_chat_enabled(client):
+    client.env.server.get_llm = lambda: None
+    assert client.get("/health").json()["chat_enabled"] is False
+    client.env.server.get_llm = lambda: FakeLLM([])
+    assert client.get("/health").json()["chat_enabled"] is True
