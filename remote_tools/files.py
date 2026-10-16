@@ -19,46 +19,67 @@ from remote_tools import policy
 
 SKIP_DIRS = {
     "AppData", "Windows", "Program Files", "Program Files (x86)", "Library",
-    "Applications", ".Trash", "node_modules", "__pycache__", "venv", ".venv",
-    ".git", ".svn", "site-packages",
+    "Applications", ".Trash", "node_modules", "__pycache__", "venv", ".venv", "env",
+    ".git", ".svn", "site-packages", "Pods", "DerivedData", "__MACOSX",
 }
-MAX_FILES_INDEXED = 60000
+# Per folder, so one huge folder can't starve the others of index space.
+MAX_FILES_PER_ROOT = 100000
 INDEX_TTL = 60.0
 TICKET_TTL = 600.0
 
 _index_lock = threading.Lock()
-_index_cache: Dict[tuple, tuple] = {}   # roots -> (built_at, [(path, name_lower, stem_lower)])
+# roots -> (built_at, entries[(path, name_lower, stem_norm)], stats{root: {"files": n, "truncated": bool}})
+_index_cache: Dict[tuple, tuple] = {}
 
 
 def _norm(s: str) -> str:
     return re.sub(r"[\s_\-.]+", " ", s.lower()).strip()
 
 
-def _build_index(roots: List[str]) -> list:
-    entries = []
+def _build_index(roots: List[str]) -> tuple:
+    entries, stats = [], {}
     for root in roots:
-        for dirpath, dirs, files in os.walk(root):
+        count, truncated, errors, denied = 0, False, 0, False
+
+        def on_error(err):
+            nonlocal errors, denied
+            errors += 1
+            if isinstance(err, PermissionError) or getattr(err, "errno", None) in (1, 13):
+                denied = True
+
+        for dirpath, dirs, files in os.walk(root, onerror=on_error):
             dirs[:] = [d for d in dirs if not d.startswith(".") and d not in SKIP_DIRS]
             for f in files:
                 if f.startswith("."):
                     continue
                 entries.append((os.path.join(dirpath, f), f.lower(), _norm(os.path.splitext(f)[0])))
-                if len(entries) >= MAX_FILES_INDEXED:
-                    return entries
-    return entries
+                count += 1
+                if count >= MAX_FILES_PER_ROOT:
+                    truncated = True
+                    break
+            if truncated:
+                break
+        stats[root] = {"files": count, "truncated": truncated, "errors": errors, "permission_denied": denied}
+    return entries, stats
 
 
-def _get_index(roots: List[str]) -> list:
+def _get_index(roots: List[str]) -> tuple:
     key = tuple(roots)
     now = time.time()
     with _index_lock:
         cached = _index_cache.get(key)
         if cached and now - cached[0] < INDEX_TTL:
-            return cached[1]
-    entries = _build_index(roots)
+            return cached[1], cached[2]
+    entries, stats = _build_index(roots)
     with _index_lock:
-        _index_cache[key] = (now, entries)
-    return entries
+        _index_cache[key] = (now, entries, stats)
+    return entries, stats
+
+
+def index_stats(roots: Optional[List[str]] = None) -> dict:
+    """Per-folder file counts and whether the folder was cut off. Used by the doctor and results."""
+    roots = policy.file_roots() if roots is None else roots
+    return _get_index(roots)[1]
 
 
 def clear_index_cache() -> None:
@@ -126,8 +147,9 @@ def find_files(query: str, roots: Optional[List[str]] = None, limit: int = 5,
     query_norm = _norm(stem_q)
     query_words = [w for w in query_norm.split() if len(w) > 1]
 
+    entries, stats = _get_index(roots)
     scored = []
-    for path, name_lower, stem in _get_index(roots):
+    for path, name_lower, stem in entries:
         sc, hit = _score(query_norm, query_ext, query_words, name_lower, stem)
         if sc >= min_similar:
             scored.append((sc, hit, path))
@@ -137,7 +159,9 @@ def find_files(query: str, roots: Optional[List[str]] = None, limit: int = 5,
     top = scored[: max(1, limit)]
     exact = bool(top) and top[0][1]
     matches = [_describe(p, sc, hit) for sc, hit, p in top]
-    return {"query": query, "exact": exact, "matches": matches}
+    return {"query": query, "exact": exact, "matches": matches,
+            "index_truncated": any(v["truncated"] for v in stats.values()),
+            "permission_denied": [r for r, v in stats.items() if v.get("permission_denied")]}
 
 
 # ── Download tickets ─────────────────────────────────────────

@@ -203,3 +203,73 @@ def test_tool_jobs_count_against_caps_and_are_private(client, tree):
     t2, _ = pair(client, "other")
     j = client.post("/tools/search_files", json={"args": {"query": "budget"}}, headers=auth_header(t1)).json()["job_id"]
     assert client.get(f"/jobs/{j}", headers=auth_header(t2)).status_code == 404
+
+
+# ── index coverage ───────────────────────────────────────────
+
+def test_each_root_gets_its_own_budget(tmp_path, monkeypatch):
+    big, small = tmp_path / "big", tmp_path / "small"
+    big.mkdir()
+    small.mkdir()
+    for i in range(30):
+        (big / f"f{i}.txt").write_text("x")
+    (small / "needle.txt").write_text("x")
+    monkeypatch.setattr(files, "MAX_FILES_PER_ROOT", 10)
+    files.clear_index_cache()
+    r = files.find_files("needle", roots=[str(big), str(small)])
+    assert r["matches"] and r["matches"][0]["name"] == "needle.txt"   # not starved by the big folder
+    assert r["index_truncated"] is True
+    stats = files.index_stats([str(big), str(small)])
+    assert stats[str(big)]["truncated"] and not stats[str(small)]["truncated"]
+
+
+def test_truncation_is_reported_to_the_user(tmp_path, monkeypatch):
+    from core.action_result import ActionResult  # noqa: F401
+    from remote_tools import registry
+    root = tmp_path / "r"
+    root.mkdir()
+    for i in range(20):
+        (root / f"f{i}.txt").write_text("x")
+    monkeypatch.setenv("ARC_FILE_ROOTS", str(root))
+    monkeypatch.setattr(files, "MAX_FILES_PER_ROOT", 5)
+    files.clear_index_cache()
+    ctx = registry.ToolContext("d", "j", lambda *a, **k: None)
+    res = registry.get_tool("search_files").fn({"query": "qqqzzz"}, ctx)
+    assert not res.success and "only part of it was searched" in res.user_message
+    assert "Searched:" in res.error
+
+
+def test_nested_project_folder_is_found(tmp_path, monkeypatch):
+    root = tmp_path / "Desktop"
+    (root / "BackEnd" / "app" / "core").mkdir(parents=True)
+    (root / "BackEnd" / "app" / "core" / "settings.py").write_text("x")
+    (root / "BackEnd" / "venv" / "lib").mkdir(parents=True)
+    (root / "BackEnd" / "venv" / "lib" / "settings.py").write_text("x")   # skipped
+    monkeypatch.setenv("ARC_FILE_ROOTS", str(root))
+    files.clear_index_cache()
+    r = files.find_files("settings.py")
+    assert [m["path"] for m in r["matches"]] == [str(root / "BackEnd" / "app" / "core" / "settings.py")]
+
+
+def test_permission_denied_is_surfaced(tmp_path, monkeypatch):
+    from remote_tools import registry
+    root = tmp_path / "Desktop"
+    root.mkdir()
+    (root / "ok.txt").write_text("x")
+    monkeypatch.setenv("ARC_FILE_ROOTS", str(root))
+    real_walk = os.walk
+
+    def blocked_walk(top, onerror=None, **kw):
+        if onerror:
+            onerror(PermissionError(1, "Operation not permitted", top))   # what macOS privacy (TCC) raises
+        return iter(())
+
+    monkeypatch.setattr(files.os, "walk", blocked_walk)
+    files.clear_index_cache()
+    assert files.index_stats()[os.path.realpath(root)]["permission_denied"] is True
+    ctx = registry.ToolContext("d", "j", lambda *a, **k: None)
+    res = registry.get_tool("search_files").fn({"query": "anything"}, ctx)
+    assert not res.success and "macOS blocked access" in res.user_message and "Files and Folders" in res.user_message
+    monkeypatch.setattr(files.os, "walk", real_walk)
+    files.clear_index_cache()
+    assert files.find_files("ok")["matches"]

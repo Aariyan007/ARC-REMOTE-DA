@@ -207,3 +207,7 @@ What is still in-progress or uneven:
 ### Phone chat UI
 
 `mobileapp/src/components/ChatTurn.js` renders one chat turn from the job's events: tool-activity chips (`progress` events with `data.tool`), an approval card for a pending `confirm` (shows the exact arguments from `data.details`, red styling when `data.dangerous`), the reply, file matches, and a Stop button that calls `/jobs/{id}/cancel`. Everything is built with `textContent`/DOM APIs because replies and file names are untrusted. When the server has no model configured the app falls back to the typed-command path.
+
+### File search coverage
+
+Search indexes file names (not folder names) under the allowed folders (`ARC_FILE_ROOTS`, default Desktop/Documents/Downloads), up to 100,000 files per folder, skipping hidden folders and `node_modules`, `venv`, `env`, `Library`, etc. If a folder is cut off or macOS blocks access (privacy permission), the reply says so. `python -m remote_tools.doctor [filename-or-path]` shows what ARC can see on the machine and tests a search.

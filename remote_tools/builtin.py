@@ -1,7 +1,9 @@
 """Built-in tools. Importing this module registers them."""
 
+import os
+
 from core.action_result import ActionResult
-from remote_tools import files
+from remote_tools import files, policy
 from remote_tools.registry import register, ToolContext, RISK_READ
 from remote_tools.tools import fs, system  # noqa: F401  (register on import)
 
@@ -32,13 +34,20 @@ def search_files(args: dict, ctx: ToolContext) -> ActionResult:
     result = files.attach_download_urls(files.find_files(query, limit=int(args.get("limit", 5) or 5)),
                                         ctx.device_id)
     matches = result["matches"]
+    note = (" (Note: one of your folders is very large, so only part of it was searched.)"
+            if result.get("index_truncated") else "")
+    if result.get("permission_denied"):
+        names = ", ".join(os.path.basename(r) or r for r in result["permission_denied"])
+        note += (f" (macOS blocked access to: {names}. Allow your terminal under System Settings > "
+                 "Privacy & Security > Files and Folders, then restart ARC.)")
     if not matches:
+        roots = ", ".join(os.path.basename(r) or r for r in policy.file_roots())
         return ActionResult.fail(
-            "search_files", f"No file found like '{query}'", data=result,
-            user_message=f"I couldn't find anything like '{query}'.",
+            "search_files", f"No file found like '{query}'. Searched: {roots}.{note}", data=result,
+            user_message=f"I couldn't find anything like '{query}' in {roots}.{note}",
         )
     if result["exact"]:
         summary = f"Found {matches[0]['name']}" + (f" (+{len(matches) - 1} more)" if len(matches) > 1 else "")
     else:
-        summary = f"No file named '{query}'. Did you mean: " + ", ".join(m["name"] for m in matches[:3]) + "?"
+        summary = f"No file named '{query}'. Did you mean: " + ", ".join(m["name"] for m in matches[:3]) + f"?{note}"
     return ActionResult.ok("search_files", summary, data=result)
