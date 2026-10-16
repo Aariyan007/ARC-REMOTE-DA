@@ -64,6 +64,17 @@ def _init_db(conn):
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_job_events_job ON job_events(job_id, id)")
         conn.execute("""
+            CREATE TABLE IF NOT EXISTS chat_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                device_id TEXT,
+                session_id TEXT,
+                role TEXT,
+                text TEXT,
+                timestamp REAL
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_chat_session ON chat_messages(device_id, session_id, id)")
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS devices (
                 id TEXT PRIMARY KEY,
                 name TEXT,
@@ -167,6 +178,7 @@ def prune_old_jobs(max_age_days: int = 30):
     with conn:
         conn.execute("DELETE FROM jobs WHERE created_at < ?", (cutoff,))
         conn.execute("DELETE FROM audit_log WHERE timestamp < ?", (cutoff,))
+        conn.execute("DELETE FROM chat_messages WHERE timestamp < ?", (cutoff,))
 
 
 # ── Device registry ──────────────────────────────────────────
@@ -220,3 +232,24 @@ def list_jobs(user: str, limit: int = 20) -> list[dict]:
         (user, limit),
     ).fetchall()
     return [dict(r) for r in rows]
+
+
+# ── Chat history (user text + final replies only; tool traffic is not stored) ──
+
+def save_chat_messages(device_id: str, session_id: str, messages: list[dict]):
+    import time
+    now = time.time()
+    conn = get_db()
+    with conn:
+        conn.executemany(
+            "INSERT INTO chat_messages (device_id, session_id, role, text, timestamp) VALUES (?, ?, ?, ?, ?)",
+            [(device_id, session_id, m["role"], m["text"], now) for m in messages if m.get("text")],
+        )
+
+
+def load_chat_messages(device_id: str, session_id: str, limit: int = 20) -> list[dict]:
+    """Oldest-first last `limit` messages. Always scoped to the owning device."""
+    rows = get_db().execute(
+        "SELECT role, text, timestamp FROM chat_messages WHERE device_id = ? AND session_id = ? "
+        "ORDER BY id DESC LIMIT ?", (device_id, session_id, limit)).fetchall()
+    return [{"role": r["role"], "text": r["text"], "timestamp": r["timestamp"]} for r in reversed(rows)]

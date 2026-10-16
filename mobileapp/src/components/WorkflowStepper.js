@@ -9,6 +9,7 @@ import { getEventIcon, getEventLabel } from '../services/eventHandler.js';
 import { escapeHtml, timeAgo } from '../utils/helpers.js';
 import { renderClarifyPrompt } from './ClarifyPrompt.js';
 import { renderConfirmPrompt } from './ConfirmPrompt.js';
+import { renderFileMatches } from './FileMatches.js';
 
 /**
  * Determine the visual status of a step in the stepper.
@@ -191,6 +192,12 @@ export function renderWorkflowStepper(job, onReply, onRetry = null) {
     msgEl.className = `workflow-stepper__result workflow-stepper__result--${terminal.type}`;
     msgEl.innerHTML = escapeHtml(terminal.message).replace(/\n/g, '<br>');
     container.appendChild(msgEl);
+
+    // File search matches / "did you mean" suggestions
+    const matches = terminal.data?.matches;
+    if (Array.isArray(matches) && matches.length > 0 && typeof matches[0]?.name === 'string') {
+      container.appendChild(renderFileMatches(matches.slice(0, 10), terminal.data.exact === true));
+    }
 
     // Retry button for failed workflows
     if (terminal.type === 'error' && onRetry && job.command) {

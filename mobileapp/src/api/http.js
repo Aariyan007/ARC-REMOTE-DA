@@ -60,6 +60,18 @@ export async function sendCommand(text) {
   return request('POST', CONFIG.ENDPOINTS.COMMAND, { text, source: 'mobile' });
 }
 
+/** POST /tools/{tool} — run a structured tool; returns {job_id} like /command. */
+export async function runTool(tool, args = {}) {
+  return request('POST', `/tools/${encodeURIComponent(tool)}`, { args });
+}
+
+/** POST /chat — send a chat message; returns {job_id, session_id}. */
+export async function sendChat(text, sessionId) {
+  return request('POST', '/chat', { text, session_id: sessionId || undefined });
+}
+
+/** POST /jobs/{jobId}/cancel is exported above as cancelJob. */
+
 /** POST /reply/{jobId} — Answer a clarify or confirm event (nonce binds it to that prompt). */
 export async function sendReply(jobId, answer, nonce) {
   return request('POST', `${CONFIG.ENDPOINTS.REPLY}/${jobId}`, { answer, nonce });
@@ -117,7 +129,7 @@ export async function checkHealth() {
       } catch { /* ignore probe errors */ }
     }
 
-    return { status: 'ok', booted: data.booted === true, bootError: data.boot_error || null };
+    return { status: 'ok', booted: data.booted === true, chatEnabled: data.chat_enabled === true, bootError: data.boot_error || null };
   } catch (err) {
     if (err.name === 'AbortError') {
       throw new ArcError(ErrorTypes.TIMEOUT, 'Health check timed out');

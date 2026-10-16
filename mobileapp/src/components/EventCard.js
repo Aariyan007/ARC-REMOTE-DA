@@ -5,6 +5,7 @@
  */
 
 import { getEventIcon, getEventLabel } from '../services/eventHandler.js';
+import { renderFileMatches } from './FileMatches.js';
 import { timeAgo, escapeHtml, extractFileUrls } from '../utils/helpers.js';
 import { renderClarifyPrompt } from './ClarifyPrompt.js';
 import { renderConfirmPrompt } from './ConfirmPrompt.js';
@@ -110,6 +111,12 @@ ${escapeHtml(JSON.stringify(event.data, null, 2))}
       toggle.textContent = expanded ? '▸ Details' : '▾ Hide details';
       dataEl.style.display = expanded ? 'none' : 'block';
     });
+  }
+
+  // File search matches / "did you mean" suggestions
+  if (isChat && Array.isArray(event.data?.matches) && event.data.matches.length > 0
+      && typeof event.data.matches[0]?.name === 'string') {
+    card.appendChild(renderFileMatches(event.data.matches.slice(0, 10), event.data.exact === true));
   }
 
   // File download buttons

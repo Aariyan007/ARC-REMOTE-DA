@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import threading
@@ -22,13 +23,18 @@ except ImportError:
 
 import core.runtime as runtime
 from remote import db
-from remote.job_store import get_job_store, JobEvent, TERMINAL_TYPES
+from remote.job_store import get_job_store, JobEvent, TERMINAL_TYPES, ask_user
 from remote.auth import (
     generate_pairing_code, verify_pairing_code, create_access_token,
     verify_access_token, is_locked_out, issue_ws_ticket, redeem_ws_ticket,
 )
 from remote.allowlist import validate_command, validate_source
 from remote.security import log_audit_event
+from remote_tools.registry import get_tool, list_tools, ToolContext, validate_args
+from remote_tools import agent as chat_agent
+from remote_tools.llm import get_default_llm
+from remote_tools.policy import redact
+from remote_tools.files import resolve_download_ticket
 
 MAX_JOBS = int(os.getenv("ARC_MAX_JOBS", "8"))
 MAX_JOBS_PER_DEVICE = int(os.getenv("ARC_MAX_JOBS_PER_DEVICE", "3"))
@@ -241,7 +247,7 @@ def favicon():
 def health_check():
     """Server health and runtime boot status."""
     booted = getattr(runtime, "_booted", False)
-    out = {"status": "ok", "booted": booted}
+    out = {"status": "ok", "booted": booted, "chat_enabled": get_llm() is not None}
     if _boot_error:
         out["boot_error"] = _boot_error
     return out
@@ -266,34 +272,27 @@ def _job_events(job_id: str, since: int = 0) -> list:
     return db.get_job_events(job_id, since)
 
 
-@app.post("/command")
-def run_command(body: CommandIn, device: Device = Depends(get_current_device)):
-    """Submit a command. Returns a job_id immediately."""
-    if not runtime._booted:
-        detail = f"Runtime failed to boot: {_boot_error}" if _boot_error else "Runtime booting."
-        raise HTTPException(status_code=503, detail=detail)
-
-    ok, reason = validate_command(body.text)
-    if not ok:
-        log_audit_event("", device.id, "command_rejected", f"{reason}: {body.text[:200]}")
-        raise HTTPException(status_code=400, detail=reason)
-    source = validate_source(body.source)
-
+def _start_job(device: Device, label: str, source: str, work):
+    """
+    Create a job and run `work(job, job_id)` on a worker thread. `work` returns the
+    terminal event as (type, message, data) -- "result" or "error" -- or raises.
+    Shared by natural-language commands and structured tools so caps, timeout,
+    cancel, persistence and audit behave identically.
+    """
     store = get_job_store()
     if store.running_count() >= MAX_JOBS or store.running_count(device.id) >= MAX_JOBS_PER_DEVICE:
         raise HTTPException(status_code=429, detail="Too many running jobs. Wait for one to finish.")
 
     job_id = str(uuid.uuid4())
     job = store.get_or_create(job_id, device.id)
-    db.save_job(job_id, command=body.text, source=source, user=device.id, status="created", created_at=time.time())
-    log_audit_event(job_id, device.id, "command", body.text)
-
-    job.add_event(JobEvent("ack", f"Command received: {body.text}"))
+    db.save_job(job_id, command=label, source=source, user=device.id, status="created", created_at=time.time())
+    log_audit_event(job_id, device.id, "command", label)
+    job.add_event(JobEvent("ack", f"Command received: {label}"))
 
     def _on_timeout():
         if job.add_event(JobEvent("error", f"Timed out after {int(JOB_TIMEOUT)}s")):
             job.cancelled = True
-            log_audit_event(job_id, device.id, "job_timeout", body.text)
+            log_audit_event(job_id, device.id, "job_timeout", label)
 
     timer = threading.Timer(JOB_TIMEOUT, _on_timeout)
     timer.daemon = True
@@ -301,41 +300,8 @@ def run_command(body: CommandIn, device: Device = Depends(get_current_device)):
 
     def _run():
         try:
-            job.add_event(JobEvent(
-                "progress", "Routing command...",
-                data={"stage": "routing", "step": 1, "total_steps": 4}
-            ))
-            job.add_event(JobEvent(
-                "executing", f"Classifying: {body.text}",
-                data={"stage": "classifying", "step": 2, "total_steps": 4}
-            ))
-
-            # Session ID is the job_id so intent_router can access it
-            res = runtime.execute_text_command(
-                text=body.text,
-                source=source,
-                session_id=job_id,
-                user=device.name
-            )
-
-            if res is None:
-                res = runtime.CommandResponse.ok(
-                    job_id, "route",
-                    f"Command '{body.text[:60]}' was processed.",
-                    source=source,
-                )
-
-            # res.status is an ExecutionStatus enum, not a string.
-            if getattr(res.status, 'value', res.status) == "completed":
-                action = getattr(res, 'interpreted_action', None) or res.to_dict().get('interpreted_action', '')
-                if action and action not in ('general_chat', 'answer_question', 'chat_response'):
-                    job.add_event(JobEvent(
-                        "verify", f"Verified: {action}",
-                        data={"stage": "verifying", "action": action, "step": 3, "total_steps": 4}
-                    ))
-                job.add_event(JobEvent("result", res.final_result or "Completed", data=res.to_dict()))
-            else:
-                job.add_event(JobEvent("error", res.final_result or "Failed", data=res.to_dict()))
+            etype, message, data = work(job, job_id)
+            job.add_event(JobEvent(etype, message, data=data))
         except Exception as e:
             traceback.print_exc()
             # Don't leak internals to the client; the traceback stays in the server log.
@@ -350,7 +316,177 @@ def run_command(body: CommandIn, device: Device = Depends(get_current_device)):
                 pass
 
     threading.Thread(target=_run, daemon=True).start()
-    return {"job_id": job_id}
+    return job_id
+
+
+@app.post("/command")
+def run_command(body: CommandIn, device: Device = Depends(get_current_device)):
+    """Submit a command. Returns a job_id immediately."""
+    if not runtime._booted:
+        detail = f"Runtime failed to boot: {_boot_error}" if _boot_error else "Runtime booting."
+        raise HTTPException(status_code=503, detail=detail)
+
+    ok, reason = validate_command(body.text)
+    if not ok:
+        log_audit_event("", device.id, "command_rejected", f"{reason}: {body.text[:200]}")
+        raise HTTPException(status_code=400, detail=reason)
+    source = validate_source(body.source)
+
+    def work(job, job_id):
+        job.add_event(JobEvent(
+            "progress", "Routing command...",
+            data={"stage": "routing", "step": 1, "total_steps": 4}
+        ))
+        job.add_event(JobEvent(
+            "executing", f"Classifying: {body.text}",
+            data={"stage": "classifying", "step": 2, "total_steps": 4}
+        ))
+
+        # Session ID is the job_id so intent_router can access it
+        res = runtime.execute_text_command(
+            text=body.text,
+            source=source,
+            session_id=job_id,
+            user=device.name
+        )
+
+        if res is None:
+            res = runtime.CommandResponse.ok(
+                job_id, "route",
+                f"Command '{body.text[:60]}' was processed.",
+                source=source,
+            )
+
+        # res.status is an ExecutionStatus enum, not a string.
+        if getattr(res.status, 'value', res.status) == "completed":
+            action = getattr(res, 'interpreted_action', None) or res.to_dict().get('interpreted_action', '')
+            if action and action not in ('general_chat', 'answer_question', 'chat_response'):
+                job.add_event(JobEvent(
+                    "verify", f"Verified: {action}",
+                    data={"stage": "verifying", "action": action, "step": 3, "total_steps": 4}
+                ))
+            return "result", res.final_result or "Completed", res.to_dict()
+        return "error", res.final_result or "Failed", res.to_dict()
+
+    return {"job_id": _start_job(device, body.text, source, work)}
+
+
+class ToolIn(BaseModel):
+    args: dict = {}
+
+
+@app.get("/tools")
+def list_available_tools(device: Device = Depends(get_current_device)):
+    return {"tools": list_tools()}
+
+
+@app.post("/tools/{tool_name}")
+def run_tool(tool_name: str, body: ToolIn, device: Device = Depends(get_current_device)):
+    """Run a structured tool (same job/event/confirm machinery as /command)."""
+    tool = get_tool(tool_name)
+    if not tool:
+        raise HTTPException(status_code=404, detail="Unknown tool")
+    args, err = validate_args(tool.parameters, body.args or {})
+    if err:
+        raise HTTPException(status_code=400, detail=err)
+
+    def work(job, job_id):
+        def emit(etype, message, data=None):
+            job.add_event(JobEvent(etype, message, data=data))
+
+        def ask_confirm(summary, data):
+            return ask_user(job_id, summary, event_type="confirm", data=data)
+
+        if not chat_agent.confirm_tool_call(tool, args, ask_confirm):
+            return "error", "Cancelled — nothing was changed.", {"status": "cancelled", "action": tool.name}
+        res = tool.fn(args, ToolContext(device_id=device.id, job_id=job_id, emit=emit))
+        log_audit_event(job_id, device.id, f"tool:{tool.name}", redact(json.dumps(args, default=str))[:500])
+        payload = dict(res.data or {})
+        payload.update({"action": res.action, "interpreted_action": res.action,
+                        "status": "completed" if res.success else "failed"})
+        if res.success:
+            return "result", res.summary or "Done", payload
+        return "error", res.user_message or res.error or "Failed", payload
+
+    label = f"{tool.label}: {str(args.get('query', args.get('path', ''))).strip()[:80]}".rstrip(": ")
+    return {"job_id": _start_job(device, label, "api", work)}
+
+
+# ── Chat (model-driven tool use) ─────────────────────────────
+
+SESSION_ID_RE = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
+
+
+def get_llm():
+    """The chat model, or None if not configured. Tests replace this."""
+    return get_default_llm()
+
+
+class ChatIn(BaseModel):
+    text: str
+    session_id: Optional[str] = None
+
+
+@app.post("/chat")
+def chat(body: ChatIn, device: Device = Depends(get_current_device)):
+    """Send a chat message. Returns {job_id, session_id}; the reply streams as job events."""
+    text = (body.text or "").strip()
+    if not text or "\x00" in text:
+        raise HTTPException(status_code=400, detail="Empty message")
+    if len(text) > 2000:
+        raise HTTPException(status_code=400, detail="Message too long (max 2000 chars)")
+    session_id = body.session_id or uuid.uuid4().hex
+    if not SESSION_ID_RE.match(session_id):
+        raise HTTPException(status_code=400, detail="Invalid session_id")
+    llm = get_llm()
+    if llm is None:
+        raise HTTPException(status_code=503, detail="Chat is not configured: set API_KEY (Gemini) in the server's .env.")
+
+    history = [{"role": m["role"], "text": m["text"]}
+               for m in db.load_chat_messages(device.id, session_id, limit=20)]
+
+    def work(job, job_id):
+        def emit(etype, message, data=None):
+            job.add_event(JobEvent(etype, message, data=data))
+
+        def ask_confirm(summary, data):
+            return ask_user(job_id, summary, event_type="confirm", data=data)
+
+        def audit(tool_name, args, outcome):
+            log_audit_event(job_id, device.id, f"tool:{tool_name}",
+                            redact(f"{json.dumps(args, default=str)[:400]} -> {outcome}"))
+
+        res = chat_agent.run_chat_turn(
+            device_id=device.id, job_id=job_id, text=text, history=history, llm=llm,
+            emit=emit, ask_confirm=ask_confirm, cancelled=lambda: job.finished or job.cancelled, audit=audit)
+        if res.stopped != "cancelled":
+            db.save_chat_messages(device.id, session_id, res.new_messages)
+        payload = dict(res.data)
+        payload.update({"status": "completed" if not res.stopped or res.stopped in ("steps",) else "failed",
+                        "interpreted_action": "chat", "session_id": session_id,
+                        "tool_calls": res.tool_calls, "stopped": res.stopped})
+        if res.stopped in ("error", "timeout"):
+            return "error", res.reply, payload
+        return "result", res.reply, payload
+
+    return {"job_id": _start_job(device, text[:120], "chat", work), "session_id": session_id}
+
+
+@app.get("/chat/{session_id}")
+def chat_history(session_id: str, device: Device = Depends(get_current_device)):
+    if not SESSION_ID_RE.match(session_id):
+        raise HTTPException(status_code=400, detail="Invalid session_id")
+    return {"session_id": session_id, "messages": db.load_chat_messages(device.id, session_id, limit=100)}
+
+
+@app.get("/files/{ticket}")
+def download_file(ticket: str, device: Device = Depends(get_current_device)):
+    """Download a file the server previously returned from a search. No client-supplied paths."""
+    path = resolve_download_ticket(ticket, device.id)
+    if not path:
+        raise HTTPException(status_code=404, detail="File not available")
+    log_audit_event("", device.id, "file_download", os.path.basename(path))
+    return FileResponse(path, filename=os.path.basename(path))
 
 
 @app.post("/reply/{job_id}")

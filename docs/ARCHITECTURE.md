@@ -140,7 +140,7 @@ Main endpoints in the current dispatcher server:
 | `GET` | `/devices` | List paired devices |
 | `DELETE` | `/devices/{id}` | Revoke a device (signs it out immediately) |
 | `POST` | `/devices/push` | Store a push token for the device (delivery not implemented yet) |
-| `GET` | `/health` | `{status, booted, boot_error?}` (no auth) |
+| `GET` | `/health` | `{status, booted, chat_enabled, boot_error?}` (no auth). The app switches to chat mode when `chat_enabled` is true |
 | `POST` | `/command` | `{text, source}` -> `{job_id}`. 400 invalid, 429 too many jobs, 503 booting |
 | `POST` | `/reply/{job_id}` | `{answer, nonce}` for a pending clarify/confirm. 409 if nothing is waiting or nonce is stale |
 | `POST` | `/jobs/{job_id}/cancel` | Cancel a running job |
@@ -148,6 +148,12 @@ Main endpoints in the current dispatcher server:
 | `GET` | `/jobs/{job_id}?since=n` | Job status + events after the first `n` (served from SQLite after a restart) |
 | `GET` | `/jobs/health_check_ping` | Token validity check |
 | `WS` | `/stream/{job_id}?ticket=…&since=n` | Event stream; resumes after `n` events; `ping` frames every 20s |
+| `GET` | `/tools` | List structured tools |
+| `POST` | `/tools/{tool}` | `{args}` -> `{job_id}`; same job/event stream as `/command`. Tool today: `search_files` (`args.query`) |
+| `POST` | `/chat` | `{text, session_id?}` -> `{job_id, session_id}`. A Gemini model answers using tools; the reply, tool activity chips (`progress` with `data.tool`) and any `confirm` prompts stream as normal job events. 503 if `API_KEY` is unset |
+| `GET` | `/chat/{session_id}` | This device's chat history (user text + final replies) |
+| `POST` | `/jobs/{id}/cancel` | Also stops a chat turn, including one waiting on a confirm |
+| `GET` | `/files/{ticket}` | Download a file previously returned by a search. Tickets are device-bound, expire after 10 min, and are re-checked against the allowed folders on every download; clients never send a path |
 | `GET` | `/suggestions` | Dynamic command suggestions |
 
 All endpoints except `/health`, `/pair` and static files require `Authorization: Bearer <token>`. Jobs are scoped to the device that created them. `clarify` / `confirm` events carry `data.nonce` and `data.expires_at`; echo the nonce in `/reply`.
@@ -186,3 +192,22 @@ What is still in-progress or uneven:
 - platform-specific actions are not equally mature
 - perception and verification are present but not complete across every action family
 - the safety layer is useful, but not yet a hardened multi-tenant sandbox
+
+
+## Chat agent
+
+`remote_tools/agent.py` runs a bounded loop: the model (Gemini, via `remote_tools/llm.py`) may call registered tools; results go back to it until it replies.
+
+- **Tools** live in `remote_tools/registry.py` with a JSON parameter schema and a risk level: `read` runs automatically; `change` and `danger` always pause for a `confirm` event showing the exact arguments. The requirement is enforced in code, so the model cannot skip it, and only an exact "yes" from the owning device proceeds.
+- **Validation:** arguments are checked against the tool schema (unknown/missing/mistyped arguments are rejected and never run).
+- **Limits:** max steps per turn (`ARC_CHAT_MAX_STEPS`), turn timeout, cancel, and tool output that is truncated and secret-redacted before the model sees it. Content from files is flagged untrusted in the model's context.
+- **Tools today (all read-only):** `search_files`, `list_dir`, `read_file`, `system_status`. State-changing tools (open app, email, scripts, installs, Wi-Fi) are added on top of the same mechanism.
+- **History:** only the user's text and the final reply are stored (SQLite, per device and session, pruned after 30 days).
+
+### Phone chat UI
+
+`mobileapp/src/components/ChatTurn.js` renders one chat turn from the job's events: tool-activity chips (`progress` events with `data.tool`), an approval card for a pending `confirm` (shows the exact arguments from `data.details`, red styling when `data.dangerous`), the reply, file matches, and a Stop button that calls `/jobs/{id}/cancel`. Everything is built with `textContent`/DOM APIs because replies and file names are untrusted. When the server has no model configured the app falls back to the typed-command path.
+
+### File search coverage
+
+Search indexes file names (not folder names) under the allowed folders (`ARC_FILE_ROOTS`, default Desktop/Documents/Downloads), up to 100,000 files per folder, skipping hidden folders and `node_modules`, `venv`, `env`, `Library`, etc. If a folder is cut off or macOS blocks access (privacy permission), the reply says so. `python -m remote_tools.doctor [filename-or-path]` shows what ARC can see on the machine and tests a search.

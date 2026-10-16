@@ -730,6 +730,18 @@ def _execute_action(action: str, params: dict, actions: dict, text: str = "", _s
                 best_match = actions["search_files_advanced"](query)
                 if best_match:
                     return ActionResult.ok(action, f"Found file: {os.path.basename(best_match)}", data={"filename": best_match, "path": best_match})
+                # Nothing matched: offer similarly named files instead of a dead end.
+                try:
+                    from remote_tools.files import find_files
+                    similar = find_files(query).get("matches", [])
+                except Exception:
+                    similar = []
+                if similar:
+                    names = ", ".join(m["name"] for m in similar[:3])
+                    return ActionResult.fail(
+                        action, f"Could not find a file matching '{query}'",
+                        data={"query": query, "matches": similar},
+                        user_message=f"I couldn't find '{query}', but these look similar: {names}.")
                 return ActionResult.fail(action, f"Could not find a file matching '{query}'", data={"query": query},
                                          user_message=f"I couldn't find any file matching '{query}' on your Desktop, Documents, or Downloads.")
             # fallback to old search

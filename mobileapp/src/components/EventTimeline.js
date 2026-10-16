@@ -6,6 +6,7 @@
 
 import jobStore from '../state/jobStore.js';
 import { renderEventCard } from './EventCard.js';
+import { renderChatTurn } from './ChatTurn.js';
 import { isMultiStepJob, renderWorkflowStepper } from './WorkflowStepper.js';
 import { escapeHtml, truncate } from '../utils/helpers.js';
 import appState from '../state/appState.js';
@@ -137,7 +138,7 @@ function _formatSessionTime(timestamp) {
  * @param {Function} onReply - Callback when user replies
  * @param {Function} [onRetry] - Callback when user retries a failed command
  */
-export function renderEventTimeline(onReply, onRetry = null) {
+export function renderEventTimeline(onReply, onRetry = null, onStop = null) {
   const container = document.createElement('div');
   container.id = 'event-timeline';
 
@@ -247,6 +248,16 @@ export function renderEventTimeline(onReply, onRetry = null) {
       `;
       fragment.appendChild(userBubble);
 
+      // ── Chat turns render as chips + approval card + reply ──
+      if (job.kind === 'chat') {
+        fragment.appendChild(renderChatTurn(job, {
+          onReply: (jobId, answer) => { jobStore.markReplied(jobId); onReply?.(jobId, answer); },
+          onStop,
+          onRetry,
+        }));
+        return;
+      }
+
       // ── ARC response bubble(s) ─────────────────────────
       // Filter events: only show meaningful ones in chat view
       const visibleEvents = job.events.filter(e =>
@@ -346,6 +357,7 @@ export function renderEventTimeline(onReply, onRetry = null) {
     const clearBtn = container.querySelector('#clear-history-btn');
     if (clearBtn) {
       clearBtn.addEventListener('click', () => {
+        appState.resetChatSession();
         if (jobStore.clearAllJobs) {
           jobStore.clearAllJobs();
         } else {
@@ -358,9 +370,10 @@ export function renderEventTimeline(onReply, onRetry = null) {
     }
 
     // Auto-scroll to bottom
+    // The page (not #main-content) is the scroller; main-content's bottom padding keeps
+    // the last bubble and any approval buttons clear of the fixed input bar.
     requestAnimationFrame(() => {
-      const main = document.getElementById('main-content');
-      if (main) main.scrollTop = main.scrollHeight;
+      window.scrollTo({ top: document.documentElement.scrollHeight });
     });
   }
 
