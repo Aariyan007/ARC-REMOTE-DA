@@ -13,6 +13,8 @@ class AppState {
   constructor() {
     this.connected = false;
     this.backendBooted = false;
+    this.chatEnabled = false;
+    this.chatSessionId = null;
     this.useMocks = false;
     this.checking = false;
     this.token = null;
@@ -25,6 +27,7 @@ class AppState {
   /** Load persisted settings. Must complete before the first render. */
   async load() {
     this.token = await getItem('token');
+    this.chatSessionId = await getItem('chat_session');
     const stored = await getItem('server_url');
     // Browser build served by the daemon itself talks to its own origin.
     this.serverUrl = stored || (isNative() ? '' : location.origin);
@@ -55,6 +58,29 @@ class AppState {
       this.backendBooted = val;
       this._notify();
     }
+  }
+
+  setChatEnabled(val) {
+    if (this.chatEnabled !== val) {
+      this.chatEnabled = val;
+      this._notify();
+    }
+  }
+
+  /** Session id for the current conversation; created on first use, reset by "Clear". */
+  getChatSessionId() {
+    if (!this.chatSessionId) {
+      const bytes = new Uint8Array(12);
+      crypto.getRandomValues(bytes);
+      this.chatSessionId = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+      setItem('chat_session', this.chatSessionId);
+    }
+    return this.chatSessionId;
+  }
+
+  resetChatSession() {
+    this.chatSessionId = null;
+    removeItem('chat_session');
   }
 
   setUseMocks(val) {

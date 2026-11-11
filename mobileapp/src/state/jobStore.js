@@ -80,9 +80,10 @@ class JobStore {
   }
 
   /** Create a new job */
-  createJob(jobId, commandText) {
+  createJob(jobId, commandText, kind = 'command') {
     const job = {
       id: jobId,
+      kind,
       command: commandText,
       status: 'waiting',
       events: [],

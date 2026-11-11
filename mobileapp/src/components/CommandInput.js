@@ -2,6 +2,7 @@
  * ARC Controller — Command Input Component
  */
 
+import appState from '../state/appState.js';
 import jobStore from '../state/jobStore.js';
 
 /**
@@ -25,7 +26,7 @@ export function renderCommandInput(onSubmit) {
         type="text"
         class="command-input__field"
         id="command-input-field"
-        placeholder="Type or speak a command..."
+        placeholder="Ask ARC to do something..."
         autocomplete="off"
         spellcheck="false"
         style="flex:1;"
@@ -165,7 +166,7 @@ export function renderCommandInput(onSubmit) {
       input.placeholder = `Reply to: ${activeJob.pendingEventType === 'confirm' ? 'Confirm Action' : 'Clarification Request'}...`;
       wrapper.querySelector('.command-input').style.borderColor = 'var(--accent-orange)';
     } else {
-      input.placeholder = 'Type a command… (e.g., open chrome, read my emails)';
+      input.placeholder = appState.chatEnabled ? 'Ask ARC… (e.g. find my budget file)' : 'Type a command… (e.g., open chrome, read my emails)';
       wrapper.querySelector('.command-input').style.borderColor = 'var(--border-default)';
     }
   });

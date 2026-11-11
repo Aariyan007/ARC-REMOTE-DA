@@ -6,7 +6,7 @@
 import { renderHeader } from '../components/Header.js';
 import { renderEventTimeline } from '../components/EventTimeline.js';
 import { renderCommandInput } from '../components/CommandInput.js';
-import { sendCommand } from '../api/http.js';
+import { sendCommand, sendChat, cancelJob } from '../api/http.js';
 import { connectToJob } from '../api/websocket.js';
 import { handleEvent } from '../services/eventHandler.js';
 import { simulateCommand } from '../services/mockService.js';
@@ -59,7 +59,11 @@ function streamJob(jobId, since) {
  */
 async function handleRealCommand(text) {
   try {
-    const res = await sendCommand(text);
+    // Chat mode (server has a model configured): the assistant decides which tools to use.
+    const chat = appState.chatEnabled;
+    const res = chat
+      ? await sendChat(text, appState.getChatSessionId())
+      : await sendCommand(text);
 
     // Gracefully handle legacy/direct backends that return CommandResponse JSON
     // instead of the Phase 1 job protocol.
@@ -78,7 +82,7 @@ async function handleRealCommand(text) {
     const jobId = res.job_id;
 
     // Create job in store
-    jobStore.createJob(jobId, text);
+    jobStore.createJob(jobId, text, chat ? 'chat' : 'command');
 
     streamJob(jobId, 0);
   } catch (err) {
@@ -86,7 +90,14 @@ async function handleRealCommand(text) {
     jobStore.createJob(failJobId, text);
 
     // Detect 503 "Runtime booting" specifically
-    if (err.status === 503) {
+    if (err.status === 503 && /not configured/i.test(err.detail || '')) {
+      handleEvent(failJobId, {
+        type: 'error',
+        message: err.detail,
+        data: { error_type: 'CHAT_NOT_CONFIGURED' },
+        timestamp: Date.now() / 1000,
+      });
+    } else if (err.status === 503) {
       handleEvent(failJobId, {
         type: 'error',
         message: 'ARC runtime is still loading (initializing models and actions). This can take 30-60 seconds on first start. Please try again shortly, or use Mock Mode to test the UI.',
@@ -124,6 +135,15 @@ function handleMockCommand(text) {
   });
 }
 
+/** Stop a running chat turn (also unblocks one waiting for approval). */
+async function onStop(jobId) {
+  try {
+    await cancelJob(jobId);
+  } catch (err) {
+    console.warn('Stop failed:', err);
+  }
+}
+
 /**
  * Handle reply from clarify/confirm prompts.
  */
@@ -150,7 +170,7 @@ export function mountMainScreen() {
   main.id = 'main-content';
 
   // Event Timeline
-  main.appendChild(renderEventTimeline(onReply, onCommandSubmit));
+  main.appendChild(renderEventTimeline(onReply, onCommandSubmit, onStop));
   app.appendChild(main);
 
   // Command Input (sticky bottom)
